@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — API keys live in environment variables only (NFR-6)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
