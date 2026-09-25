@@ -26,7 +26,7 @@
 - **Firebase auth + Postgres persistence:** accounts, orgs (CERT club / radio team), per-org roles (owner/admin/net_control/responder/viewer), and drill sessions. A drill's incidents, reports, units, and assignments survive reloads, servers, and weeks — after-action review becomes possible because the data is real.
 - **The agent pipeline moves server-side behind the planned REST API:** report intake (`POST /drills/{id}/reports`) runs surveillance → terrain → risk → logistics → command in FastAPI, with WebSocket snapshot push to every signed-in viewer of that drill — so net control's screen and responders' phones show the same picture.
 - **Human-commit controls:** net control marks incidents contained/closed and confirms unit assignments (the system still never auto-dispatches); recommendations become suggestions awaiting a person.
-- **Ground-truth scoring harness:** seeded drills carry hidden expected urgency so ranking accuracy is measured, not vibes — feeding the PRD's ranking-trust metric.
+- **Ground-truth scoring harness:** seeded drills carry hidden expected urgency derived from xBD damage grades (the Kaggle `rayanhossain239/damageactu-xbd-full` dataset loaded via kagglehub), so ranking accuracy is measured against real damage assessments, not vibes — feeding the PRD's ranking-trust metric.
 - Also in this window: measure and hit the p95 report-to-screen < 3 s budget; run two friendly-org drills as dogfooding.
 
 **Target dates:** data model + auth + drill sessions first month; server pipeline + live push second month; dogfood drills in month three. **Ready by Dec 6, 2026.**

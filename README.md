@@ -42,6 +42,7 @@ Campus CERT clubs and amateur-radio emergency teams run their exercises the same
 | Hosting | Railway (API + Postgres) · Netlify/Vercel (frontend) | Cheapest path to HTTPS, managed Postgres, and git-push deploys at the free tiers that suffice for 25 users. |
 | Realtime | Single WebSocket pushing full world snapshots | Every drill screen must show the same picture within seconds; snapshot-on-cycle is simple and debuggable at ≤ 50 viewers. |
 | Intelligence | Groq (JSON-mode) + deterministic fallback twins | Sub-second structured completions fit the cycle budget; rule-based twins mean an LLM outage can never stall a drill. |
+| Scenario dataset | xBD damage assessment (`rayanhossain239/damageactu-xbd-full`) via kagglehub | Real building-damage records seed the simulator; ordinal damage grades convert to hidden ground-truth urgency for honest ranking metrics, with an offline fallback cohort when Kaggle is unreachable. |
 
 ---
 

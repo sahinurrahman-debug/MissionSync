@@ -12,7 +12,7 @@ import asyncio
 import time
 from typing import Any, Awaitable, Callable, Optional
 
-from . import agents, simulator as sim
+from . import agents, simulator as sim, xbd
 from .llm import LLM_AVAILABILITY, llm_stats
 from .models import (
     Deployment,
@@ -48,9 +48,11 @@ class Orchestrator:
 
     async def bootstrap(self) -> None:
         """Seed the scenario so the dashboard has something on first paint."""
+        records = xbd.load_xbd_records()
+        source = f"xBD dataset ({xbd.KAGGLE_SLUG})" if records else "xBD offline fallback cohort"
+        self.event_log.insert(0, f"🟢 Scenario loaded: 5 initial incidents, 12 resources — dataset: {source}")
         for signal in self.sim.seed_events():
             await self.ingest_signals([signal], label="scenario-seed")
-        self.event_log.insert(0, "🟢 Scenario loaded: 5 initial incidents, 12 resources")
         await self._push()
 
     # -- signal ingestion (the no-restart live path) ------------------------

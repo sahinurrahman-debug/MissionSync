@@ -1,8 +1,13 @@
 """Synthetic disaster-response simulator.
 
-Generates the fictional operational picture: sectors with terrain, moving
-weather cells, a resource inventory, and a stream of incidents/signals with
-*hidden ground-truth urgency* so we can measure ranking accuracy honestly.
+Generates the operational picture: sectors with terrain, moving weather
+cells, a resource inventory, and a stream of incidents/signals with *hidden
+ground-truth urgency* so we can measure ranking accuracy honestly.
+
+Incident scenarios are sourced from the xBD damage-assessment dataset
+(``rayanhossain239/damageactu-xbd-full`` on Kaggle, loaded via kagglehub —
+see ``xbd.py``), not hand-written: each seeded incident carries a real damage
+grade from the dataset, converted to hidden ground-truth urgency.
 
 The judge stress test injects extra signals via the API — the simulator
 doesn't need to restart, and neither does the orchestrator.
@@ -10,12 +15,11 @@ doesn't need to restart, and neither does the orchestrator.
 from __future__ import annotations
 
 import random
-import time
 from typing import Any, Optional
 
+from . import xbd
 from .models import (
     DroneFrame,
-    IncidentType,
     Resource,
     ResourceType,
     TerrainCell,
@@ -76,46 +80,21 @@ def build_resources() -> list[Resource]:
     ]
 
 # ---------------------------------------------------------------------------
-# Scenario script: pre-seeded incidents with hidden ground truth
+# Scenario script: incidents seeded from the xBD dataset (hidden ground truth)
 # ---------------------------------------------------------------------------
 
-def scenario_seeds() -> list[dict[str, Any]]:
-    return [
-        {
-            "text": "Drone D2 thermal pass over North Hills ridge: active brush fire approx 2 hectares, flame front moving south with the wind, no structures visible yet.",
-            "zone": "North Hills", "type": IncidentType.FIRE, "population": 40, "injuries": 0,
-            "gt_urgency": 82, "confidence": 0.9,
-        },
-        {
-            "text": "Riverfront levee seepage at marker 7, water over the walkway, two ground reports of residents stranded on rooftops near the marina.",
-            "zone": "Riverfront", "type": IncidentType.FLOOD, "population": 120, "injuries": 2,
-            "gt_urgency": 78, "confidence": 0.85,
-        },
-        {
-            "text": "Radio call from site foreman: scaffolding collapse at Downtown construction site, multiple workers trapped under debris, casualties on scene.",
-            "zone": "Downtown", "type": IncidentType.STRUCTURAL_COLLAPSE, "population": 15, "injuries": 6,
-            "gt_urgency": 90, "confidence": 0.95,
-        },
-        {
-            "text": "University campus guard reports chemical smell from lab block evacuation, two students dizzy, building cleared.",
-            "zone": "University", "type": IncidentType.HAZMAT, "population": 200, "injuries": 2,
-            "gt_urgency": 62, "confidence": 0.7,
-        },
-        {
-            "text": "Eastside care home backup generator failing, 30 elderly residents on oxygen need welfare check and possible evacuation.",
-            "zone": "Eastside", "type": IncidentType.MEDICAL, "population": 30, "injuries": 0,
-            "gt_urgency": 48, "confidence": 0.8,
-        },
-    ]
+SEED_COUNT = 5    # incidents present at first paint
+WAVE_COUNT = 5    # incidents the sim spawns mid-demo
 
-# Later-wave incidents the simulator spawns as the demo runs
-_WAVE_POOL: list[dict[str, Any]] = [
-    {"text": "Multi-vehicle pileup on Eastside arterial, at least four cars, fuel leak, people still in second vehicle.", "zone": "Eastside", "type": IncidentType.ROADSIDE_CASUALTIES, "population": 12, "injuries": 5, "gt_urgency": 74, "confidence": 0.85},
-    {"text": "Hikers report a missing child separated near University trails, last seen 40 minutes ago.", "zone": "University", "type": IncidentType.MISSING_PERSONS, "population": 1, "injuries": 0, "gt_urgency": 52, "confidence": 0.6},
-    {"text": "Industrial Park worker reports ammonia leak from rail tanker valve, hissing sound, visible vapor cloud drifting.", "zone": "Industrial Park", "type": IncidentType.HAZMAT, "population": 80, "injuries": 3, "gt_urgency": 86, "confidence": 0.9},
-    {"text": "North Hills fire spotting across the ridge, second fire front reported by drone, embers reaching homes.", "zone": "North Hills", "type": IncidentType.FIRE, "population": 150, "injuries": 1, "gt_urgency": 92, "confidence": 0.88},
-    {"text": "Landslide debris flow over North Hills access road, road fully blocked, a car partially buried.", "zone": "North Hills", "type": IncidentType.LANDSLIDE, "population": 4, "injuries": 2, "gt_urgency": 66, "confidence": 0.8},
-]
+
+def scenario_seeds() -> list[dict[str, Any]]:
+    """Initial incident seeds drawn deterministically from the xBD dataset."""
+    return xbd.pick_seeds(xbd.load_seeds(), SEED_COUNT, salt="seed")
+
+
+def _wave_pool() -> list[dict[str, Any]]:
+    """Later-wave seeds: a disjoint deterministic sample of the same dataset."""
+    return xbd.pick_seeds(xbd.load_seeds(), WAVE_COUNT, salt="wave")
 
 
 class Simulator:
@@ -124,15 +103,22 @@ class Simulator:
     def __init__(self) -> None:
         self.tick_count = 0
         self._wave_index = 0
+        self._wave_seeds = _wave_pool()
         self.ground_truth: dict[str, float] = {}   # incident_id -> hidden urgency
 
     def seed_events(self) -> list[dict[str, Any]]:
         """Initial burst of incidents as signal dicts (with ground truth attached)."""
         events: list[dict[str, Any]] = []
+        sector_names = list(SECTORS)
         for i, seed in enumerate(scenario_seeds()):
-            lat, lon = SECTORS[seed["zone"]]
-            jitter = 0.002 * i
-            events.append(self._signal_from_seed(seed, lat + jitter, lon - jitter, delay_s=0))
+            # Dataset rows carry no zone; pin each seed to its own fictional
+            # sector (cyclically) so same-type seeds can't geographically merge
+            # and the demo picture spreads across the city.
+            seed["zone"] = sector_names[i % len(sector_names)]
+            zlat, zlon = SECTORS[seed["zone"]]
+            # Exact sector centers: they are ≥1.7 km apart, so the 1.5 km
+            # duplicate-merge guard can never collapse two seeds into one.
+            events.append(self._signal_from_seed(seed, zlat, zlon, delay_s=0))
         return events
 
     def tick(self) -> tuple[list[dict[str, Any]], list[str]]:
@@ -151,12 +137,15 @@ class Simulator:
             WEATHER["North Hills"].forecast_note = "wind gusting to 65 kph — extreme fire behavior possible"
             log.append("⚠️ Weather: North Hills winds intensifying to 52 kph")
 
-        # 2. New incidents from the wave pool
-        if self.tick_count in (2, 3, 5) and self._wave_index < len(_WAVE_POOL):
-            seed = _WAVE_POOL[self._wave_index]
+        # 2. New incidents from the xBD wave cohort
+        if self.tick_count in (2, 3, 5) and self._wave_index < len(self._wave_seeds):
+            seed = self._wave_seeds[self._wave_index]
             self._wave_index += 1
-            lat, lon = SECTORS[seed["zone"]]
-            signals.append(self._signal_from_seed(seed, lat + random.uniform(-0.003, 0.003), lon + random.uniform(-0.003, 0.003)))
+            # Offset cycle: same-type wave seeds always land in distinct sectors.
+            sector_names = list(SECTORS)
+            seed["zone"] = sector_names[(self._wave_index + 3) % len(sector_names)]
+            zlat, zlon = SECTORS[seed["zone"]]
+            signals.append(self._signal_from_seed(seed, zlat + random.uniform(-0.001, 0.001), zlon + random.uniform(-0.001, 0.001)))
             log.append(f"📡 New incoming signal from {seed['zone']}")
 
         # 3. Occasional follow-up on existing incidents (fold-in signals, no new incident)
@@ -178,9 +167,14 @@ class Simulator:
             "lat": lat, "lon": lon,
             "raw_text": seed["text"],
             "confidence": seed["confidence"],
+            # Provenance: real xBD coordinates for context, hidden from agents.
+            "_event": seed.get("event", ""),
+            "_damage_grade": seed.get("grade"),
+            "_dataset_lat": seed.get("lat"),
+            "_dataset_lon": seed.get("lon"),
             # Hidden evaluation metadata — stripped before the LLM sees it
             "_ground_truth_urgency": seed["gt_urgency"],
-            "_zone": seed["zone"],
+            "_zone": seed.get("zone") or "",
             "_type_hint": seed["type"].value,
         }
         return sig

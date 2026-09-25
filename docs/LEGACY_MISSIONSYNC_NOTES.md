@@ -82,9 +82,25 @@ Ranking and recommendations refresh in place within seconds. Nothing restarts.
 
 **Orchestrator** (`orchestrator.py`) owns state and the pipeline; runs concurrently (`asyncio.gather`) across incidents; pushes a `WorldSnapshot` to all dashboards after every cycle.
 
-### 2. Simulation dataset plan (`simulator.py`)
+### 2. Simulation dataset (`simulator.py` + `xbd.py`)
 
-Fictional city **Riverton** — six sectors with distinct terrain/thermal signatures:
+Incident scenarios are sourced from the **xBD damage-assessment dataset** — `rayanhossain239/damageactu-xbd-full` on Kaggle (xBD: building damage from pre/post-disaster satellite imagery, Gupta et al. 2019), loaded at runtime via **kagglehub**:
+
+```python
+df = kagglehub.load_dataset(
+  KaggleDatasetAdapter.PANDAS,
+  "rayanhossain239/damageactu-xbd-full",
+  file_path,  # override with the XBD_FILE_PATH env var
+)
+```
+
+- Each record carries a disaster event, an ordinal **damage grade** (0 no damage → 3 destroyed, the Joint Damage Scale) and coordinates. `xbd.py` converts grade → **hidden ground-truth urgency** (0→10, 1→40, 2→70, 3→90) and event name → incident type (earthquake → structural collapse, wildfire → fire, flood/hurricane/typhoon → flood, volcano/landslide → landslide).
+- **Scenario seed**: 5 initial incidents sampled deterministically from the dataset (same demo every run).
+- **Wave pool**: 5 more incidents spawn on sim ticks 2/3/5 from a disjoint deterministic sample so the picture evolves during the demo.
+- **Offline fallback**: if kagglehub, Kaggle credentials, or the network are unavailable, a deterministic fallback cohort built by the same conversion rules keeps every feature demoable — the same no-single-point-of-failure philosophy as the LLM fallback twins.
+- Real dataset coordinates ride along as hidden provenance metadata (`_dataset_lat/_lon`, `_event`, `_damage_grade`); the map pins incidents to the fictional sector grid so the demo stays legible.
+
+The world the incidents land in is unchanged — fictional city **Riverton**, six sectors with distinct terrain/thermal signatures:
 
 | Sector | Terrain | Built-in weather alert |
 |---|---|---|
@@ -98,8 +114,6 @@ Fictional city **Riverton** — six sectors with distinct terrain/thermal signat
 Streams produced:
 
 - **12 resources** across 7 types (fire units, ambulances, USAR, swift-water, engineering, drones, hazmat) with real positions and speeds.
-- **Scenario seed**: 5 initial incidents (brush fire, levee flooding + rooftop stranded residents, scaffolding collapse with entrapment, campus hazmat, care-home power failure) — each carrying **hidden ground-truth urgency** (48–90).
-- **Wave pool**: 5 later incidents spawn on sim ticks 2/3/5 (pileup, missing child, ammonia leak, fire spotting across ridge, landslide) so the picture evolves during the demo.
 - **Follow-up reports** (e.g. "third victim located") exercise the *merge* path.
 - **Weather drift** every tick; North Hills winds spike on tick 4, which legitimately raises fire risk.
 - Drones generate per-sector frames with battery/heading, standing in for feeds.
@@ -130,7 +144,7 @@ urgency = 0.35·severity + 0.25·population + 0.20·spread + 0.20·time_critical
 
 | Metric | Definition | Where |
 |---|---|---|
-| **Ranking accuracy** | Spearman ρ between system urgency and simulator **ground-truth urgency** (hidden from agents) | `metrics.ranking_accuracy` |
+| **Ranking accuracy** | Spearman ρ between system urgency and ground-truth urgency derived from xBD damage grades (hidden from agents) | `metrics.ranking_accuracy` |
 | **Response latency** | End-to-end pipeline cycle ms; per-stage (surveillance/terrain/risk/logistics/command) ms; LLM avg latency & success rate | `metrics.latency` |
 | **Recommendation quality** | P1/P2 coverage (% of P1/P2 incidents with a unit assigned), capability-match rate (% of deployments whose unit type is in the incident's capability matrix), best ETA to the #1 incident | `metrics.recommendation_quality` |
 | Injection resilience | Count of injected reports processed with zero restarts | header chip |

@@ -140,7 +140,13 @@ def _surveillance_fallback(
     for sig in signals:
         text = str(sig.get("raw_text", ""))
         low = text.lower()
-        itype = next((v for k, v in keyword_map.items() if k in low), IncidentType.MEDICAL)
+        # Sim seeds carry a dataset-derived type hint (xBD event → incident type);
+        # honor it before falling back to keyword guessing.
+        hint = sig.get("_type_hint")
+        itype = (
+            IncidentType(hint) if hint in IncidentType._value2member_map_
+            else next((v for k, v in keyword_map.items() if k in low), IncidentType.MEDICAL)
+        )
         inj_match = injury_re.search(low)
         pop_match = pop_re.search(low)
         injuries = _count(inj_match) if inj_match else default_inj.get(itype, 0)

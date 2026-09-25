@@ -20,7 +20,7 @@ The system shall:
 10. **FR-10 Multi-org isolation** — scope every drill, incident, unit, and report to its owning org; no cross-org data is ever readable or writable.
 11. **FR-11 Drill sessions** — support creating, running, and ending a drill; all state persists per drill for after-action review, including the full audit trail.
 12. **FR-12 Graceful degradation** — if the LLM provider fails or times out (25 s cap, retry + repair pass), rule-based fallback twins produce each pipeline step's output, the board displays a degraded-mode banner, and no drill ever stalls.
-13. **FR-13 Simulated exercise mode** — provide a built-in simulator (fictional city, seeded incidents, streamed radio traffic, weather drift) so every feature is demoable and testable without a real drill, and so ranking accuracy can be measured against hidden ground truth.
+13. **FR-13 Simulated exercise mode** — provide a built-in simulator (fictional city, incidents seeded from the xBD damage-assessment dataset on Kaggle — `rayanhossain239/damageactu-xbd-full` via kagglehub — with a deterministic offline fallback, streamed radio traffic, weather drift) so every feature is demoable and testable without a real drill, and so ranking accuracy can be measured against hidden ground truth derived from the dataset's damage grades.
 14. **FR-14 Post-drill export** — let an org admin export a drill's audit log and final incident list (CSV) for after-action review.
 
 ## 2. Non-functional requirements

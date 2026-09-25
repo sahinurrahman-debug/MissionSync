@@ -70,14 +70,14 @@
 | **Auth provider** | Firebase Authentication (email/password + Google) | Free tier, managed email verification and password reset (the boring parts I shouldn't hand-roll), and Org membership stays in Postgres keyed by Firebase UID. |
 | **LLM provider** | Groq (JSON-mode) + deterministic fallback twins | Sub-second JSON-structured completions keep the pipeline within cycle budget, and the fallback twins guarantee the board works even if the LLM is down mid-drill. |
 | **Hosting** | Railway (API + Postgres), Netlify or Vercel (frontend) | Cheapest path to HTTPS + managed Postgres with `git push` deploys; both have free/low tiers sufficient for 25 users. |
-| **Simulator** | In-repo Python module (`simulator.py`) | Lets every feature be demoed, tested, and load-checked without a real drill — also the source of ground-truth urgency for ranking-accuracy metrics. |
+| **Simulator** | In-repo Python module (`simulator.py`) + xBD dataset via kagglehub (`xbd.py`) | Incident scenarios come from real damage-assessment records (`rayanhossain239/damageactu-xbd-full`), so hidden ground-truth urgency is derived from actual damage grades; an offline fallback cohort keeps every demo alive without Kaggle credentials. |
 
 ---
 
 ## 3. Data flow — one report's journey
 
 ```
- 1. Responder types a report in the dashboard (or net control pastes a radio call)
+ 1. Responder types a report in the dashboard (or net control pastes a radio call — simulator incidents are seeded from the xBD Kaggle dataset)
       │  POST /api/drills/{drill_id}/reports  { text, lat?, lon? }  (JWT)
       ▼
  2. FastAPI validates JWT → resolves org + active drill session → persists RawReport
