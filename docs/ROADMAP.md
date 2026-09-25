@@ -13,7 +13,7 @@
 - The full three-pane dashboard deployed as a static site: live map with priority-colored, urgency-scaled incident markers and a legend; ranked incident feed with tier chips, urgency, and the auditable rationale line; command recommendation cards with action bullets, warnings, and deployment chips; resource board with unit states; timestamped event log.
 - The **report → merge → re-rank → recommend loop runs live in the browser**: a mock state layer (small TS module standing in for the API) seeds a fictional multi-sector city, streams simulated radio traffic on a timer, and accepts typed free-text reports. Ranking math, tiering, capability matching, and ETAs are real code, not video fakery.
 - Deployed to a public URL, so the judge experience is "open the link, type a report, watch the board re-order," identical to the eventual production flow.
-- **Deliberately absent:** login, persistence across reload, multiple viewers seeing each other, unit state changes. Those require state with a server, and pretending otherwise would just move Samurai work into a worse medium.
+- **Deliberately absent:** login, persistence across reload, multiple viewers seeing each other, and any human-commit control — units move on the simulator's own timer, but nobody can confirm or override an assignment yet. All of those need state on a server, and pretending otherwise would just move Samurai work into a worse medium.
 
 **Target dates:** scaffold + mock layer + map + ranked feed in week 1; recommendations, event log, polish, deploy in week 2. **Ready by Oct 11, 2026.**
 

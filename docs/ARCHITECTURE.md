@@ -78,7 +78,7 @@
 
 ```
  1. Responder types a report in the dashboard (or net control pastes a radio call)
-      │  POST /api/reports  { text, source, lat?, lon? }   (JWT in header)
+      │  POST /api/drills/{drill_id}/reports  { text, lat?, lon? }  (JWT)
       ▼
  2. FastAPI validates JWT → resolves org + active drill session → persists RawReport
       ▼

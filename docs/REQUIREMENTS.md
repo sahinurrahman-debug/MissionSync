@@ -16,7 +16,7 @@ The system shall:
 6. **FR-6 Auditability** — attach a ≤ 40-word rationale to every score and a timestamped event-log entry to every pipeline step (report → parse → merge → rank → assign).
 7. **FR-7 Capability-aware recommendations** — propose unit↔incident assignments honoring a capability matrix per incident type (e.g. collapse ⇒ rescue + ambulance), one-unit-one-incident, per-incident assignment caps, and haversine ETAs. Recommendations always require human confirmation; the system never dispatches autonomously.
 8. **FR-8 Human commit actions** — let net control mark incidents contained/closed and confirm or override unit assignments and roles.
-9. **FR-9 Live push** — broadcast the full world snapshot to every connected dashboard of a drill within the latency budget of NFR-2, with an initial-snapshot REST fallback on connect.
+9. **FR-9 Live push** — broadcast the full world snapshot to every connected dashboard of a drill within the latency budget of NFR-1, with an initial-snapshot REST fallback on connect.
 10. **FR-10 Multi-org isolation** — scope every drill, incident, unit, and report to its owning org; no cross-org data is ever readable or writable.
 11. **FR-11 Drill sessions** — support creating, running, and ending a drill; all state persists per drill for after-action review, including the full audit trail.
 12. **FR-12 Graceful degradation** — if the LLM provider fails or times out (25 s cap, retry + repair pass), rule-based fallback twins produce each pipeline step's output, the board displays a degraded-mode banner, and no drill ever stalls.

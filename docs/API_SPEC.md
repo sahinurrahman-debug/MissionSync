@@ -23,6 +23,8 @@ All routes are prefixed with `/api`. `Auth` shows the minimum role required; rol
 | GET | `/api/drills/{drill_id}/snapshot` | `viewer` | Full `WorldSnapshot` — initial-paint fallback if the WebSocket is slow to connect. |
 | POST | `/api/drills/{drill_id}/reports` | `responder` | Submit a free-text field report → triggers the pipeline. Returns report id + accepted timestamp. |
 | GET | `/api/drills/{drill_id}/audit` | `viewer` | Timestamped audit/event log for after-action review. |
+| POST | `/api/drills/{drill_id}/end` | `admin` | End a live drill: stop the pipeline, freeze the picture, and keep the full audit trail for after-action review. |
+| GET | `/api/drills/{drill_id}/export.csv` | `admin` | Export the drill's audit log and final incident list as CSV (FR-14). |
 | PATCH | `/api/drills/{drill_id}/incidents/{incident_id}` | `net_control` | Update an incident: mark contained/closed, correct population/injuries, adjust location. |
 | POST | `/api/drills/{drill_id}/units/{unit_id}/status` | `net_control` | Human commit of a recommendation: set unit status / assignment / role. The system never dispatches on its own. |
 | WS | `/ws/drills/{drill_id}?token=<jwt>` | `viewer` | Live push of `WorldSnapshot` after every pipeline cycle; also accepts keepalive pings. |
