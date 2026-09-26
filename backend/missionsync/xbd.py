@@ -4,23 +4,14 @@ Replaces the hand-written fictional incident list with real records from the
 Kaggle dataset ``rayanhossain239/damageactu-xbd-full`` (xBD: building damage
 assessment from pre/post-disaster satellite imagery, Gupta et al. 2019).
 
-The dataset is loaded through ``kagglehub`` exactly as documented:
-
-    pip install kagglehub[pandas-datasets]
-
-    df = kagglehub.load_dataset(
-        KaggleDatasetAdapter.PANDAS,
-        "rayanhossain239/damageactu-xbd-full",
-        file_path,
-    )
-
-Each xBD record carries a disaster event, an ordinal damage grade
-(0 = no damage … 3 = destroyed, the Joint Damage Scale) and coordinates for
-the assessed building. We turn those into incident seeds:
+The native xBD GeoJSON annotation files are downloaded individually through
+``kagglehub.dataset_download``; the large satellite images are not needed.
+Each file contains building features with an ordinal damage subtype
+(no-damage through destroyed). We turn those into incident seeds:
 
     damage grade ──► hidden ground-truth urgency   (graded, deterministic)
     disaster type ─► IncidentType                  (earthquake → collapse, …)
-    row cohort   ─► 5 initial seeds + 5 wave seeds (deterministic sampling)
+    annotation files ─► initial seeds + wave seeds (deterministic sampling)
 
 If the dataset (or kagglehub itself) is unavailable — no Kaggle credentials,
 offline judge machine — a small deterministic fallback cohort derived from the
@@ -31,18 +22,30 @@ drill.
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
 import os
-import random
 import time
+from pathlib import Path
 from typing import Any
 
 from .models import IncidentType
 
 KAGGLE_SLUG = "rayanhossain239/damageactu-xbd-full"
 
-# Where in the dataset repo the tabular file lives. Override with XBD_FILE_PATH
-# if the dataset ships a different filename (see .env.example).
-DEFAULT_FILE_PATH = "xbd_full.csv"
+# A small, deterministic sample of native xBD post-disaster annotations.
+# Fetching individual label JSON files avoids downloading the 33 GB image set.
+DEFAULT_LABEL_FILES = (
+    "xbd_full/hold/labels/guatemala-volcano_00000004_post_disaster.json",
+    "xbd_full/hold/labels/guatemala-volcano_00000012_post_disaster.json",
+    "xbd_full/hold/labels/guatemala-volcano_00000014_post_disaster.json",
+    "xbd_full/hold/labels/guatemala-volcano_00000020_post_disaster.json",
+    "xbd_full/hold/labels/guatemala-volcano_00000022_post_disaster.json",
+    "xbd_full/hold/labels/hurricane-florence_00000006_post_disaster.json",
+    "xbd_full/hold/labels/hurricane-florence_00000009_post_disaster.json",
+    "xbd_full/hold/labels/hurricane-florence_00000010_post_disaster.json",
+    "xbd_full/hold/labels/hurricane-florence_00000011_post_disaster.json",
+)
 FILE_PATH_ENV = "XBD_FILE_PATH"
 
 # Damage grade → hidden ground-truth urgency. The ordinal Joint Damage Scale
@@ -66,13 +69,10 @@ _TYPE_KEYWORDS: list[tuple[str, IncidentType]] = [
     ("mudslide", IncidentType.LANDSLIDE),
 ]
 
-_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+logger = logging.getLogger(__name__)
+_CACHE: tuple[float, str, list[dict[str, Any]]] | None = None
 _CACHE_TTL_S = 3600.0
-
-
-def _resolve_file_path(file_path: str | None = None) -> str:
-    """User-supplied path > env var > default."""
-    return file_path or os.environ.get(FILE_PATH_ENV, "").strip() or DEFAULT_FILE_PATH
+DATA_SOURCE = "not_loaded"
 
 
 def _norm(s: Any) -> str:
@@ -127,8 +127,8 @@ def row_to_seed(row: dict[str, Any]) -> dict[str, Any] | None:
     ).strip()
     event = _norm(row.get("disaster") or row.get("disaster_type") or row.get("event") or row.get("event_name"))
     grade = row.get("damage_grade") if row.get("damage_grade") is not None else row.get("damage")
-    lat = row.get("latitude") or row.get("lat")
-    lon = row.get("longitude") or row.get("lon") or row.get("lng")
+    lat = next((row[key] for key in ("latitude", "lat") if row.get(key) is not None), None)
+    lon = next((row[key] for key in ("longitude", "lon", "lng") if row.get(key) is not None), None)
 
     try:
         lat_f, lon_f = float(lat), float(lon)
@@ -160,36 +160,99 @@ def row_to_seed(row: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def geojson_to_seed(document: dict[str, Any], file_path: str) -> dict[str, Any] | None:
+    """Convert one native xBD post-disaster GeoJSON file into a scenario seed."""
+    features = document.get("features")
+    if not isinstance(features, list):
+        return None
+
+    buildings = [
+        feature.get("properties", {})
+        for feature in features
+        if isinstance(feature, dict)
+        and isinstance(feature.get("properties"), dict)
+        and feature["properties"].get("feature_type", "building") == "building"
+    ]
+    if not buildings:
+        return None
+
+    damage = [prop.get("subtype") or prop.get("damage_grade") or prop.get("damage") for prop in buildings]
+    worst = max(damage, key=_urgency_for_grade)
+    event = Path(file_path).name.split("_")[0].replace("-", " ")
+    urgency = _urgency_for_grade(worst)
+    seed = row_to_seed({
+        "disaster": event,
+        "damage_grade": worst,
+        "raw_text": f"xBD {event} assessment: {len(buildings)} building footprints identified.",
+        # xBD annotation geometry is image-pixel space, not latitude/longitude.
+        # The simulator assigns a fictional operational-sector location.
+        "lat": 0.0,
+        "lon": 0.0,
+    })
+    return seed
+
+
+def _read_kaggle_file(kagglehub: Any, path: str) -> list[dict[str, Any]]:
+    """Read a native xBD annotation JSON or a configured tabular file."""
+    if Path(path).suffix.lower() in {".json", ".geojson"}:
+        local_path = kagglehub.dataset_download(KAGGLE_SLUG, path=path)
+        with open(local_path, encoding="utf-8") as annotation_file:
+            document = json.load(annotation_file)
+        if not isinstance(document, dict):
+            return []
+        seed = geojson_to_seed(document, path)
+        return [seed] if seed else []
+
+    from kagglehub import KaggleDatasetAdapter
+
+    dataframe = kagglehub.dataset_load(KaggleDatasetAdapter.PANDAS, KAGGLE_SLUG, path)
+    return [
+        seed
+        for seed in (row_to_seed(record) for record in dataframe.to_dict("records"))
+        if seed is not None
+    ]
+
+
 def load_xbd_records(file_path: str | None = None, max_rows: int | None = None) -> list[dict[str, Any]]:
-    """Load the xBD dataset via kagglehub as normalized seed rows.
+    """Load native xBD annotations from Kaggle via kagglehub.
 
-    Cached for an hour so the sim loop never re-downloads. Raises nothing:
-    on any failure returns [] and callers fall back.
+    By default, only a deterministic sample of small annotation JSON files is
+    downloaded, never the dataset's large satellite imagery. XBD_FILE_PATH can
+    instead select one JSON, GeoJSON, or tabular file from the Kaggle dataset.
     """
-    global _CACHE
-    if _CACHE is not None and (time.time() - _CACHE[0]) < _CACHE_TTL_S:
-        return _CACHE[1]
+    global _CACHE, DATA_SOURCE
+    configured_path = file_path or os.environ.get(FILE_PATH_ENV, "").strip()
+    cache_key = configured_path or "|".join(DEFAULT_LABEL_FILES)
+    if _CACHE is not None and _CACHE[1] == cache_key and (time.time() - _CACHE[0]) < _CACHE_TTL_S:
+        if _CACHE[2]:
+            DATA_SOURCE = "kaggle"
+        return _CACHE[2][:max_rows] if max_rows is not None else _CACHE[2]
 
+    DATA_SOURCE = "unavailable"
     try:
         import kagglehub  # type: ignore[import-not-found]
-        from kagglehub import KaggleDatasetAdapter  # type: ignore[import-not-found]
 
-        df = kagglehub.load_dataset(
-            KaggleDatasetAdapter.PANDAS,
-            KAGGLE_SLUG,
-            _resolve_file_path(file_path),
-        )
-        if max_rows is not None:
-            df = df.head(max_rows)
-        records = [
-            seed
-            for seed in (row_to_seed(rec) for rec in df.to_dict("records"))
-            if seed is not None
-        ]
-        _CACHE = (time.time(), records)
-        return records
-    except Exception:  # noqa: BLE001 — any loader failure must not kill the demo
-        _CACHE = (time.time(), [])
+        paths = [configured_path] if configured_path else list(DEFAULT_LABEL_FILES)
+        records: list[dict[str, Any]] = []
+        failures: list[str] = []
+        for path in paths:
+            try:
+                records.extend(_read_kaggle_file(kagglehub, path))
+            except Exception as exc:
+                failures.append(f"{path}: {exc}")
+        if failures:
+            logger.warning(
+                "Some xBD Kaggle annotation files could not be loaded: %s",
+                "; ".join(failures),
+            )
+        if records:
+            DATA_SOURCE = "kaggle"
+        _CACHE = (time.time(), cache_key, records)
+        return records[:max_rows] if max_rows is not None else records
+    except Exception:
+        DATA_SOURCE = "unavailable"
+        logger.exception("Could not initialize the Kaggle xBD dataset loader")
+        _CACHE = (time.time(), cache_key, [])
         return []
 
 
@@ -199,13 +262,12 @@ def _fallback_records(count: int = 10) -> list[dict[str, Any]]:
     Same shape and conversion rules as the real rows, so downstream behavior
     (seeding, waves, ground truth) is identical — only the source differs.
     """
-    rng = random.Random(hashlib.sha256(KAGGLE_SLUG.encode()).digest())
     events = ["earthquake", "wildfire", "flood", "hurricane", "volcano"]
     return [
         {
             "text": (
-                f"[offline fallback] Satellite damage assessment ({event}): building "
-                f"{_grade_word(u)}, post-disaster pass over ({34.0 + 0.02 * i:.4f}, {-118.3 + 0.02 * i:.4f})."
+                f"[offline fallback] Satellite assessment ({event}): "
+                "post-disaster building survey."
             ),
             "zone": "",
             "type": _match_type(event),
@@ -226,17 +288,20 @@ def _fallback_records(count: int = 10) -> list[dict[str, Any]]:
 
 def load_seeds(file_path: str | None = None) -> list[dict[str, Any]]:
     """Primary entry point for the simulator: real rows or deterministic fallback."""
+    global DATA_SOURCE
     records = load_xbd_records(file_path)
     if records:
         return records
+    DATA_SOURCE = "offline_fallback"
+    logger.warning("Using deterministic offline xBD cohort; Kaggle annotation data was unavailable")
     return _fallback_records()
 
 
 def pick_seeds(records: list[dict[str, Any]], count: int, salt: str) -> list[dict[str, Any]]:
     """Deterministically sample `count` seeds from the dataset.
 
-    ``salt`` (e.g. "seed" or "wave") keeps the two cohorts disjoint and stable
-    across runs — same dataset, same demo, every time.
+    ``salt`` provides a stable ordering; the simulator partitions one combined
+    sample into disjoint initial and wave cohorts.
     """
     if not records:
         return []

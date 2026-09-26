@@ -89,12 +89,17 @@ WAVE_COUNT = 5    # incidents the sim spawns mid-demo
 
 def scenario_seeds() -> list[dict[str, Any]]:
     """Initial incident seeds drawn deterministically from the xBD dataset."""
-    return xbd.pick_seeds(xbd.load_seeds(), SEED_COUNT, salt="seed")
+    return _scenario_cohorts(xbd.load_seeds())[0]
 
 
 def _wave_pool() -> list[dict[str, Any]]:
     """Later-wave seeds: a disjoint deterministic sample of the same dataset."""
-    return xbd.pick_seeds(xbd.load_seeds(), WAVE_COUNT, salt="wave")
+    return _scenario_cohorts(xbd.load_seeds())[1]
+
+
+def _scenario_cohorts(records: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    selected = xbd.pick_seeds(records, SEED_COUNT + WAVE_COUNT, salt="scenario")
+    return selected[:SEED_COUNT], selected[SEED_COUNT:SEED_COUNT + WAVE_COUNT]
 
 
 class Simulator:
@@ -103,14 +108,21 @@ class Simulator:
     def __init__(self) -> None:
         self.tick_count = 0
         self._wave_index = 0
-        self._wave_seeds = _wave_pool()
+        self._scenario_seeds: list[dict[str, Any]] = []
+        self._wave_seeds: list[dict[str, Any]] = []
         self.ground_truth: dict[str, float] = {}   # incident_id -> hidden urgency
+
+    def configure_dataset(self, records: list[dict[str, Any]]) -> None:
+        """Prepare fixed, disjoint seed and wave cohorts from loaded xBD rows."""
+        self._scenario_seeds, self._wave_seeds = _scenario_cohorts(records)
 
     def seed_events(self) -> list[dict[str, Any]]:
         """Initial burst of incidents as signal dicts (with ground truth attached)."""
+        if not self._scenario_seeds:
+            self.configure_dataset(xbd.load_seeds())
         events: list[dict[str, Any]] = []
         sector_names = list(SECTORS)
-        for i, seed in enumerate(scenario_seeds()):
+        for i, seed in enumerate(self._scenario_seeds):
             # Dataset rows carry no zone; pin each seed to its own fictional
             # sector (cyclically) so same-type seeds can't geographically merge
             # and the demo picture spreads across the city.

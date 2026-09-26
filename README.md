@@ -62,4 +62,30 @@ This repo currently contains a working prototype of the agent pipeline and dashb
 
 ---
 
+## Run the prototype
+
+The backend runs five distinct agents (surveillance, terrain, risk, logistics, and command). Set `GROQ_API_KEY` in `backend/.env` to use Groq; without a working key, the deterministic fallback implementations keep the demo operational. The dashboard reports per-agent LLM/fallback status.
+
+The simulator loads native xBD post-disaster label JSON files from the Kaggle dataset `rayanhossain239/damageactu-xbd-full` through kagglehub. It downloads a small annotation sample rather than the full ~33 GB image dataset. Configure `KAGGLE_API_TOKEN` in `backend/.env` using a token from [Kaggle account settings](https://www.kaggle.com/settings); if access is unavailable, the app labels the deterministic offline cohort in its dashboard.
+
+On Windows, from the repository root:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+# Edit backend\.env and set GROQ_API_KEY and KAGGLE_API_TOKEN.
+python -m venv backend\.venv
+backend\.venv\Scripts\python -m pip install -r backend\requirements.txt
+backend\.venv\Scripts\python -m uvicorn missionsync.main:app --app-dir backend --reload --port 8000
+```
+
+In another terminal, start the dashboard:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
 *Submitted to Journey to Mastery — Level 1: Ronin*

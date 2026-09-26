@@ -6,6 +6,7 @@ so the orchestrator and the dashboard never know (or care) which ran.
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any, Optional
@@ -77,14 +78,22 @@ async def run_surveillance(
         for inc in existing_incidents
         if inc.status not in ("closed",)
     ]
+    visible_signals = [
+        {
+            key: signal[key]
+            for key in ("source", "lat", "lon", "observed_at", "raw_text", "confidence")
+            if key in signal
+        }
+        for signal in new_signals
+    ]
     user = {
-        "signals": new_signals,
+        "signals": visible_signals,
         "location_hint": {"lat": hint[0], "lon": hint[1]},
         "known_incidents": known,
     }
     parsed, latency = await llm_json(
         SURVEILLANCE_SYSTEM,
-        str(user),
+        json.dumps(user, ensure_ascii=False),
         agent="surveillance",
         max_tokens=900,
     )
@@ -380,7 +389,7 @@ async def run_logistics(
         "ref_distance_incident_id": ranked[0][1].id if ranked else None,
     } for r in available]
     parsed, latency = await llm_json(
-        LOGISTICS_SYSTEM, str({"incidents": inc_view, "resources": res_view}),
+        LOGISTICS_SYSTEM, json.dumps({"incidents": inc_view, "resources": res_view}),
         agent="logistics", max_tokens=900,
     )
     if parsed is None:
@@ -492,7 +501,7 @@ async def run_command(
         })
     alerts = [w.model_dump() for w in weather if w.alert]
     parsed, latency = await llm_json(
-        COMMAND_SYSTEM, str({"incidents": inc_view, "weather_alerts": alerts}),
+        COMMAND_SYSTEM, json.dumps({"incidents": inc_view, "weather_alerts": alerts}),
         agent="command", max_tokens=1000,
     )
     if parsed is None:

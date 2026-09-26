@@ -13,7 +13,7 @@ import time
 from typing import Any, Awaitable, Callable, Optional
 
 from . import agents, simulator as sim, xbd
-from .llm import LLM_AVAILABILITY, llm_stats
+from .llm import llm_stats
 from .models import (
     Deployment,
     IncidentType,
@@ -40,6 +40,7 @@ class Orchestrator:
         self._broadcast: Optional[Callable[[WorldSnapshot], Awaitable[None]]] = None
         self._injection_count = 0
         self.recommendations: list[RecommendedAction] = []
+        self.dataset_source = "not_loaded"
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -48,8 +49,10 @@ class Orchestrator:
 
     async def bootstrap(self) -> None:
         """Seed the scenario so the dashboard has something on first paint."""
-        records = xbd.load_xbd_records()
-        source = f"xBD dataset ({xbd.KAGGLE_SLUG})" if records else "xBD offline fallback cohort"
+        records = xbd.load_seeds()
+        self.dataset_source = xbd.DATA_SOURCE
+        self.sim.configure_dataset(records)
+        source = f"xBD dataset ({xbd.KAGGLE_SLUG})" if self.dataset_source == "kaggle" else "xBD offline fallback cohort"
         self.event_log.insert(0, f"🟢 Scenario loaded: 5 initial incidents, 12 resources — dataset: {source}")
         for signal in self.sim.seed_events():
             await self.ingest_signals([signal], label="scenario-seed")
@@ -367,7 +370,8 @@ class Orchestrator:
         p1_etas = [d.eta_minutes for d in deps if d.priority == 1]
 
         return {
-            "mode": "llm" if LLM_AVAILABILITY else "fallback",
+            "mode": llm_stats()["mode"],
+            "scenario_dataset": self.dataset_source,
             "ranking_accuracy": {
                 "spearman": spearman,
                 "evaluated_incidents": len(pairs),

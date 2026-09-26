@@ -4,7 +4,7 @@ All agents talk to Groq through this module. Features:
 - Async client for concurrent agent execution
 - JSON mode with one automatic repair retry
 - Latency tracking per call (feeds the response-latency metric)
-- LLM_AVAILABILITY flag so the system degrades gracefully if the key is
+- Per-agent call status so the system degrades gracefully if the key is
   missing or Groq is down mid-demo (rule-based fallback keeps the dashboard
   alive instead of failing in front of judges)
 """
@@ -15,19 +15,18 @@ import json
 import os
 import re
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
-# Fastest reliable JSON-mode models on Groq (free tier)
-PRIMARY_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-FALLBACK_MODEL = "llama-3.3-70b-versatile"
-
-LLM_AVAILABILITY = bool(API_KEY)
+# Groq retired the previous Llama models; these GPT-OSS models support JSON mode.
+PRIMARY_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+FALLBACK_MODEL = "openai/gpt-oss-120b"
 
 _client: Any = None
 if API_KEY:
@@ -38,11 +37,24 @@ if API_KEY:
     except Exception as exc:  # pragma: no cover
         print(f"[llm] Groq SDK unavailable, agents will use fallbacks: {exc}")
         _client = None
-        LLM_AVAILABILITY = False
 else:
     print("[llm] GROQ_API_KEY not set — agents running in rule-based fallback mode")
 
 latency_log: list[dict[str, Any]] = []
+_REQUIRED_AGENTS = ("surveillance", "terrain", "risk", "logistics", "command")
+_agent_runs: dict[str, dict[str, Any]] = {
+    name: {"calls": 0, "llm_successes": 0, "fallbacks": 0, "last_mode": "not_run"}
+    for name in _REQUIRED_AGENTS
+}
+
+
+def _record_agent_call(agent: str, succeeded: bool) -> None:
+    run = _agent_runs.setdefault(
+        agent, {"calls": 0, "llm_successes": 0, "fallbacks": 0, "last_mode": "not_run"}
+    )
+    run["calls"] += 1
+    run["llm_successes" if succeeded else "fallbacks"] += 1
+    run["last_mode"] = "llm" if succeeded else "fallback"
 
 
 def _extract_json(text: str) -> Optional[dict[str, Any]]:
@@ -77,6 +89,7 @@ async def llm_json(
     handle that and fall back to deterministic logic.
     """
     if _client is None:
+        _record_agent_call(agent, False)
         return None, 0
 
     started = time.perf_counter()
@@ -104,6 +117,7 @@ async def llm_json(
                 latency_log.append(
                     {"agent": agent, "latency_ms": latency_ms, "attempt": attempt, "ok": True}
                 )
+                _record_agent_call(agent, True)
                 return parsed, latency_ms
             # Malformed JSON: one repair pass with the stronger model
             messages.append({"role": "assistant", "content": content[:2000]})
@@ -120,19 +134,30 @@ async def llm_json(
                 {"agent": agent, "latency_ms": latency_ms, "attempt": attempt, "ok": False, "error": str(exc)[:200]}
             )
             if attempt == 1:
+                _record_agent_call(agent, False)
                 return None, latency_ms
             await asyncio.sleep(0.4)
+    _record_agent_call(agent, False)
     return None, int((time.perf_counter() - started) * 1000)
 
 
 def llm_stats() -> dict[str, Any]:
     """Aggregate LLM latency stats for the metrics panel."""
-    if not latency_log:
-        return {"calls": 0, "avg_latency_ms": 0, "success_rate": 1.0}
-    ok_calls = [entry for entry in latency_log if entry["ok"]]
+    calls = sum(run["calls"] for run in _agent_runs.values())
+    successes = sum(run["llm_successes"] for run in _agent_runs.values())
+    mode = (
+        "llm"
+        if _client is not None
+        and all(_agent_runs[name]["last_mode"] == "llm" for name in _REQUIRED_AGENTS)
+        else "fallback"
+    )
     return {
-        "calls": len(latency_log),
-        "avg_latency_ms": int(sum(entry["latency_ms"] for entry in latency_log) / len(latency_log)),
-        "success_rate": round(len(ok_calls) / len(latency_log), 3),
-        "mode": "llm" if LLM_AVAILABILITY else "fallback",
+        "calls": calls,
+        "avg_latency_ms": (
+            int(sum(entry["latency_ms"] for entry in latency_log) / len(latency_log))
+            if latency_log else 0
+        ),
+        "success_rate": round(successes / calls, 3) if calls else 1.0,
+        "mode": mode,
+        "agents": {name: dict(run) for name, run in _agent_runs.items()},
     }

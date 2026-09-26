@@ -96,8 +96,20 @@ export interface Metrics {
   latency: {
     last_cycle_ms: number
     pipeline: Record<string, number>
-    llm: { calls: number; avg_latency_ms: number; success_rate: number; mode: string }
+    llm: {
+      calls: number
+      avg_latency_ms: number
+      success_rate: number
+      mode: string
+      agents: Record<string, {
+        calls: number
+        llm_successes: number
+        fallbacks: number
+        last_mode: string
+      }>
+    }
   }
+  scenario_dataset: string
   recommendation_quality: {
     p1p2_count: number
     p1p2_covered: number

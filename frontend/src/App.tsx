@@ -82,6 +82,8 @@ function App() {
   const incidents = snap?.incidents ?? []
   const actions = snap?.actions ?? []
   const m = snap?.metrics
+  const llmAgentsLive = Object.values(m?.latency.llm.agents ?? {})
+    .filter((agent) => agent.last_mode === 'llm').length
 
   const p1p2 = useMemo(
     () => incidents.filter((i) => i.risk && ['P1', 'P2'].includes(i.risk.tier)).length,
@@ -102,6 +104,9 @@ function App() {
         <span className="metric-chip">rank acc (ρ) <b>{m?.ranking_accuracy.spearman ?? '—'}</b></span>
         <span className="metric-chip">P1/P2 cover <b>{m ? `${Math.round(m.recommendation_quality.coverage * 100)}%` : '—'}</b></span>
         <span className="metric-chip">injections <b>{m?.recommendation_quality.injections_processed ?? 0}</b></span>
+        <span className="metric-chip">
+          agents <b>{m ? `${llmAgentsLive}/5 LLM` : '—'}</b> · xBD <b>{m?.scenario_dataset.replace(/_/g, ' ') ?? '—'}</b>
+        </span>
       </header>
 
       <div className="main">

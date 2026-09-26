@@ -15,7 +15,7 @@ import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from .llm import LLM_AVAILABILITY, PRIMARY_MODEL
+from .llm import PRIMARY_MODEL, llm_stats
 from .models import IncomingReport, WorldSnapshot
 from .orchestrator import Orchestrator
 
@@ -79,10 +79,13 @@ app.add_middleware(
 
 @app.get("/api/health")
 async def health() -> dict:
+    llm = llm_stats()
     return {
         "status": "ok",
-        "mode": "llm" if LLM_AVAILABILITY else "fallback",
-        "model": PRIMARY_MODEL if LLM_AVAILABILITY else None,
+        "mode": llm["mode"],
+        "model": PRIMARY_MODEL if llm["mode"] == "llm" else None,
+        "agents": llm["agents"],
+        "dataset": orch.dataset_source,
         "incidents": len(orch.incidents),
     }
 
