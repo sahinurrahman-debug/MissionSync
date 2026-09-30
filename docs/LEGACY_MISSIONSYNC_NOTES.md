@@ -22,7 +22,7 @@ Add your key to `backend/.env` (copy from `.env.example`):
 GROQ_API_KEY=gsk_...
 ```
 
-Without a key the system still runs end-to-end in deterministic **fallback mode** — every agent has a rule-based twin — so the demo never dies.
+Without a key — or when Groq's daily token quota is spent — the system still runs end-to-end in **rule-based mode** (every agent has a rule-based twin), and the dashboard says so (`RULES · LLM off` / `AI QUOTA HIT`) instead of degrading silently.
 
 **Judge stress test (mid-demo):**
 
@@ -95,9 +95,9 @@ df = kagglehub.load_dataset(
 ```
 
 - Each record carries a disaster event, an ordinal **damage grade** (0 no damage → 3 destroyed, the Joint Damage Scale) and coordinates. `xbd.py` converts grade → **hidden ground-truth urgency** (0→10, 1→40, 2→70, 3→90) and event name → incident type (earthquake → structural collapse, wildfire → fire, flood/hurricane/typhoon → flood, volcano/landslide → landslide).
-- **Scenario seed**: 5 initial incidents sampled deterministically from the dataset (same demo every run).
-- **Wave pool**: 5 more incidents spawn on sim ticks 2/3/5 from a disjoint deterministic sample so the picture evolves during the demo.
-- **Offline fallback**: if kagglehub, Kaggle credentials, or the network are unavailable, a deterministic fallback cohort built by the same conversion rules keeps every feature demoable — the same no-single-point-of-failure philosophy as the LLM fallback twins.
+- **Scenario seed**: 5 initial incidents dealt deterministically (round-robin across hazard types) from 20 real xBD label files (volcano, flood, hurricane-wind, wildfire). Each file becomes an observable scene report built from its per-building damage counts (grade labels never appear in the text); the hidden ground truth is the mean grade urgency (0→10, 1→40, 2→70, 3→90) over its classified buildings.
+- **Wave pool**: 4 more incidents spawn on sim ticks 2/4/6/8 from the same deterministic deal, each in a sector not already holding a same-type incident; a follow-up report on the worst seeded incident arrives on tick 3 and must merge, not duplicate.
+- **Data source order**: live Kaggle (`kagglehub`, cache-first, 429 back-off) → bundled real snapshot (`data/xbd_seeds.json`, rebuilt by `scripts/build_xbd_snapshot.py`) → a small synthetic cohort as the last resort. The dashboard header reports which one is in use.
 - Real dataset coordinates ride along as hidden provenance metadata (`_dataset_lat/_lon`, `_event`, `_damage_grade`); the map pins incidents to the fictional sector grid so the demo stays legible.
 
 The world the incidents land in is unchanged — fictional city **Riverton**, six sectors with distinct terrain/thermal signatures:
@@ -134,11 +134,11 @@ urgency = 0.35·severity + 0.25·population + 0.20·spread + 0.20·time_critical
 ```
 
 - Tiers: **P1 ≥ 75**, P2 ≥ 55, P3 ≥ 35, else P4.
-- The LLM scores components; the weighted composite, tiering, and final ordering are **deterministic code** — identical inputs give identical rankings (consistency judges can verify).
+- The LLM scores components (clamped to 0–100 by code); the weighted composite, tiering, and final ordering are **deterministic code**. The composite is a pure function of the components; the components themselves are deterministic only in rule-based mode (an LLM at temperature 0.2 can vary run to run), which is why unchanged inputs reuse their cached components instead of being re-asked.
 - Each score carries a **rationale** (≤ 40 words) shown on the card and map tooltip — every ranking is auditable.
 - Ranking updates whenever inputs change: follow-up reports merge (population/injuries rise), weather drifts (escalation ↑), unresolved incidents decay (affected population grows ~8%/tick), all feeding the next scoring pass.
 
-**Deployment methodology:** capability matrix per incident type (e.g. collapse ⇒ USAR + ambulance; hazmat ⇒ hazmat unit + fire unit), one resource per incident, priority-ordered assignment, ETA = haversine distance ÷ unit speed. The LLM proposes role + rationale; the fallback twin is a greedy nearest-capable matcher.
+**Deployment methodology:** capability matrix per incident type (e.g. collapse ⇒ USAR + ambulance + engineering; hazmat ⇒ hazmat unit + fire unit; drones are universal recon), crew sized by tier (P1 3, P2 2, P3/P4 1; caps 4/4/2/2), one unit one incident, ETA = haversine distance ÷ unit speed. The LLM proposes pairs; code validates each one (available, capable, within crew size) and a coverage guard guarantees no P1/P2 is left without a unit. The rule-based twin is a greedy nearest-capable matcher.
 
 ### 4. Evaluation metrics (live in the dashboard header + `/api/snapshot`)
 
@@ -166,7 +166,7 @@ urgency = 0.35·severity + 0.25·population + 0.20·spread + 0.20·time_critical
 - WebSocket push (`/ws`) of full snapshots after **every** pipeline cycle — no polling, no restart.
 - Ingestion API `POST /api/report` accepts arbitrary free text **any time**; the orchestrator runs the same pipeline as any other signal and merges results in place.
 - The sim loop refreshes rankings continuously (resource movement, weather drift, follow-up reports), so the picture is never stale even with no injections.
-- Robustness: LLM call retry + stronger-model repair pass; 25 s timeout; if Groq fails mid-demo the deterministic twins take over and the dashboard keeps running; broadcast/loop errors are contained per cycle.
+- Robustness: 20 s timeout per call; malformed/truncated JSON is retried with more room; a daily-quota error rotates to the other model and, if both are spent, the rule-based twins take over visibly; per-minute limits are waited out briefly; pipelines run under one lock so an injection can never race the sim heartbeat; broadcast/loop errors are contained per cycle.
 
 ### Judge stress test runbook
 

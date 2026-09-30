@@ -1,0 +1,402 @@
+[
+ {
+  "text": "Landslide and debris-flow damage survey: 20 structures assessed \u2014 4 collapsed or gutted, 8 severely damaged, 6 lightly damaged, 2 intact. Roughly 50 people in the affected footprint, 8 injured.",
+  "zone": "",
+  "type": "landslide",
+  "population": 50,
+  "injuries": 8,
+  "gt_urgency": 59.0,
+  "confidence": 0.75,
+  "lat": 14.42973661152615,
+  "lon": -90.832067814151,
+  "event": "guatemala volcano",
+  "grade": 3,
+  "counts": {
+   "0": 2,
+   "1": 6,
+   "2": 8,
+   "3": 4
+  },
+  "source_file": "guatemala-volcano_00000004_post_disaster.json"
+ },
+ {
+  "text": "Landslide and debris-flow damage survey: 33 structures assessed \u2014 33 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "landslide",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 14.36330948841099,
+  "lon": -90.80564559847312,
+  "event": "guatemala volcano",
+  "grade": 0,
+  "counts": {
+   "0": 33,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "guatemala-volcano_00000012_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 114 structures assessed \u2014 114 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 33.58628836507076,
+  "lon": -79.0422367976871,
+  "event": "hurricane florence",
+  "grade": 0,
+  "counts": {
+   "0": 114,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-florence_00000006_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 116 structures assessed \u2014 116 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 33.58245393292962,
+  "lon": -79.01971853730674,
+  "event": "hurricane florence",
+  "grade": 0,
+  "counts": {
+   "0": 116,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-florence_00000009_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 56 structures assessed \u2014 56 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 33.64132485238391,
+  "lon": -78.94971946947955,
+  "event": "hurricane florence",
+  "grade": 0,
+  "counts": {
+   "0": 56,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-florence_00000010_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 58 structures assessed \u2014 58 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 33.64128226670024,
+  "lon": -78.94715367941332,
+  "event": "hurricane florence",
+  "grade": 0,
+  "counts": {
+   "0": 58,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-florence_00000011_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 155 structures assessed \u2014 6 lightly damaged, 149 intact. Roughly 6 people in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 6,
+  "injuries": 0,
+  "gt_urgency": 11.2,
+  "confidence": 0.75,
+  "lat": 29.77917668117524,
+  "lon": -95.48557864240547,
+  "event": "hurricane harvey",
+  "grade": 1,
+  "counts": {
+   "0": 149,
+   "1": 6,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-harvey_00000004_post_disaster.json"
+ },
+ {
+  "text": "Floodwater damage survey: 110 structures assessed \u2014 74 severely damaged, 36 lightly damaged. Roughly 258 people in the affected footprint, 37 injured.",
+  "zone": "",
+  "type": "flood",
+  "population": 258,
+  "injuries": 37,
+  "gt_urgency": 60.2,
+  "confidence": 0.75,
+  "lat": 29.77290780760262,
+  "lon": -95.47969135992177,
+  "event": "hurricane harvey",
+  "grade": 2,
+  "counts": {
+   "0": 0,
+   "1": 36,
+   "2": 74,
+   "3": 0
+  },
+  "source_file": "hurricane-harvey_00000005_post_disaster.json"
+ },
+ {
+  "text": "Structural damage survey: 101 structures assessed \u2014 5 severely damaged, 72 lightly damaged, 24 intact. Roughly 87 people in the affected footprint, 2 injured.",
+  "zone": "",
+  "type": "structural_collapse",
+  "population": 87,
+  "injuries": 2,
+  "gt_urgency": 34.4,
+  "confidence": 0.75,
+  "lat": 18.23314387348863,
+  "lon": -73.74876670508114,
+  "event": "hurricane matthew",
+  "grade": 2,
+  "counts": {
+   "0": 24,
+   "1": 72,
+   "2": 5,
+   "3": 0
+  },
+  "source_file": "hurricane-matthew_00000012_post_disaster.json"
+ },
+ {
+  "text": "Structural damage survey: 3 structures assessed \u2014 3 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "structural_collapse",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 30.07609648885892,
+  "lon": -85.61068691356992,
+  "event": "hurricane michael",
+  "grade": 0,
+  "counts": {
+   "0": 3,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-michael_00000002_post_disaster.json"
+ },
+ {
+  "text": "Structural damage survey: 6 structures assessed \u2014 2 collapsed or gutted, 2 severely damaged, 2 intact. Roughly 16 people in the affected footprint, 3 injured.",
+  "zone": "",
+  "type": "structural_collapse",
+  "population": 16,
+  "injuries": 3,
+  "gt_urgency": 56.7,
+  "confidence": 0.75,
+  "lat": 30.08226095480725,
+  "lon": -85.61468063217353,
+  "event": "hurricane michael",
+  "grade": 3,
+  "counts": {
+   "0": 2,
+   "1": 0,
+   "2": 2,
+   "3": 2
+  },
+  "source_file": "hurricane-michael_00000006_post_disaster.json"
+ },
+ {
+  "text": "Structural damage survey: 2 structures assessed \u2014 2 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "structural_collapse",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 30.09456913246585,
+  "lon": -85.61480805287812,
+  "event": "hurricane michael",
+  "grade": 0,
+  "counts": {
+   "0": 2,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "hurricane-michael_00000007_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 28 structures assessed \u2014 28 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.12469181127994,
+  "lon": -118.8596455618889,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 28,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000007_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 61 structures assessed \u2014 61 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.12684723890334,
+  "lon": -118.8526691059567,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 61,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000011_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 30 structures assessed \u2014 30 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.14239109948863,
+  "lon": -118.9067701889224,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 30,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000002_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 24 structures assessed \u2014 24 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.12596287937475,
+  "lon": -118.8657411308459,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 24,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000003_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 11 structures assessed \u2014 11 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.14272292066907,
+  "lon": -118.9016941575949,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 11,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000006_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 13 structures assessed \u2014 13 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.14098314754916,
+  "lon": -118.8897863349544,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 13,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000012_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 8 structures assessed \u2014 8 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.12706041054773,
+  "lon": -118.8503072507319,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 8,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000014_post_disaster.json"
+ },
+ {
+  "text": "Fire damage survey: 24 structures assessed \u2014 24 intact. About 1 person in the affected footprint, 0 injured.",
+  "zone": "",
+  "type": "fire",
+  "population": 1,
+  "injuries": 0,
+  "gt_urgency": 10.0,
+  "confidence": 0.75,
+  "lat": 34.1313252826464,
+  "lon": -118.8480582937183,
+  "event": "socal fire",
+  "grade": 0,
+  "counts": {
+   "0": 24,
+   "1": 0,
+   "2": 0,
+   "3": 0
+  },
+  "source_file": "socal-fire_00000028_post_disaster.json"
+ }
+]

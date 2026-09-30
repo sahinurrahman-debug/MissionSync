@@ -662,3 +662,66 @@ button, textarea, select, input { font-family: inherit; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Engine state: mode chips, banners, provenance badges
+   ========================================================================== */
+
+.chip.mode-llm { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.chip.mode-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.chip.mode-bad { color: var(--p1); border-color: color-mix(in srgb, var(--p1) 50%, transparent); }
+
+.banner {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-5);
+  font-size: var(--fs-sm);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+.banner.warn { background: color-mix(in srgb, var(--warn) 12%, var(--bg)); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.banner.error { background: color-mix(in srgb, var(--p1) 12%, var(--bg)); border-color: color-mix(in srgb, var(--p1) 35%, transparent); }
+
+.src-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+.src-badge.llm, .src-badge.cached { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.src-badge.rules { color: var(--dim); }
+
+.inject-toast.warn {
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+a.icon-btn { text-decoration: none; }
+.icon-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.icon-btn .mini-spin {
+  width: 12px; height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.connecting {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  color: var(--text-2);
+}
+.connecting .mini-spin {
+  width: 14px; height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@media (max-width: 980px) { .banner { padding: var(--sp-2) var(--sp-4); } }

@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 def utcnow() -> datetime:
@@ -165,6 +165,7 @@ class RiskScore(BaseModel):
     tier: Literal["P1", "P2", "P3", "P4"]
     scored_at: str = Field(default_factory=lambda: utcnow().isoformat())
     scoring_latency_ms: int = 0
+    source: Literal["llm", "rules", "cached"] = "rules"   # provenance of the components
 
 
 class Incident(BaseModel):
@@ -185,6 +186,8 @@ class Incident(BaseModel):
     terrain: Optional[TerrainCell] = None
     weather: Optional[WeatherCell] = None
     risk: Optional[RiskScore] = None
+    location_known: bool = True       # False ⇒ report gave no place; pinned to city centre
+    merged_reports: int = 0
 
 
 # --------------------------------------------------------------------------
@@ -223,7 +226,19 @@ class RecommendedAction(BaseModel):
 # World state pushed to dashboard
 # --------------------------------------------------------------------------
 
+class EventLine(BaseModel):
+    seq: int
+    t: str            # HH:MM:SSZ
+    msg: str
+
+
+class Pipeline(BaseModel):
+    stage: Literal["idle", "surveillance", "terrain", "risk", "logistics", "command"] = "idle"
+    origin: Literal["boot", "sim", "inject", "reset"] = "boot"
+
+
 class WorldSnapshot(BaseModel):
+    status: Literal["booting", "live"] = "booting"
     tick: int = 0
     sim_time: str = Field(default_factory=lambda: utcnow().isoformat())
     incidents: list[Incident] = Field(default_factory=list)
@@ -231,17 +246,39 @@ class WorldSnapshot(BaseModel):
     weather: list[WeatherCell] = Field(default_factory=list)
     actions: list[RecommendedAction] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
-    event_log: list[str] = Field(default_factory=list)
+    event_log: list[EventLine] = Field(default_factory=list)
+    pipeline: Pipeline = Field(default_factory=Pipeline)
 
 
 # --------------------------------------------------------------------------
 # Incoming report (used by API + judge injector)
 # --------------------------------------------------------------------------
 
+MAX_REPORT_CHARS = 2000
+
+
 class IncomingReport(BaseModel):
     """Free-text report injected mid-demo. Surveillance agent parses it."""
-    text: str
+    text: str = Field(min_length=1, max_length=MAX_REPORT_CHARS)
     source: Literal["drone", "ground_report", "radio", "sensor", "social"] = "ground_report"
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-    confidence: float = 0.9
+    lat: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
+    lon: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+
+    @field_validator("text")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Report text must not be blank")
+        return v
+
+
+class ReportOutcome(BaseModel):
+    """What the pipeline did with an injected report (drives the intake toast)."""
+    kind: Literal["created", "merged", "rejected"]
+    incident_id: Optional[str] = None
+    title: str = ""
+    tier: Optional[Literal["P1", "P2", "P3", "P4"]] = None
+    urgency: Optional[float] = None
+    message: str = ""

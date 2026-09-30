@@ -53,7 +53,7 @@
                               └──────────────────┘  assignments, audit events
 ```
 
-**Deployment shape (Shogun):** static React build on Netlify/Vercel → FastAPI on Railway → managed Postgres (Railway add-on) → Groq API outbound. One region, one deploy pipeline, no exotic infrastructure.
+**Deployment shape (Shogun):** static React build (Render static site) → FastAPI (Render web service) → managed Postgres (Render) → Groq API outbound, all declared in `render.yaml`. One region, one deploy pipeline, no exotic infrastructure.
 
 ---
 
@@ -69,7 +69,7 @@
 | **ORM** | SQLAlchemy 2.0 (async) | Standard, typed, async-native access to Postgres; avoids inventing a data layer. |
 | **Auth provider** | Firebase Authentication (email/password + Google) | Free tier, managed email verification and password reset (the boring parts I shouldn't hand-roll), and Org membership stays in Postgres keyed by Firebase UID. |
 | **LLM provider** | Groq (JSON-mode) + deterministic fallback twins | Sub-second JSON-structured completions keep the pipeline within cycle budget, and the fallback twins guarantee the board works even if the LLM is down mid-drill. |
-| **Hosting** | Railway (API + Postgres), Netlify or Vercel (frontend) | Cheapest path to HTTPS + managed Postgres with `git push` deploys; both have free/low tiers sufficient for 25 users. |
+| **Hosting** | Render (API + Postgres + static frontend, via a Blueprint) | One platform, HTTPS + managed Postgres with `git push` deploys and WebSocket support; free/low tiers sufficient for 25 users. |
 | **Simulator** | In-repo Python module (`simulator.py`) + xBD dataset via kagglehub (`xbd.py`) | Incident scenarios come from real damage-assessment records (`rayanhossain239/damageactu-xbd-full`), so hidden ground-truth urgency is derived from actual damage grades; an offline fallback cohort keeps every demo alive without Kaggle credentials. |
 
 ---

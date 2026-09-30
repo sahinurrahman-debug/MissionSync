@@ -1,6 +1,9 @@
-// MissionSync shared types (Kenshi frontend).
-// Shapes follow the Level-1 prototype's models.py JSON contract so the
-// Samurai backend can swap in for the browser engine without UI changes.
+// MissionSync shared types.
+// The dashboard renders one `Snapshot` shape no matter where it comes from:
+//   - RemoteEngine: the FastAPI backend (agents on Groq, real xBD data), mapped
+//     from its WorldSnapshot in api/mapping.ts
+//   - LocalEngine:  the in-browser demo engine (rule-based twins), used only when
+//     no backend is configured or reachable — and always labelled as such.
 
 export type IncidentType =
   | 'fire'
@@ -51,6 +54,8 @@ export interface RiskScore {
   tier: Tier
   scored_at: string
   scoring_latency_ms: number
+  /** Where the four components came from. */
+  source: 'llm' | 'cached' | 'rules'
 }
 
 export interface Incident {
@@ -68,6 +73,8 @@ export interface Incident {
   injuries: number
   confidence: number
   risk: RiskScore | null
+  /** false ⇒ the report named no place; pinned to the city centre. */
+  location_known: boolean
 }
 
 export interface TerrainCell {
@@ -135,6 +142,9 @@ export interface EventLine {
   msg: string
 }
 
+/** How the agents are running: real LLM, rule-based twins, out of quota, or the browser demo. */
+export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted' | 'demo'
+
 export interface Metrics {
   cycle_ms: number
   stages: Record<string, number>
@@ -146,14 +156,29 @@ export interface Metrics {
   capability_match: number
   p1_best_eta_min: number | null
   injections: number
+  resolved: number
   dataset_note: string
+  mode: EngineMode
+  model: string | null
+  llm_success_rate: number | null
+  /** Seconds until the Groq daily quota returns (only when mode = quota_exhausted). */
+  quota_retry_s: number | null
+  scoring_sources: Record<string, number>
+  /** Stored drill id, when the backend has a database. */
+  drill_id: number | null
+  /** 'postgresql' | 'sqlite' | 'disabled' | 'error' */
+  database: string
 }
 
 export type PipelineStage = 'idle' | 'surveillance' | 'terrain' | 'risk' | 'logistics' | 'command'
-export type PipelineOrigin = 'boot' | 'sim' | 'inject'
+export type PipelineOrigin = 'boot' | 'sim' | 'inject' | 'reset'
+
+export type Connection = 'connecting' | 'online' | 'offline' | 'demo'
 
 export interface Snapshot {
   status: 'booting' | 'live'
+  connection: Connection
+  engine: 'remote' | 'local'
   tick: number
   sim_time: string
   incidents: Incident[]
@@ -166,8 +191,22 @@ export interface Snapshot {
 }
 
 export interface InjectResult {
-  merged: boolean
+  kind: 'created' | 'merged' | 'rejected'
   incident_title: string
   tier: Tier | null
   urgency: number | null
+  message: string
+}
+
+/** A failure from the backend, in the standard error envelope (docs/API_SPEC.md). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public status: number,
+    public requestId?: string,
+    public retryAfterS?: number,
+  ) {
+    super(message)
+  }
 }

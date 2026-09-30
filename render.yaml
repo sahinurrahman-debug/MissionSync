@@ -1,0 +1,54 @@
+# Render Blueprint — MissionSync: Postgres + API (FastAPI) + static frontend (Vite).
+#
+#   Render dashboard → New → Blueprint → pick this repo. Render reads this file and
+#   asks for the values marked `sync: false` below (secrets and cross-service URLs).
+#   Step-by-step: README.md → "Deploy on Render".
+
+databases:
+  - name: missionsync-db
+    databaseName: missionsync
+    user: missionsync
+    plan: free              # free Postgres expires after 30 days; use a paid plan to keep history
+
+services:
+  # ---- Backend API ---------------------------------------------------------------
+  - type: web
+    name: missionsync-api
+    runtime: python
+    plan: free              # free web services sleep after ~15 min idle (cold start ~1 min)
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn missionsync.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DATABASE_URL          # audit trail, reports and drill history; app also runs without it
+        fromDatabase:
+          name: missionsync-db
+          property: connectionString
+      - key: GROQ_API_KEY          # https://console.groq.com/keys — without it the agents run rule-based
+        sync: false
+      - key: KAGGLE_API_TOKEN      # optional: live xBD download; the bundled real snapshot is used without it
+        sync: false
+      - key: CORS_ORIGINS          # the frontend's public URL, e.g. https://missionsync-web.onrender.com
+        sync: false
+
+  # ---- Frontend (static site) ------------------------------------------------------
+  - type: web
+    name: missionsync-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_API_URL          # the API's public URL, e.g. https://missionsync-api.onrender.com
+        sync: false
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

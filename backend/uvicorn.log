@@ -1,8 +1,0 @@
-INFO:     Started server process [15608]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-[llm] GROQ_API_KEY not set — agents running in rule-based fallback mode
-INFO:     127.0.0.1:51759 - "GET /api/snapshot HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "POST /api/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58965 - "GET /api/snapshot HTTP/1.1" 200 OK

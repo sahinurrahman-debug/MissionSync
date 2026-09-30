@@ -2,7 +2,19 @@
 
 *Planned API contract · Journey to Mastery — Level 1 (Ronin)*
 
-Status: **planned**. At Kenshi the dashboard runs against the in-browser mock layer; these endpoints become real at Samurai. The current prototype's routes (`/api/health`, `/api/snapshot`, `/api/report`, `/ws`) map onto the entries below rather than being replaced by them.
+Status: **partly implemented.** The backend serves one shared in-memory drill today; the org/auth/drill-session endpoints below are Samurai scope. The dashboard talks to the backend through the routes marked ✅ (or runs its in-browser demo engine when no backend is reachable).
+
+| Route | State | Notes |
+|---|---|---|
+| `GET /api/health` | ✅ | Adds `state` (booting/live), LLM `mode` (`llm` / `fallback` / `quota_exhausted`), active `model`, per-model `quota`, `dataset`, `uptime_s`. |
+| `GET /api/snapshot` | ✅ | The full `WorldSnapshot`: `status`, `incidents`, `resources`, `weather`, `actions`, `metrics`, structured `event_log` (`{seq,t,msg}`), and `pipeline` (`{stage,origin}`). |
+| `POST /api/report` | ✅ | Body `{text (1–2000 chars), source?, lat?, lon?, confidence?}`. Returns `{status, outcome:{kind: created\|merged\|rejected, incident_id, title, tier, urgency, message}, injections, snapshot}`. Rate-limited (burst 5, then 1 per 2 s per client) → `429` with `Retry-After`. |
+| `POST /api/reset` | ✅ | Restarts the drill. |
+| `GET /api/audit` | ✅ | The timestamped event log (last 300 entries). |
+| `WS /ws` | ✅ | Pushes a snapshot after every pipeline **stage**; answers the text frame `ping` with `{"type":"pong"}`. Unauthenticated until Samurai. |
+| everything else below | planned | |
+
+Errors from every implemented route use the standard envelope in §3, including `request_id` (also sent as the `X-Request-ID` header).
 
 ---
 

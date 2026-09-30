@@ -42,10 +42,22 @@ export default function IncidentCard({
         {incident.zone} · {incident.type.replace(/_/g, ' ')} · pop {incident.affected_population} · injuries {incident.injuries}
       </div>
 
-      <div className="card-meta" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+      <div className="card-meta" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
         <span className={`status-pill ${incident.status}`}>{incident.status.replace(/_/g, ' ')}</span>
         <span>conf {(incident.confidence * 100).toFixed(0)}%</span>
         {incident.risk && <span>scored {new Date(incident.risk.scored_at).toLocaleTimeString()}</span>}
+        {incident.risk && (
+          <span
+            className={`src-badge ${incident.risk.source}`}
+            title={
+              incident.risk.source === 'rules'
+                ? 'Components scored by the rule-based twin'
+                : 'Components scored by the LLM' + (incident.risk.source === 'cached' ? ' (reused — inputs unchanged)' : '')
+            }
+          >
+            {incident.risk.source === 'rules' ? 'rules' : 'AI'}
+          </span>
+        )}
       </div>
 
       {selected && b && (

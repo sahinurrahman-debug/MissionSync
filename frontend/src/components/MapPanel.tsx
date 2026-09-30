@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { CircleMarker, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Incident, Resource } from '../types'
@@ -14,7 +13,7 @@ const UNIT_COLOR: Record<string, string> = {
   available: '#2dd4a7',
   en_route: '#38bdf8',
   on_scene: '#f59e42',
-  returning: '#64748b',
+  returning: '#94a3b8',
 }
 
 export default function MapPanel({
@@ -28,11 +27,6 @@ export default function MapPanel({
   selectedId: string | null
   onSelect: (id: string | null) => void
 }) {
-  const unitMarkers = useMemo(
-    () => resources.filter((r) => r.current_lat != null && r.current_lon != null),
-    [resources],
-  )
-
   return (
     <div className="map-wrap">
       <MapContainer
@@ -62,6 +56,8 @@ export default function MapPanel({
                 fillColor: color,
                 fillOpacity: 0.55,
                 weight: selected ? 3.5 : 1.5,
+                // Dashed ring: the report named no place, so this pin is the city centre, not a location.
+                dashArray: inc.location_known ? undefined : '4 4',
                 className: tier === 'P1' || tier === 'P2' ? 'marker-pulse' : undefined,
               }}
               eventHandlers={{ click: () => onSelect(inc.id) }}
@@ -72,6 +68,7 @@ export default function MapPanel({
                 </strong>
                 <br />
                 urgency {inc.risk?.urgency.toFixed(0) ?? '—'} · {inc.zone}
+                {inc.location_known ? '' : ' (location unknown)'}
                 <br />
                 pop {inc.affected_population} · injuries {inc.injuries}
               </Tooltip>
@@ -79,24 +76,31 @@ export default function MapPanel({
           )
         })}
 
-        {unitMarkers.map((r) => (
-          <CircleMarker
-            key={r.id}
-            center={[r.current_lat as number, r.current_lon as number]}
-            radius={5}
-            pathOptions={{
-              color: UNIT_COLOR[r.status] ?? '#38bdf8',
-              fillColor: UNIT_COLOR[r.status] ?? '#38bdf8',
-              fillOpacity: 0.9,
-              weight: 1,
-            }}
-          >
-            <Tooltip direction="top" offset={[0, -4]}>
-              {r.name} · {r.status.replace('_', ' ')}
-              {r.role ? ` · ${r.role}` : ''}
-            </Tooltip>
-          </CircleMarker>
-        ))}
+        {/* Every unit is drawn — idle ones at their base — from the snapshot itself, so
+            markers follow the units as they move instead of a memoised first render. */}
+        {resources.map((r) => {
+          const lat = r.current_lat ?? r.base_lat
+          const lon = r.current_lon ?? r.base_lon
+          const color = UNIT_COLOR[r.status] ?? '#38bdf8'
+          return (
+            <CircleMarker
+              key={r.id}
+              center={[lat, lon]}
+              radius={r.status === 'available' ? 4 : 5.5}
+              pathOptions={{
+                color,
+                fillColor: color,
+                fillOpacity: r.status === 'available' ? 0.35 : 0.9,
+                weight: 1,
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -4]}>
+                {r.name} · {r.status.replace('_', ' ')}
+                {r.role ? ` · ${r.role}` : ''}
+              </Tooltip>
+            </CircleMarker>
+          )
+        })}
       </MapContainer>
 
       <div className="map-legend" role="list" aria-label="Map legend">
@@ -104,7 +108,8 @@ export default function MapPanel({
         <span role="listitem"><i className="dot" style={{ background: TIER_COLOR.P2 }} />P2</span>
         <span role="listitem"><i className="dot" style={{ background: TIER_COLOR.P3 }} />P3</span>
         <span role="listitem"><i className="dot" style={{ background: TIER_COLOR.P4 }} />P4</span>
-        <span role="listitem"><i className="dot" style={{ background: UNIT_COLOR.en_route }} />units</span>
+        <span role="listitem"><i className="dot" style={{ background: UNIT_COLOR.en_route }} />en route</span>
+        <span role="listitem"><i className="dot" style={{ background: UNIT_COLOR.available, opacity: 0.5 }} />idle</span>
       </div>
 
       <button

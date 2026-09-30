@@ -1,15 +1,25 @@
-# Dependencies
+# ---- Secrets: API keys live in environment variables only (NFR-6) --------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kaggle.json
+
+# ---- Dependencies ---------------------------------------------------------------
 node_modules/
 .pnp
 .pnp.js
 
-# Build output
+# ---- Frontend build output & caches ---------------------------------------------
 dist/
 build/
 .vite/
 *.tsbuildinfo
+coverage/
+.vitest/
 
-# Python
+# ---- Python ---------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *.so
@@ -21,16 +31,21 @@ env/
 .mypy_cache/
 .ruff_cache/
 
-# Secrets — API keys live in environment variables only (NFR-6)
-.env
-.env.*
-!.env.example
+# ---- Local databases & data caches ----------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+# (backend/missionsync/data/xbd_seeds.json IS committed: the bundled real-xBD snapshot)
 
-# Logs
+# ---- Logs -----------------------------------------------------------------------
 *.log
 logs/
 
-# OS / editor clutter
+# ---- Tooling / AI-assistant local state -----------------------------------------
+.claude/
+.render/
+
+# ---- OS / editor clutter --------------------------------------------------------
 .DS_Store
 Thumbs.db
 ehthumbs.db
@@ -39,6 +54,3 @@ Desktop.ini
 .vscode/
 *.swp
 *~
-
-# Legacy prototype artifacts are not part of the Kenshi deliverable
-backend/uvicorn.log

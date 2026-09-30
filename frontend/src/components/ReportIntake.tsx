@@ -1,64 +1,85 @@
 import { useState } from 'react'
-import type { InjectResult } from '../types'
+import { ApiError, type InjectResult, type PipelineStage } from '../types'
 
 const SAMPLE_COUNT = 4
+const MAX_CHARS = 2000
+
+const STAGE_LABEL: Record<string, string> = {
+  surveillance: 'Parsing the report…',
+  terrain: 'Assessing terrain…',
+  risk: 'Scoring urgency…',
+  logistics: 'Matching units…',
+  command: 'Drafting orders…',
+}
+
+function describe(result: InjectResult): { text: string; tone: 'ok' | 'warn' } {
+  if (result.kind === 'rejected') {
+    return { text: result.message || 'No emergency recognised in that report.', tone: 'warn' }
+  }
+  const scored = result.tier ? `${result.tier} · urgency ${result.urgency?.toFixed(0) ?? '—'}` : 'scored'
+  return result.kind === 'merged'
+    ? { text: `Merged into existing incident “${result.incident_title}” — now ${scored}; ranking refreshed.`, tone: 'ok' }
+    : { text: `New incident logged: “${result.incident_title}” — ${scored}.`, tone: 'ok' }
+}
+
+function describeError(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'rate_limited') return `Too many reports — try again in ${e.retryAfterS ?? 2}s.`
+    const id = e.requestId ? ` (ref ${e.requestId})` : ''
+    return `${e.message}${id}`
+  }
+  return 'Report processing failed — the board keeps running; try again.'
+}
 
 export default function ReportIntake({
   onInject,
   onSample,
+  stage,
+  disabled,
 }: {
-  onInject: (text: string) => InjectResult | null
+  onInject: (text: string) => Promise<InjectResult>
   onSample: () => string
+  stage: PipelineStage
+  disabled?: boolean
 }) {
   const [report, setReport] = useState('')
   const [busy, setBusy] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Pull the sample list exactly once per mount (not on every render).
   const [samples] = useState(() => Array.from({ length: SAMPLE_COUNT }, () => onSample()))
 
-  const submit = () => {
+  const submit = async () => {
     const text = report.trim()
-    if (!text || busy) return
+    if (!text || busy || disabled) return
     setBusy(true)
     setToast(null)
     setError(null)
-    // Let the UI paint the busy state before the (synchronous) pipeline runs.
-    setTimeout(() => {
-      try {
-        const result = onInject(text)
-        if (result) {
-          setToast(
-            result.merged
-              ? `Merged into existing incident “${result.incident_title}” — ranking refreshed.`
-              : `New incident logged: “${result.incident_title}” — ${result.tier ?? 'P?'} · urgency ${result.urgency?.toFixed(0) ?? '—'}.`,
-          )
-        } else {
-          setError('Could not process the report — try again.')
-        }
-        setReport('')
-      } catch {
-        setError('Report processing failed — the board keeps running; try rephrasing.')
-      } finally {
-        setBusy(false)
-      }
-    }, 350)
+    try {
+      const result = await onInject(text)
+      setToast(describe(result))
+      if (result.kind !== 'rejected') setReport('')
+    } catch (e) {
+      setError(describeError(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <div className="injector">
       <textarea
-        placeholder="Type a field report — e.g. “smoke from Building C, two people coughing” — and inject it into the live drill…"
+        placeholder="Type a field report — what is happening and where — e.g. “smoke from the University chemistry lab, two people coughing”"
         value={report}
         onChange={(e) => {
           setReport(e.target.value)
           setError(null)
         }}
         onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit()
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit()
         }}
         aria-label="Field report"
-        maxLength={500}
+        maxLength={MAX_CHARS}
       />
       <div className="injector-row">
         <select
@@ -76,15 +97,15 @@ export default function ReportIntake({
             <option key={s} value={s}>{s.slice(0, 52)}…</option>
           ))}
         </select>
-        <button className="btn" onClick={submit} disabled={busy || !report.trim()}>
+        <button className="btn" onClick={() => void submit()} disabled={busy || disabled || !report.trim()}>
           {busy && <span className="spinner" aria-hidden />}
-          {busy ? 'Processing…' : 'Inject report'}
+          {busy ? (STAGE_LABEL[stage] ?? 'Processing…') : 'Inject report'}
         </button>
       </div>
-      {toast && <div className="inject-toast">{toast}</div>}
-      {error && <div className="warning">{error}</div>}
+      {toast && <div className={`inject-toast ${toast.tone}`} role="status">{toast.text}</div>}
+      {error && <div className="warning" role="alert">{error}</div>}
       <div className="inject-hint">
-        Injection runs the full pipeline — parse → merge → re-rank → recommend — right here in the browser. ⌘/Ctrl+Enter to submit.
+        Injection runs the full pipeline — parse → merge → re-rank → recommend. Name a place (Downtown, Riverfront, Industrial Park…) so it lands on the map. ⌘/Ctrl+Enter to submit.
       </div>
     </div>
   )

@@ -1,8 +1,6 @@
-// The five MissionSync agents, ported to the browser as their deterministic
-// rule-based twins (the same logic the Level-1 backend used when the LLM was
-// unavailable). Kenshi is frontend-only, so these twins ARE the pipeline —
-// and because they're real code, ranking, merging, and matching genuinely
-// happen rather than being faked for the demo.
+// The five MissionSync agents as deterministic, rule-based twins of the backend
+// agents (backend/missionsync/agents.py). They power the in-browser DEMO engine
+// only; with a backend the real LLM agents run server-side.
 
 import type {
   Deployment,
@@ -10,7 +8,6 @@ import type {
   IncidentType,
   RecommendedAction,
   Resource,
-  ResourceStatus,
   RiskBreakdown,
   RiskScore,
   TerrainCell,
@@ -20,14 +17,14 @@ import type {
 import { clamp100, haversineKm, round1 } from './geo'
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Capability matrix (mirrors REQUIRED_TYPES in agents.py)
 // ---------------------------------------------------------------------------
 
 export function requiredFor(type: IncidentType): string[] {
   switch (type) {
     case 'fire': return ['fire_unit']
     case 'flood': return ['swift_water', 'rescue_team']
-    case 'structural_collapse': return ['rescue_team', 'ambulance']
+    case 'structural_collapse': return ['rescue_team', 'ambulance', 'engineering']
     case 'medical': return ['ambulance']
     case 'hazmat': return ['hazmat_unit', 'fire_unit']
     case 'landslide': return ['rescue_team', 'engineering']
@@ -35,6 +32,18 @@ export function requiredFor(type: IncidentType): string[] {
     case 'roadside_casualties': return ['ambulance', 'fire_unit']
     default: return ['rescue_team']
   }
+}
+
+/** Capable = in the capability matrix, or a drone (universal recon). */
+export function isCapable(resource: Resource, incident: Incident): boolean {
+  return requiredFor(incident.type).includes(resource.type) || resource.type === 'drone'
+}
+
+export const TARGET_CREW: Record<Tier, number> = { P1: 3, P2: 2, P3: 1, P4: 1 }
+export const CREW_CAP: Record<Tier, number> = { P1: 4, P2: 4, P3: 2, P4: 2 }
+
+export function tierOf(incident: Incident): Tier {
+  return incident.risk?.tier ?? 'P4'
 }
 
 export function etaMinutes(resource: Resource, incident: Incident): number {
@@ -58,30 +67,50 @@ export function tierFor(urgency: number): Tier {
 // 1. Surveillance — parse a raw signal into a structured incident candidate
 // ---------------------------------------------------------------------------
 
-const KEYWORD_TYPES: Array<[string, IncidentType]> = [
+// The EARLIEST mention wins, so "Missing child near the levee" is a missing-person
+// case, not a flood. Weak cues count only when no strong cue appears anywhere.
+const STRONG_KEYWORDS: Array<[string, IncidentType]> = [
   ['fire', 'fire'], ['smoke', 'fire'], ['burning', 'fire'], ['blaze', 'fire'],
-  ['flood', 'flood'], ['drowning', 'flood'], ['levee', 'flood'], ['rising water', 'flood'],
-  ['collapse', 'structural_collapse'], ['rubble', 'structural_collapse'], ['trapped', 'structural_collapse'],
+  ['flood', 'flood'], ['drowning', 'flood'], ['levee', 'flood'], ['rising water', 'flood'], ['swept away', 'flood'],
+  ['collapse', 'structural_collapse'], ['rubble', 'structural_collapse'],
   ['chemical', 'hazmat'], ['hazmat', 'hazmat'], ['spill', 'hazmat'], ['ammonia', 'hazmat'], ['leak', 'hazmat'],
-  ['landslide', 'landslide'], ['mudslide', 'landslide'],
-  ['missing', 'missing_persons'],
-  ['crash', 'roadside_casualties'], ['pileup', 'roadside_casualties'],
+  ['gas smell', 'hazmat'], ['toxic', 'hazmat'], ['fumes', 'hazmat'],
+  ['landslide', 'landslide'], ['mudslide', 'landslide'], ['rockslide', 'landslide'],
+  ['missing', 'missing_persons'], ['lost child', 'missing_persons'],
+  ['crash', 'roadside_casualties'], ['pileup', 'roadside_casualties'], ['collision', 'roadside_casualties'], ['overturned', 'roadside_casualties'],
+]
+const WEAK_KEYWORDS: Array<[string, IncidentType]> = [
+  ['trapped', 'structural_collapse'],
+  ['unconscious', 'medical'], ['cardiac', 'medical'], ['heart attack', 'medical'], ['seizure', 'medical'],
+  ['injur', 'medical'], ['medical', 'medical'], ['not breathing', 'medical'],
 ]
 
-const INCIDENT_TYPES: readonly string[] = [
-  'fire', 'flood', 'structural_collapse', 'medical', 'hazmat',
-  'landslide', 'missing_persons', 'roadside_casualties',
-]
-
-const WORD_NUMBERS: Record<string, number> = {
-  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
-  seven: 7, eight: 8, nine: 9, ten: 10, several: 4, multiple: 4,
+export function classifyText(text: string): IncidentType | null {
+  const low = text.toLowerCase()
+  for (const list of [STRONG_KEYWORDS, WEAK_KEYWORDS]) {
+    let best: { pos: number; type: IncidentType } | null = null
+    for (const [kw, type] of list) {
+      const pos = low.indexOf(kw)
+      if (pos !== -1 && (best === null || pos < best.pos)) best = { pos, type }
+    }
+    if (best) return best.type
+  }
+  return null
 }
 
-const INJURY_RE =
-  /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|several|multiple)\s+(injur\w*|trapped|dead|killed|casualt\w*|missing|hurt|unconscious|victims)/i
-const POPULATION_RE =
-  /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|several|multiple)\s+(people|persons|workers|residents|students|employees|families|elderly|passengers)/i
+const WORD_NUMBERS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  several: 4, multiple: 4, dozen: 24, dozens: 24,
+}
+const NUM = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|several|multiple|dozens?)'
+const INJURY_RE = new RegExp(
+  `${NUM}\\s+(?:more\\s+)?(?:\\w+\\s+)?(injur\\w*|trapped|dead|killed|casualt\\w*|missing|hurt|unconscious|victims|coughing|down)\\b`,
+  'i',
+)
+const POPULATION_RE = new RegExp(
+  `${NUM}\\s+(?:more\\s+)?(?:\\w+\\s+)?(people|person|persons|workers|residents|students|employees|families|elderly|passengers|occupants|kayakers|children|kids)`,
+  'i',
+)
 
 const DEFAULT_POPULATION: Record<IncidentType, number> = {
   fire: 40, flood: 100, structural_collapse: 15, hazmat: 80,
@@ -102,9 +131,10 @@ export interface ParsedCandidate {
   description: string
   lat: number
   lon: number
-  zone: string
   affected_population: number
   injuries: number
+  /** true when the text itself states numbers (vs. type defaults). */
+  counts_reported: boolean
   confidence: number
 }
 
@@ -114,39 +144,40 @@ export interface ParsedSignal {
   lon: number
   raw_text: string
   confidence: number
+  /** false ⇒ the report named no place (pinned to the city centre). */
+  located?: boolean
   type_hint?: string
-  /** Hidden ground-truth urgency (evaluation only, never shown to scoring). */
+  /** Hidden ground-truth urgency (evaluation only, never used for scoring). */
   gt?: number
 }
 
-export function surveillanceParse(signal: ParsedSignal): ParsedCandidate {
+function headline(text: string, limit = 70): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  const cut = t.length > limit ? `${t.slice(0, limit - 1).trimEnd()}…` : t
+  return cut.charAt(0).toUpperCase() + cut.slice(1)
+}
+
+/** Returns null when the text describes no emergency. */
+export function surveillanceParse(signal: ParsedSignal): ParsedCandidate | null {
   const text = String(signal.raw_text ?? '')
-  const low = text.toLowerCase()
+  const type = (signal.type_hint as IncidentType | undefined) ?? classifyText(text)
+  if (!type) return null
 
-  let type: IncidentType
-  const hint = signal.type_hint
-  if (hint && INCIDENT_TYPES.includes(hint)) {
-    type = hint as IncidentType
-  } else {
-    type = KEYWORD_TYPES.find(([kw]) => low.includes(kw))?.[1] ?? 'medical'
-  }
-
-  const injuryMatch = low.match(INJURY_RE)
-  const popMatch = low.match(POPULATION_RE)
+  const injuryMatch = text.match(INJURY_RE)
+  const popMatch = text.match(POPULATION_RE)
   const injuries = injuryMatch ? countFrom(injuryMatch) : (DEFAULT_INJURIES[type] ?? 0)
-  const population = popMatch ? countFrom(popMatch) : DEFAULT_POPULATION[type]
-
-  const title = (text.length > 60 ? `${text.slice(0, 57)}…` : text).replace(/^\w/, (c) => c.toUpperCase())
+  let population = popMatch ? countFrom(popMatch) : DEFAULT_POPULATION[type]
+  if (injuryMatch && !popMatch) population = Math.max(injuries, 1)
 
   return {
     type,
-    title: title || 'Unverified signal',
+    title: headline(text) || 'Unverified signal',
     description: text.slice(0, 300),
     lat: signal.lat,
     lon: signal.lon,
-    zone: '',
     affected_population: population,
     injuries,
+    counts_reported: Boolean(injuryMatch || popMatch),
     confidence: signal.confidence,
   }
 }
@@ -174,11 +205,7 @@ export function terrainAssess(incident: Incident, weather: WeatherCell, terrain:
   if (weather.wind_kph > 30) hazards.push('high wind — aerial ops limited')
   if (weather.precipitation_mm_h > 10) hazards.push('heavy rain — flash flood watch')
 
-  return {
-    access_difficulty: clamp100(access),
-    escalation_risk: clamp100(escalation),
-    hazards,
-  }
+  return { access_difficulty: clamp100(access), escalation_risk: clamp100(escalation), hazards }
 }
 
 // ---------------------------------------------------------------------------
@@ -232,7 +259,8 @@ export function riskScore(
     breakdown,
     tier: tierFor(urgency),
     scored_at: new Date(now).toISOString(),
-    scoring_latency_ms: 1 + Math.round(Math.random() * 2),
+    scoring_latency_ms: 0,
+    source: 'rules',
   }
 }
 
@@ -248,7 +276,7 @@ function buildRationale(incident: Incident, terrain: TerrainAssessment, trapped:
 }
 
 // ---------------------------------------------------------------------------
-// 4. Logistics — greedy nearest-capable matcher with per-incident caps
+// 4. Logistics — greedy nearest-capable matcher, crew sized by tier
 // ---------------------------------------------------------------------------
 
 export interface Assignment {
@@ -258,66 +286,7 @@ export interface Assignment {
   rationale: string
 }
 
-const CAP_FOR_TIER = (tier: Tier): number => (tier === 'P1' || tier === 'P2' ? 4 : 2)
-
-export function logisticsMatch(
-  ranked: Array<{ rank: number; incident: Incident }>,
-  resources: Resource[],
-): { assignments: Assignment[]; deployments: Deployment[] } {
-  const used = new Set<string>()
-  const assignedCounts: Record<string, number> = {}
-  for (const r of resources) {
-    if (r.assigned_incident) {
-      assignedCounts[r.assigned_incident] = (assignedCounts[r.assigned_incident] ?? 0) + 1
-    }
-  }
-
-  const assignments: Assignment[] = []
-  const deployments: Deployment[] = []
-
-  for (const { rank, incident } of ranked) {
-    if (incident.status === 'closed' || incident.status === 'contained') continue
-    const required = requiredFor(incident.type)
-    const cap = CAP_FOR_TIER(incident.risk?.tier ?? 'P4')
-    if ((assignedCounts[incident.id] ?? 0) >= cap) continue
-
-    const free = resources.filter((r) => !used.has(r.id) && r.status !== 'on_scene')
-    let candidates = free.filter((r) => required.includes(r.type))
-    if (candidates.length === 0) candidates = free.filter((r) => r.type === 'drone')
-    if (candidates.length === 0) continue
-
-    const best = candidates.reduce((a, b) =>
-      haversineKm(a.current_lat ?? a.base_lat, a.current_lon ?? a.base_lon, incident.lat, incident.lon) <
-      haversineKm(b.current_lat ?? b.base_lat, b.current_lon ?? b.base_lon, incident.lat, incident.lon)
-        ? a : b)
-
-    used.add(best.id)
-    assignedCounts[incident.id] = (assignedCounts[incident.id] ?? 0) + 1
-    const role = roleFor(best, incident)
-    assignments.push({
-      incident_id: incident.id,
-      resource_id: best.id,
-      role,
-      rationale: `Nearest capable ${best.type.replace('_', ' ')} (rank #${rank})`,
-    })
-    deployments.push({
-      id: `dep_${best.id}_${incident.id}`,
-      incident_id: incident.id,
-      incident_title: incident.title,
-      resource_id: best.id,
-      resource_name: best.name,
-      resource_type: best.type,
-      eta_minutes: etaMinutes(best, incident),
-      role,
-      priority: rank,
-      rationale: 'Capability + proximity match',
-    })
-  }
-
-  return { assignments, deployments }
-}
-
-function roleFor(resource: Resource, incident: Incident): string {
+export function roleFor(resource: Resource, incident: Incident): string {
   switch (resource.type) {
     case 'fire_unit': return incident.type === 'fire' ? 'primary suppression' : 'support & extinguish'
     case 'ambulance': return 'triage & evac'
@@ -330,8 +299,46 @@ function roleFor(resource: Resource, incident: Incident): string {
   }
 }
 
+const dist = (r: Resource, inc: Incident): number =>
+  haversineKm(r.current_lat ?? r.base_lat, r.current_lon ?? r.base_lon, inc.lat, inc.lon)
+
+/**
+ * P1 gets the best pick, then P2, … up to each incident's target crew. Only
+ * AVAILABLE units are candidates (a unit already en route elsewhere is not free).
+ */
+export function logisticsMatch(
+  ranked: Array<{ rank: number; incident: Incident }>,
+  resources: Resource[],
+  assignedCounts: Record<string, number>,
+): Assignment[] {
+  const used = new Set<string>()
+  const counts = { ...assignedCounts }
+  const out: Assignment[] = []
+
+  for (const { rank, incident } of ranked) {
+    const tier = tierOf(incident)
+    const need = Math.max(0, TARGET_CREW[tier] - (counts[incident.id] ?? 0))
+    for (let n = 0; n < need; n++) {
+      const free = resources.filter((r) => r.status === 'available' && !used.has(r.id))
+      let candidates = free.filter((r) => requiredFor(incident.type).includes(r.type))
+      if (candidates.length === 0) candidates = free.filter((r) => r.type === 'drone')
+      if (candidates.length === 0) break
+      const best = candidates.reduce((a, b) => (dist(a, incident) <= dist(b, incident) ? a : b))
+      used.add(best.id)
+      counts[incident.id] = (counts[incident.id] ?? 0) + 1
+      out.push({
+        incident_id: incident.id,
+        resource_id: best.id,
+        role: roleFor(best, incident),
+        rationale: `Nearest capable unit (rank #${rank})`,
+      })
+    }
+  }
+  return out
+}
+
 // ---------------------------------------------------------------------------
-// 5. Command — operational recommendation cards for the top incidents
+// 5. Command — operational recommendation cards from the REAL deployments
 // ---------------------------------------------------------------------------
 
 export function commandRecommend(
@@ -342,7 +349,7 @@ export function commandRecommend(
   const recs: RecommendedAction[] = []
 
   for (const { rank, incident } of ranked.slice(0, 4)) {
-    const tier = incident.risk?.tier ?? 'P4'
+    const tier = tierOf(incident)
     const deps = deployments.filter((d) => d.incident_id === incident.id)
     const details: string[] = []
     const warnings: string[] = []
@@ -354,23 +361,23 @@ export function commandRecommend(
     } else if (incident.type === 'flood') {
       details.push('Boat-based rescue only; no wading in moving water')
       details.push('Stage swift-water team upstream of debris line')
+      if (zoneWeather?.alert === 'flood_watch') warnings.push('Flood watch in effect — river still rising')
     } else if (incident.type === 'structural_collapse') {
       details.push('Mark collapse zones; shoring before interior search')
       details.push('Rely on canine/acoustic search before heavy equipment')
     } else if (incident.type === 'hazmat') {
       details.push('Upwind staging; identify plume direction before approach')
       details.push('Decon corridor before crew rotation')
+    } else if (incident.type === 'landslide') {
+      details.push('Assess slope stability before committing crews')
     } else {
       details.push('Confirm scene size-up via nearest drone feed')
       details.push('Stage resources at safe approach point')
     }
     details.push('Establish incident command perimeter')
 
-    if (deps.length === 0) warnings.push('No units assigned yet — coverage gap at this priority')
-    if (incident.status === 'units_en_route' || incident.status === 'on_scene') {
-      const eta = deps.length > 0 ? Math.min(...deps.map((d) => d.eta_minutes)) : null
-      if (eta !== null) details.push(`First unit ETA ~${Math.round(eta)} min`)
-    }
+    if (deps.length === 0) warnings.push('No units deployed yet — coverage gap at this priority')
+    else details.push(`First unit ETA ~${Math.round(Math.min(...deps.map((d) => d.eta_minutes)))} min`)
 
     recs.push({
       incident_id: incident.id,
@@ -388,42 +395,15 @@ export function commandRecommend(
 }
 
 function commandHeadline(incident: Incident): string {
+  const zone = incident.zone || 'scene'
   switch (incident.type) {
-    case 'fire': return `Commit engines to ${incident.zone} fire — attack from the east`
-    case 'flood': return `Push boat crew to ${incident.zone} flooding; clear the marina`
-    case 'structural_collapse': return `Start search & extrication at ${incident.zone} collapse`
-    case 'hazmat': return `Contain plume at ${incident.zone}; upwind approach only`
-    case 'landslide': return `Open access route into ${incident.zone} before extraction`
-    case 'missing_persons': return `Sweep ${incident.zone} grid with drone + ground team`
-    case 'roadside_casualties': return `Triage and extricate at ${incident.zone} crash site`
-    default: return `Respond to ${incident.zone} incident`
+    case 'fire': return `Commit engines to the ${zone} fire — attack from the upwind side`
+    case 'flood': return `Push boat crews into ${zone} flooding; clear the low ground`
+    case 'structural_collapse': return `Start search & extrication at the ${zone} collapse`
+    case 'hazmat': return `Contain the ${zone} release; upwind approach only`
+    case 'landslide': return `Open an access route into ${zone} before extraction`
+    case 'missing_persons': return `Sweep the ${zone} grid with drone + ground team`
+    case 'roadside_casualties': return `Triage and extricate at the ${zone} crash site`
+    default: return `Respond to the ${zone} incident`
   }
-}
-
-// ---------------------------------------------------------------------------
-// Resource movement (orchestrator helper, lives here for cohesion)
-// ---------------------------------------------------------------------------
-
-export function advanceResources(resources: Resource[], incidents: Map<string, Incident>, stepKm: number): string[] {
-  const log: string[] = []
-  for (const r of resources) {
-    if (r.status !== 'en_route' || !r.assigned_incident) continue
-    const incident = incidents.get(r.assigned_incident)
-    if (!incident) continue
-    const fromLat = r.current_lat ?? r.base_lat
-    const fromLon = r.current_lon ?? r.base_lon
-    const dist = haversineKm(fromLat, fromLon, incident.lat, incident.lon)
-    if (dist <= Math.max(stepKm, 0.15)) {
-      r.current_lat = incident.lat
-      r.current_lon = incident.lon
-      r.status = 'on_scene' satisfies ResourceStatus
-      incident.status = 'on_scene'
-      log.push(`✅ ${r.name} on scene at ${incident.title}`)
-    } else {
-      const frac = stepKm / Math.max(dist, 1e-6)
-      r.current_lat = fromLat + (incident.lat - fromLat) * frac
-      r.current_lon = fromLon + (incident.lon - fromLon) * frac
-    }
-  }
-  return log
 }
