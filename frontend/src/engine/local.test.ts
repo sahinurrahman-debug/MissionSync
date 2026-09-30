@@ -5,7 +5,7 @@ import type { Snapshot } from '../types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function boot(): LocalEngine {
-  const e = new LocalEngine()
+  const e = new LocalEngine({ paceMs: 0 })
   e.start()
   e.stop() // no timers in tests: we drive ticks by hand
   return e

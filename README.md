@@ -11,15 +11,13 @@
 
 ## Preview
 
-| Desktop | Mobile |
-|---|---|
-| ![desktop](./screenshots/desktop.png) | ![mobile](./screenshots/mobile.png) |
+**Tactical Night** (default) on a 1600×900 tactical monitor:
 
-<em>Light mode:</em>
+![Desktop, dark](./screenshots/desktop.png)
 
-| Desktop (light) | — |
+| Day mode (1366×768 field laptop) | Phone (bottom-tab layout) |
 |---|---|
-| ![desktop light](./screenshots/desktop-light.png) | |
+| ![Desktop, light](./screenshots/desktop-light.png) | ![Mobile](./screenshots/mobile.png) |
 
 ---
 
@@ -51,7 +49,7 @@ The app is honest about which one you're looking at. The header badge says **AI*
 - **Incident lifecycle** — en route → on scene → worked → contained → units return to base and become available again. ↺ restarts the drill.
 - **Resource board & event log** — all 12 units with status/assignment/ETA, plus a timestamped audit trail of every parse → merge → rank → deploy step.
 - **After-action record** — with a database attached, every drill's audit trail and submitted reports are stored; ⬇ in the header downloads the CSV (`/api/drills/{id}/export.csv`).
-- **Dark & light mode**, skeleton loaders, designed empty states, an offline banner, and graceful error handling — the board never blanks or shows a raw error.
+- **Two engineered themes** (Tactical Night / high-contrast Day), skeletons sized to the real components, a radar empty state, an offline banner, and per-panel error boundaries — the board never blanks or shows a raw error.
 
 ---
 
@@ -60,13 +58,46 @@ The app is honest about which one you're looking at. The header badge says **AI*
 | Technology | Purpose |
 |---|---|
 | React 18 + TypeScript + Vite | Dashboard |
-| Leaflet + react-leaflet | OpenStreetMap incident map (no API key) |
+| Tailwind CSS 3 | Design tokens as CSS variables → two themes, no per-theme class names |
+| Lucide icons, Framer Motion | Icon set; layout animation when incidents re-rank |
+| Leaflet + react-leaflet | Incident map on OpenStreetMap tiles (no API key), custom SVG pins |
 | FastAPI + uvicorn + WebSocket | Backend, live push |
 | Groq (`openai/gpt-oss-20b`, falling back to `-120b`) | LLM for the five agents |
 | Pydantic | Typed models, and the validation gate for LLM output |
 | kagglehub + xBD | Real scenario data |
 | PostgreSQL (SQLAlchemy) | Optional: drill history, audit trail, submitted reports, CSV export |
-| Vitest, pytest | 43 frontend + 91 backend tests |
+| Vitest, pytest | 53 frontend + 91 backend tests, plus a WCAG contrast audit |
+
+---
+
+## Design system
+
+Direction: *Tactical ops center meets Linear/Vercel* — utilitarian, high-contrast, calm under pressure, dense. The palette and component language were explored in Canva first ([design-system board](https://www.canva.com/d/dZFerA8Z6QapTVw)) and then implemented as tokens in [`frontend/src/index.css`](./frontend/src/index.css).
+
+| Token | Tactical Night | Day | Used for |
+|---|---|---|---|
+| Surface / panel / raised | `#0E1113` / `#151A1D` / `#1C2226` | `#ECF0F1` / `#FFFFFF` / `#F3F6F7` | page, cards, hover |
+| Text / secondary | `#EEF2F3` / `#93A1A8` | `#0E1417` / `#3F4C53` | body, telemetry |
+| Accent | `#2DD4BF` teal | `#0D6862` deep teal | focus, primary action, links |
+| Urgency P1 → P4 | `#EF4444` · `#F59E0B` · `#EAB308` · `#64748B` | darker equivalents | fixed across themes — they carry life-safety meaning |
+| Unit status | `#10B981` available · `#60A5FA` en route · `#A78BFA` on scene · `#64748B` returning | darker equivalents | fleet board, map |
+
+- **Type scale:** Inter for UI, JetBrains Mono (tabular numerals) for metrics, timers and logs. Titles, order headlines, checklist items, unit call-signs and the intake box are **16 px**; secondary text 14 px; only uppercase micro-labels and telemetry chips drop to 12 px. (The brief asked for high density; the rubric asks for ≥ 16 px typography — primary content is 16 px, and density comes from layout, not smaller type.)
+- **Colour is never the only signal:** every urgency shows tier text *and* a numeric score (`#1 · P1 CRITICAL · 94/100`); every unit status is a labelled chip.
+- **Contrast:** `npm run audit:contrast` checks all 48 text/background pairs in both themes against WCAG 4.5:1 — 0 failures.
+- **Layout:** full-viewport, zero body scroll. 55/45 command grid on ≥ 1024 px (map + ranked feed | orders + intake + fleet/log tabs); on tablets and phones a thumb-reachable bottom tab bar (Map · Incidents · Orders · Report · Units) with a P1/P2 badge. Verified at 375, 768, 1366 and 1920 px with no horizontal overflow.
+- **Motion (purposeful only):** pulsing rings on P1/P2 pins, spring layout animation when the ranking changes, a glowing active stage in the five-step pipeline stepper, animated score bars. All of it honours `prefers-reduced-motion`.
+
+---
+
+## Level 1 alignment & scope drift
+
+Kenshi is judged on the frontend, so the core loop (report → merge → re-rank → recommend) runs fully in the browser via the demo engine, as the Roadmap's Milestone 1 committed. Deviations from the Level 1 plan, stated plainly:
+
+1. **Scope added beyond Kenshi:** a real FastAPI backend with LLM agents, real xBD data, WebSocket push, and optional Postgres (Roadmap Milestone 2 material). It is optional — the deployed frontend works on its own — but it is in the repo and wired.
+2. **Deferred, as planned:** auth, multi-org roles, human confirm/override of assignments, restoring a live drill after a restart (all Samurai).
+3. **Changed from the Level 1 sketch:** the xBD Kaggle pull is real in the full stack (the Roadmap deferred it to Samurai); the demo engine uses a hand-authored scenario with damage grades on the same 0→10 … 3→90 scale.
+4. **Urgency tiers** stay as the Level 1 docs define them (P1 ≥ 75, P2 ≥ 55, P3 ≥ 35, else P4), so the ranking you see matches the documented methodology.
 
 ---
 
@@ -115,7 +146,7 @@ The free tier allows roughly **200,000 tokens per day per model**. MissionSync i
 
 ```bash
 cd backend  && .venv/Scripts/python -m pip install -r requirements-dev.txt && .venv/Scripts/python -m pytest
-cd frontend && npm test && npm run typecheck
+cd frontend && npm test && npm run typecheck && npm run audit:contrast
 ```
 
 Backend tests never touch the network. A fake Groq client proves the whole pipeline runs in **pure LLM mode with zero rule-based fallbacks**, that bad LLM output (invalid types, unavailable or incapable units, out-of-range scores) never reaches world state, and that quota exhaustion degrades visibly.

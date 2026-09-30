@@ -1,26 +1,21 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import MapPanel from './components/MapPanel'
-import IncidentCard from './components/IncidentCard'
-import Recommendations from './components/Recommendations'
-import ResourceBoard from './components/ResourceBoard'
-import EventLog from './components/EventLog'
-import ReportIntake from './components/ReportIntake'
-import { SkeletonList } from './components/Skeletons'
+import { Loader2 } from 'lucide-react'
 import { createSource } from './api/connect'
 import type { DataSource } from './source'
-import type { Metrics, Snapshot } from './types'
-
-const STAGE_LABEL: Record<string, string> = {
-  surveillance: 'parsing reports',
-  terrain: 'assessing terrain',
-  risk: 'scoring urgency',
-  logistics: 'matching units',
-  command: 'drafting orders',
-}
+import { useMedia } from './lib/useMedia'
+import ErrorBoundary from './components/ErrorBoundary'
+import FleetAndLog from './components/FleetAndLog'
+import HeaderHud, { EngineChips, TelemetryChips } from './components/HeaderHud'
+import IncidentFeed from './components/IncidentFeed'
+import MapPanel from './components/MapPanel'
+import MobileTabs, { type MobileTab } from './components/MobileTabs'
+import Recommendations from './components/Recommendations'
+import ReportIntake from './components/ReportIntake'
+import SystemBanners from './components/SystemBanners'
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    // ?theme=light wins (handy for screenshots/tests), then saved choice.
+    // ?theme=light wins (handy for screenshots/tests), then the saved choice.
     const qs = new URLSearchParams(window.location.search).get('theme')
     if (qs === 'light' || qs === 'dark') return qs
     try {
@@ -62,50 +57,34 @@ export default function App() {
 
   if (!source) {
     return (
-      <div className="app">
-        <div className="connecting" role="status">
-          <span className="mini-spin" aria-hidden /> Connecting to MissionSync…
-        </div>
+      <div className="flex h-dvh items-center justify-center gap-3 bg-bg text-ink-2" role="status">
+        <Loader2 size={18} className="animate-spin text-accent" aria-hidden /> Connecting to MissionSync…
       </div>
     )
   }
-  return <Board source={source} />
-}
-
-function modeChip(m: Metrics, snap: Snapshot): { label: string; cls: string; title: string } {
-  switch (m.mode) {
-    case 'llm':
-      return { label: `AI · ${m.model ?? 'LLM'}`, cls: 'mode-llm', title: 'All five agents are running on the LLM.' }
-    case 'quota_exhausted':
-      return { label: 'AI QUOTA HIT', cls: 'mode-bad', title: 'The Groq daily token quota is spent; rule-based agents are covering.' }
-    case 'demo':
-      return { label: 'DEMO ENGINE', cls: 'mode-warn', title: 'Running in the browser with rule-based agents — no backend connected.' }
-    default:
-      return {
-        label: snap.status === 'booting' ? 'STARTING' : 'RULES · LLM off',
-        cls: 'mode-warn',
-        title: 'Rule-based agents are running (no LLM key, or the LLM is failing).',
-      }
-  }
+  return (
+    <ErrorBoundary label="MissionSync">
+      <Board source={source} />
+    </ErrorBoundary>
+  )
 }
 
 function Board({ source }: { source: DataSource }) {
   const subscribe = useCallback((cb: () => void) => source.subscribe(cb), [source])
   const snap = useSyncExternalStore(subscribe, () => source.getSnapshot())
   const { theme, toggle } = useTheme()
+  const desktop = useMedia('(min-width: 1024px)')
   const [selected, setSelected] = useState<string | null>(null)
   const [showUnits, setShowUnits] = useState(true)
   const [resetting, setResetting] = useState(false)
+  const [tab, setTab] = useState<MobileTab>('feed')
 
   const m = snap.metrics
-  const booted = snap.status === 'live'
-  const p1p2 = snap.incidents.filter((i) => i.risk?.tier === 'P1' || i.risk?.tier === 'P2').length
-  const availableUnits = snap.resources.filter((r) => r.status === 'available').length
-  const alerts = snap.weather.filter((w) => w.alert)
-  const topAction = snap.actions[0]
-  const mode = modeChip(m, snap)
+  const loading = snap.status !== 'live'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
-  const stageBusy = snap.pipeline.stage !== 'idle'
+  const p1p2 = snap.incidents.filter((i) => i.risk?.tier === 'P1' || i.risk?.tier === 'P2').length
+  const exportUrl =
+    source.exportUrl && m.drill_id != null && m.database !== 'disabled' && m.database !== 'error' ? source.exportUrl(m.drill_id) : null
 
   const doReset = async () => {
     if (resetting) return
@@ -120,163 +99,89 @@ function Board({ source }: { source: DataSource }) {
     }
   }
 
+  const select = (id: string | null) => {
+    setSelected(id)
+  }
+
+  const map = (
+    <ErrorBoundary label="The map">
+      <MapPanel
+        incidents={snap.incidents}
+        resources={showUnits ? snap.resources : []}
+        selectedId={selected}
+        onSelect={select}
+        theme={theme}
+        loading={loading}
+      />
+    </ErrorBoundary>
+  )
+  const feed = (
+    <ErrorBoundary label="The incident feed">
+      <IncidentFeed incidents={snap.incidents} resources={snap.resources} selectedId={selected} onSelect={select} loading={loading} />
+    </ErrorBoundary>
+  )
+  const orders = (
+    <ErrorBoundary label="Command recommendations">
+      <Recommendations actions={snap.actions} loading={loading} />
+    </ErrorBoundary>
+  )
+  const intake = (
+    <ErrorBoundary label="Report intake" compact>
+      <ReportIntake
+        onInject={(text) => source.injectReport(text)}
+        onSample={() => source.nextSampleReport()}
+        stage={snap.pipeline.stage}
+        disabled={offline || loading}
+      />
+    </ErrorBoundary>
+  )
+  const fleet = <FleetAndLog snap={snap} loading={loading} injections={m.injections} />
+
   return (
-    <div className="app">
-      <header className="header">
-        <h1 className="brand">
-          Mission<span className="sync">Sync</span>
-          <span className="lvl">drill board</span>
-        </h1>
+    <div className="flex h-dvh flex-col overflow-hidden bg-bg text-ink">
+      <HeaderHud
+        snap={snap}
+        theme={theme}
+        onToggleTheme={toggle}
+        showUnits={showUnits}
+        onToggleUnits={() => setShowUnits((v) => !v)}
+        onReset={doReset}
+        resetting={resetting}
+        exportUrl={exportUrl}
+      />
 
-        <span className={`chip live ${booted && !offline ? '' : 'hide-sm'}`}>
-          {booted && !offline && <span className="pulse-dot" aria-hidden />}
-          {offline ? 'OFFLINE' : booted ? 'LIVE' : 'BOOTING'}
-        </span>
+      {/* Telemetry for screens too narrow to show it in the HUD */}
+      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 xl:hidden" aria-label="Drill telemetry">
+        <EngineChips snap={snap} className="flex md:hidden" />
+        <TelemetryChips m={m} snap={snap} />
+      </div>
 
-        <span className={`chip ${mode.cls}`} title={mode.title}>{mode.label}</span>
+      <SystemBanners snap={snap} />
 
-        <span className="chip pipeline-chip hide-sm">
-          {stageBusy && <span className="mini-spin" aria-hidden />}
-          {stageBusy ? (STAGE_LABEL[snap.pipeline.stage] ?? snap.pipeline.stage) : `tick ${snap.tick}`}
-        </span>
-
-        <div className="header-spacer" />
-
-        <span
-          className="chip hide-md"
-          title={`Spearman correlation between our urgency and hidden ground truth over ${m.evaluated_incidents} scenario incidents. ${m.dataset_note}.`}
-        >
-          rank ρ <b>{m.spearman != null ? m.spearman.toFixed(2) : '—'}</b>
-        </span>
-        <span className="chip hide-md">P1/P2 cover <b>{Math.round(m.coverage * 100)}%</b></span>
-        <span className="chip hide-md">units free <b>{availableUnits}/{snap.resources.length}</b></span>
-        <span className="chip hide-md">resolved <b>{m.resolved}</b></span>
-        <span className="chip hide-md">cycle <b>{m.cycle_ms} ms</b></span>
-
-        <button className="icon-btn" onClick={() => setShowUnits((v) => !v)} aria-pressed={showUnits} title="Toggle units layer">
-          {showUnits ? '📡' : '🛰'}
-        </button>
-        {source.exportUrl && m.database !== 'disabled' && m.database !== 'error' && m.drill_id != null && (
-          <a className="icon-btn" href={source.exportUrl(m.drill_id)} download title="Download the after-action CSV (reports + audit trail)" aria-label="Download after-action CSV">
-            ⬇
-          </a>
-        )}
-        <button className="icon-btn" onClick={doReset} disabled={resetting || offline} title="Restart the drill" aria-label="Restart the drill">
-          {resetting ? <span className="mini-spin" aria-hidden /> : '↺'}
-        </button>
-        <button className="icon-btn" onClick={toggle} aria-label="Toggle color theme" title="Toggle theme">
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      </header>
-
-      {offline && (
-        <div className="banner error" role="alert">
-          Lost the connection to the MissionSync server — showing the last known picture and reconnecting…
-        </div>
-      )}
-      {snap.engine === 'local' && (
-        <div className="banner warn" role="status">
-          Demo engine: the drill is running entirely in your browser with rule-based agents. Start the backend for live AI agents and real xBD data (see the README).
-        </div>
-      )}
-      {m.mode === 'quota_exhausted' && (
-        <div className="banner error" role="status">
-          The Groq daily token quota is spent, so rule-based agents are covering — the board keeps working.
-          {m.quota_retry_s != null && ` AI resumes in about ${Math.max(1, Math.ceil(m.quota_retry_s / 60))} min.`}
-        </div>
-      )}
-      {m.mode === 'fallback' && snap.engine === 'remote' && booted && (
-        <div className="banner warn" role="status">
-          Degraded mode: the LLM is unavailable (no API key, or the provider is failing) — rule-based agents are running.
-        </div>
-      )}
-
-      {alerts.length > 0 && (
-        <div className="weather-strip" role="status">
-          {alerts.map((w) => (
-            <span key={w.zone} className="chip weather-alert">
-              ⚠ {w.zone}: {(w.alert ?? '').replace(/_/g, ' ')} · wind {Math.round(w.wind_kph)} kph · {w.forecast_note || `${w.precipitation_mm_h.toFixed(0)} mm/h rain`}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <main className="main">
-        <section className="col col-left" aria-label="Live map and ranked incidents">
-          <MapPanel
-            incidents={snap.incidents}
-            resources={showUnits ? snap.resources : []}
-            selectedId={selected}
-            onSelect={setSelected}
-          />
-
-          <div className="panel grow-1">
-            <div className="panel-header">
-              Ranked incident feed
-              <span className="count">{snap.incidents.length} active · {p1p2} P1/P2</span>
-            </div>
-            <div className="panel-body">
-              {!booted ? (
-                <SkeletonList count={4} />
-              ) : snap.incidents.length === 0 ? (
-                <div className="empty">
-                  <span className="empty-icon">🛰</span>
-                  <span>No open incidents. Inject a report to keep the drill going, or restart it with ↺.</span>
-                </div>
-              ) : (
-                snap.incidents.map((inc, i) => (
-                  <IncidentCard
-                    key={inc.id}
-                    incident={inc}
-                    rank={i + 1}
-                    selected={selected === inc.id}
-                    onSelect={setSelected}
-                  />
-                ))
-              )}
-            </div>
+      {desktop ? (
+        <main className="grid min-h-0 flex-1 grid-cols-[55fr_45fr] gap-2 p-2">
+          <div className="flex min-h-0 flex-col gap-2">
+            <div className="relative min-h-0 flex-[48] overflow-hidden rounded-lg border border-line">{map}</div>
+            <div className="min-h-0 flex-[52]">{feed}</div>
           </div>
-        </section>
-
-        <section className="col col-right" aria-label="Recommendations, resources and log">
-          <div className="panel grow-2">
-            <div className="panel-header">
-              Command recommendations
-              {topAction && <span className="count">top: #{topAction.priority} {topAction.incident_title}</span>}
-            </div>
-            <div className="panel-body">
-              {!booted ? <SkeletonList count={2} /> : <Recommendations actions={snap.actions} />}
-            </div>
+          <div className="flex min-h-0 flex-col gap-2">
+            <div className="min-h-0 flex-[46]">{orders}</div>
+            <div className="shrink-0">{intake}</div>
+            <div className="min-h-0 flex-[36]">{fleet}</div>
           </div>
-
-          <ReportIntake
-            onInject={(text) => source.injectReport(text)}
-            onSample={() => source.nextSampleReport()}
-            stage={snap.pipeline.stage}
-            disabled={offline || !booted}
-          />
-
-          <div className="panel h-fixed">
-            <div className="panel-header">
-              Resource board
-              <span className="count">{snap.resources.length} units</span>
-            </div>
-            <div className="panel-body" style={{ maxHeight: 240 }}>
-              {!booted ? <SkeletonList count={3} /> : <ResourceBoard resources={snap.resources} incidents={snap.incidents} />}
-            </div>
-          </div>
-
-          <div className="panel grow-1">
-            <div className="panel-header">
-              Live event log
-              <span className="count">injections {m.injections}</span>
-            </div>
-            <div className="panel-body">
-              {!booted ? <SkeletonList count={3} /> : <EventLog lines={snap.event_log} />}
-            </div>
-          </div>
-        </section>
-      </main>
+        </main>
+      ) : (
+        <>
+          <main className="min-h-0 flex-1 p-2">
+            <div className={tab === 'map' ? 'relative h-full overflow-hidden rounded-lg border border-line' : 'hidden'}>{map}</div>
+            {tab === 'feed' && <div className="h-full">{feed}</div>}
+            {tab === 'orders' && <div className="h-full">{orders}</div>}
+            {tab === 'report' && <div className="flex h-full flex-col gap-2 overflow-y-auto">{intake}<div className="min-h-[260px] flex-1">{fleet}</div></div>}
+            {tab === 'fleet' && <div className="h-full">{fleet}</div>}
+          </main>
+          <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2 }} />
+        </>
+      )}
     </div>
   )
 }

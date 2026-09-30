@@ -1,16 +1,10 @@
 import { useState } from 'react'
+import { CornerDownLeft, Radio, Send, Sparkles } from 'lucide-react'
 import { ApiError, type InjectResult, type PipelineStage } from '../types'
+import PipelineStepper from './PipelineStepper'
+import { Kbd, Panel, PanelHeader } from './ui'
 
-const SAMPLE_COUNT = 4
 const MAX_CHARS = 2000
-
-const STAGE_LABEL: Record<string, string> = {
-  surveillance: 'Parsing the report…',
-  terrain: 'Assessing terrain…',
-  risk: 'Scoring urgency…',
-  logistics: 'Matching units…',
-  command: 'Drafting orders…',
-}
 
 function describe(result: InjectResult): { text: string; tone: 'ok' | 'warn' } {
   if (result.kind === 'rejected') {
@@ -25,17 +19,13 @@ function describe(result: InjectResult): { text: string; tone: 'ok' | 'warn' } {
 function describeError(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.code === 'rate_limited') return `Too many reports — try again in ${e.retryAfterS ?? 2}s.`
-    const id = e.requestId ? ` (ref ${e.requestId})` : ''
-    return `${e.message}${id}`
+    return `${e.message}${e.requestId ? ` (ref ${e.requestId})` : ''}`
   }
   return 'Report processing failed — the board keeps running; try again.'
 }
 
 export default function ReportIntake({
-  onInject,
-  onSample,
-  stage,
-  disabled,
+  onInject, onSample, stage, disabled,
 }: {
   onInject: (text: string) => Promise<InjectResult>
   onSample: () => string
@@ -46,8 +36,6 @@ export default function ReportIntake({
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Pull the sample list exactly once per mount (not on every render).
-  const [samples] = useState(() => Array.from({ length: SAMPLE_COUNT }, () => onSample()))
 
   const submit = async () => {
     const text = report.trim()
@@ -66,47 +54,59 @@ export default function ReportIntake({
     }
   }
 
+  const near = report.length > MAX_CHARS * 0.9
+
   return (
-    <div className="injector">
-      <textarea
-        placeholder="Type a field report — what is happening and where — e.g. “smoke from the University chemistry lab, two people coughing”"
-        value={report}
-        onChange={(e) => {
-          setReport(e.target.value)
-          setError(null)
-        }}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit()
-        }}
-        aria-label="Field report"
-        maxLength={MAX_CHARS}
-      />
-      <div className="injector-row">
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) {
-              setReport(e.target.value)
-              setError(null)
-            }
-          }}
-          aria-label="Sample reports"
-        >
-          <option value="">— or pick a sample report —</option>
-          {samples.map((s) => (
-            <option key={s} value={s}>{s.slice(0, 52)}…</option>
-          ))}
-        </select>
-        <button className="btn" onClick={() => void submit()} disabled={busy || disabled || !report.trim()}>
-          {busy && <span className="spinner" aria-hidden />}
-          {busy ? (STAGE_LABEL[stage] ?? 'Processing…') : 'Inject report'}
-        </button>
+    <Panel label="Field report intake terminal">
+      <PanelHeader title="Field report intake" icon={<Radio size={15} />} right={<span className="hidden sm:inline">radio transcript → structured incident</span>} />
+      <div className="space-y-1.5 p-2">
+        <div className="rounded-md border border-line bg-bg focus-within:border-accent focus-within:shadow-glow">
+          <div className="flex items-start gap-2 px-2.5 pt-2">
+            <span className="select-none pt-0.5 font-mono text-base font-bold text-accent" aria-hidden>&gt;</span>
+            <textarea
+              value={report}
+              onChange={(e) => { setReport(e.target.value); setError(null) }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void submit() }
+              }}
+              placeholder="Type field transcript (e.g. 'Fire spreading near University lab block, 3 trapped')…"
+              aria-label="Field report"
+              maxLength={MAX_CHARS}
+              rows={2}
+              className="max-h-28 min-h-[52px] w-full resize-none bg-transparent font-mono text-base leading-snug text-ink outline-none placeholder:text-ink-2/80"
+            />
+          </div>
+          <div className="flex items-center gap-2 border-t border-line px-2 py-1.5">
+            <button
+              type="button"
+              onClick={() => { setReport(onSample()); setError(null) }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent"
+            >
+              <Sparkles size={14} aria-hidden /> Inject sample
+            </button>
+            <span className={`ml-auto font-mono text-xs tnum ${near ? 'text-warn' : 'text-ink-2'}`} aria-live="polite">{report.length}/{MAX_CHARS}</span>
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy || disabled || !report.trim()}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-bold text-bg transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send size={15} aria-hidden />
+              {busy ? 'Processing…' : 'Dispatch'}
+              <span className="hidden items-center sm:inline-flex"><Kbd><CornerDownLeft size={11} aria-label="Enter" /></Kbd></span>
+            </button>
+          </div>
+        </div>
+
+        <PipelineStepper stage={stage} busy={busy || stage !== 'idle'} />
+
+        <div aria-live="polite">
+          {toast && (
+            <p className={`animate-fade-up rounded-md border px-2 py-1 text-sm ${toast.tone === 'ok' ? 'border-ok/40 bg-ok/10 text-ink' : 'border-warn/40 bg-warn/10 text-ink'}`}>{toast.text}</p>
+          )}
+          {error && <p role="alert" className="rounded-md border border-p1/40 bg-p1/10 px-2 py-1 text-sm text-ink">{error}</p>}
+        </div>
       </div>
-      {toast && <div className={`inject-toast ${toast.tone}`} role="status">{toast.text}</div>}
-      {error && <div className="warning" role="alert">{error}</div>}
-      <div className="inject-hint">
-        Injection runs the full pipeline — parse → merge → re-rank → recommend. Name a place (Downtown, Riverfront, Industrial Park…) so it lands on the map. ⌘/Ctrl+Enter to submit.
-      </div>
-    </div>
+    </Panel>
   )
 }

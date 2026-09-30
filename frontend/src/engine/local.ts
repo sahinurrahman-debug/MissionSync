@@ -53,8 +53,15 @@ function clockOf(now: number): string {
   return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`
 }
 
+const STAGES: PipelineStage[] = ['surveillance', 'terrain', 'risk', 'logistics', 'command']
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
 export class LocalEngine implements DataSource {
   readonly kind = 'local' as const
+
+  /** The demo engine computes instantly; `paceMs` walks the five stages visibly for an injected report
+   *  (so the pipeline stepper reads like the real one). The backend streams genuine stages instead. */
+  constructor(private opts: { paceMs?: number } = {}) {}
 
   private incidents = new Map<string, WorldIncident>()
   private resources: Resource[] = buildResources()
@@ -142,6 +149,15 @@ export class LocalEngine implements DataSource {
       ? { source: 'radio', lat: place.lat, lon: place.lon, raw_text: clean, confidence: 0.9, located: true }
       : { source: 'radio', lat: CITY_CENTER.lat, lon: CITY_CENTER.lon, raw_text: clean, confidence: 0.9, located: false }
 
+    const pace = this.opts.paceMs ?? 150
+    if (pace > 0) {
+      this.origin = 'inject'
+      for (const st of STAGES) {
+        this.stage = st
+        this.push()
+        await sleep(pace)
+      }
+    }
     const outcomes = this.runPipeline([signal], 'inject')
     let result: InjectResult
     if (outcomes.length === 0) {

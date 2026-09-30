@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   MissionSync design tokens — "Graphite + Teal". Space-separated RGB channels so
+   Tailwind can apply alpha (bg-p1/20). Two engineered themes; every text/background
+   pair below is audited to >= 4.5:1 (scripts/contrast_audit.mjs).
+   Urgency colours (p1-p4) carry life-safety meaning and are fixed across palettes.
+   ========================================================================== */
+
+:root,
+[data-theme='dark'] {                 /* Tactical Night (default) */
+  color-scheme: dark;
+  --bg: 14 17 19;            /* #0E1113 graphite */
+  --panel: 21 26 29;         /* #151A1D */
+  --panel-hi: 28 34 38;      /* #1C2226 */
+  --line: 38 46 51;          /* #262E33 */
+  --ink: 238 242 243;        /* #EEF2F3 */
+  --ink-2: 147 161 168;      /* #93A1A8 */
+  --muted: 58 69 75;         /* #3A454B (borders/dividers, never text) */
+  --accent: 45 212 191;      /* #2DD4BF teal */
+  --p1: 239 68 68;           /* #EF4444 critical */
+  --p2: 245 158 11;          /* #F59E0B urgent */
+  --p3: 234 179 8;           /* #EAB308 moderate */
+  --p4: 100 116 139;         /* #64748B advisory */
+  --ok: 16 185 129;          /* #10B981 available */
+  --route: 96 165 250;       /* #60A5FA en route */
+  --scene: 167 139 250;      /* #A78BFA on scene */
+  --ret: 100 116 139;        /* #64748B returning */
+  --warn: 245 158 11;
+  --on-tier: 14 17 19;       /* text drawn on a filled tier colour */
+  --skeleton-a: 21 26 29;
+  --skeleton-b: 32 40 45;
+}
+
+[data-theme='light'] {                /* Day: high contrast for sunlight tablets */
+  color-scheme: light;
+  --bg: 236 240 241;
+  --panel: 255 255 255;
+  --panel-hi: 243 246 247;
+  --line: 205 214 218;
+  --ink: 14 20 23;
+  --ink-2: 63 76 83;
+  --muted: 148 163 170;
+  --accent: 13 104 98;       /* #0D6862 deep teal */
+  --p1: 185 28 28;
+  --p2: 180 83 9;
+  --p3: 133 77 14;
+  --p4: 71 85 105;
+  --ok: 5 102 74;
+  --route: 29 78 216;
+  --scene: 109 40 217;
+  --ret: 71 85 105;
+  --warn: 146 64 14;
+  --on-tier: 255 255 255;
+  --skeleton-a: 226 232 235;
+  --skeleton-b: 240 244 246;
+}
+
+html { font-size: 16px; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+  font-family: theme('fontFamily.sans');
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                     /* zero body scroll: the app owns the viewport */
+}
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+::selection { background: rgb(var(--accent)); color: rgb(var(--bg)); }
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgb(var(--muted) / 0.6); border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; border-radius: 4px; }
+
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Skeletons pulse at the exact proportions of what they stand in for. */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(100deg, rgb(var(--skeleton-a)) 40%, rgb(var(--skeleton-b)) 50%, rgb(var(--skeleton-a)) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Hazard-stripe accent for command orders. */
+.hazard-stripe {
+  background-image: repeating-linear-gradient(-45deg, rgb(var(--p2)) 0 6px, rgb(var(--bg)) 6px 12px);
+}
+
+/* ---------- Leaflet ---------------------------------------------------------------- */
+.leaflet-container { background: rgb(var(--bg)); font-family: theme('fontFamily.sans'); outline: none; }
+.leaflet-control-attribution { background: rgb(var(--panel) / 0.8) !important; color: rgb(var(--ink-2)) !important; font-size: 10px !important; }
+.leaflet-control-attribution a { color: rgb(var(--ink-2)) !important; }
+.leaflet-control-zoom a { background: rgb(var(--panel)) !important; color: rgb(var(--ink)) !important; border-color: rgb(var(--line)) !important; }
+.leaflet-tooltip {
+  background: rgb(var(--panel)); color: rgb(var(--ink)); border: 1px solid rgb(var(--line));
+  border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); font-size: 13px; padding: 6px 8px;
+}
+.leaflet-tooltip-top:before { border-top-color: rgb(var(--line)); }
+.sector-label {
+  background: transparent; border: 0; box-shadow: none; color: rgb(var(--ink-2));
+  font: 600 10px/1 theme('fontFamily.mono'); letter-spacing: 0.1em; text-transform: uppercase; padding: 0;
+}
+.sector-label:before { display: none; }
+
+/* Dark tactical basemap: invert + rotate OSM's light tiles into slate, then mute them so pins dominate. */
+.tiles-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) saturate(0.25) brightness(0.7) contrast(1.15); }
+.tiles-light .leaflet-tile-pane { filter: saturate(0.6) contrast(1.02); }
+
+/* Incident pins: SVG teardrop with the rank inside; P1/P2 get pulsing radial rings. */
+.ms-pin { position: relative; width: 32px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: transform 160ms ease; }
+.ms-pin.sel { transform: scale(1.22); transform-origin: 50% 100%; }
+.ms-pin svg { position: relative; z-index: 2; display: block; }
+.ms-pin .ring {
+  position: absolute; left: 50%; bottom: -20px; width: 40px; height: 40px; margin-left: -20px;
+  border-radius: 9999px; border: 2px solid var(--c); opacity: 0; z-index: 1;
+  animation: ping2 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.ms-pin .ring.r2 { animation-delay: 1.1s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .ms-pin .ring { display: none; }
+}
