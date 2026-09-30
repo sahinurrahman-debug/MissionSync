@@ -40,6 +40,43 @@ export function TelemetryChips({ m, snap, className = '' }: { m: Metrics; snap: 
   )
 }
 
+/** One cell of the telemetry bar: label and value, centred in an equal-width column. */
+function BarCell({ label, value, title }: { label: ReactNode; value: string; title?: string }) {
+  return (
+    <div
+      title={title}
+      className="flex min-w-0 flex-col items-center justify-center gap-0 border-l border-line py-1 first:border-l-0 xl:flex-row xl:gap-2.5 tnum"
+    >
+      <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-micro text-ink-2">{label}</span>
+      <b className="whitespace-nowrap font-mono text-sm font-bold text-ink">{value}</b>
+    </div>
+  )
+}
+
+/** Desktop telemetry bar: six equal columns in one straight line, edge to edge under the header. */
+export function TelemetryBar({ snap }: { snap: Snapshot }) {
+  const m = snap.metrics
+  const free = snap.resources.filter((r) => r.status === 'available').length
+  return (
+    <div
+      role="group"
+      aria-label="Drill telemetry"
+      className="hidden shrink-0 grid-cols-6 items-stretch border-b border-line bg-panel px-2 lg:grid"
+    >
+      <BarCell
+        label={<>Rank <span className="normal-case">ρ</span></>}
+        value={m.spearman != null ? m.spearman.toFixed(2) : '—'}
+        title={`Spearman correlation between our urgency and hidden ground truth over ${m.evaluated_incidents} scenario incidents. ${m.dataset_note}.`}
+      />
+      <BarCell label="P1/P2 cover" value={`${Math.round(m.coverage * 100)}%`} title="Share of P1/P2 incidents with a unit assigned" />
+      <BarCell label="Units free" value={`${free}/${snap.resources.length}`} />
+      <BarCell label="Resolved" value={String(m.resolved)} />
+      <BarCell label="Loop" value={`${m.cycle_ms}ms`} title="Last full pipeline cycle" />
+      <BarCell label="Drill time" value={`T+${clockOf(snap.elapsed_s)}`} title="Time since the drill started (stops when it ends)" />
+    </div>
+  )
+}
+
 export function ClockChip({ snap, className = '' }: { snap: Snapshot; className?: string }) {
   return (
     <Chip className={`shrink-0 ${className}`} title="Time since the drill started (stops when it ends)">
@@ -154,13 +191,9 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
 
       {/* Engine mode + live pipeline stage */}
       <EngineChips snap={snap} className="hidden lg:flex" />
-      <ClockChip snap={snap} className="hidden xl:inline-flex" />
-
-      {/* Drill telemetry (wide screens; smaller ones get the strip under the header) */}
-      <TelemetryChips m={m} snap={snap} className="ml-auto hidden min-[1700px]:flex" />
 
       {/* Utilities: all of them from sm up; on a phone they move to the strip below so nothing is crushed */}
-      <div className="ml-auto flex items-center gap-1.5 min-[1700px]:ml-0">
+      <div className="ml-auto flex items-center gap-1.5">
         {wide && actionButtons}
         <button type="button" className={iconBtn} onClick={onToggleTheme} title="Toggle light / dark" aria-label="Toggle color theme">
           {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
@@ -168,11 +201,13 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
       </div>
     </header>
 
+      <TelemetryBar snap={snap} />
+
       {/* Telemetry + (on phones) the drill actions, for screens too narrow to show them in the HUD */}
       <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 lg:hidden" aria-label="Drill telemetry and actions">
         {!wide && <div className="flex items-center gap-1.5">{actionButtons}</div>}
         <EngineChips snap={snap} className="flex lg:hidden" />
-        <ClockChip snap={snap} className="xl:hidden" />
+        <ClockChip snap={snap} />
         <TelemetryChips m={m} snap={snap} />
       </div>
     </>

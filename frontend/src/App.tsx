@@ -9,7 +9,7 @@ import AdminKeyDialog from './components/AdminKeyDialog'
 import ErrorBoundary from './components/ErrorBoundary'
 import EventLog from './components/EventLog'
 import FleetAndLog from './components/FleetAndLog'
-import HeaderHud, { ClockChip, TelemetryChips } from './components/HeaderHud'
+import HeaderHud from './components/HeaderHud'
 import IncidentFeed from './components/IncidentFeed'
 import ResourceBoard from './components/ResourceBoard'
 import { FleetSkeleton } from './components/Skeletons'
@@ -303,9 +303,6 @@ function Board({ source }: { source: DataSource }) {
           <main id="main" className="min-h-0 min-w-0 flex-1 p-2">
             {view === 'situation' && (
               <div className="flex h-full min-h-0 flex-col gap-2">
-                <div className="no-scrollbar shrink-0 overflow-x-auto min-[1700px]:hidden" aria-label="Drill telemetry">
-                  <div className="flex items-center gap-1.5"><ClockChip snap={snap} className="xl:hidden" /><TelemetryChips m={m} snap={snap} /></div>
-                </div>
                 <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,58fr)_minmax(0,42fr)] gap-2">
                   {mapFrame}
                   <div id="incident-feed" tabIndex={-1} className="min-h-0 outline-none">{feed}</div>

@@ -58,7 +58,7 @@ Framer Motion layout animation re-orders the feed when ranks change; status puls
 
 | Width | Layout |
 |---|---|
-| ≥ 1024 px | A 96 px **navigation rail** on the left and one section at a time in the main area: *Situation* = map + ranked feed (with the drill telemetry row above), *Orders* = recommendations + map, *Report* = intake + live audit log, *Fleet* = unit board + map. Keys `1`–`4` switch; the choice is remembered (`?view=orders` deep-links). |
+| ≥ 1024 px | A full-width **telemetry bar** under the header (six equal columns: Rank ρ · P1/P2 cover · Units free · Resolved · Loop · Drill time — label and value on one line from 1280 px, stacked below that) and a 96 px **navigation rail** on the left and one section at a time in the main area: *Situation* = map + ranked feed, *Orders* = recommendations + map, *Report* = intake + live audit log, *Fleet* = unit board + map. Keys `1`–`4` switch; the choice is remembered (`?view=orders` deep-links). |
 | < 1024 px | Single panel with a bottom tab bar (Map · Incidents · Orders · Report · Units), badges for P1/P2 and pending approvals; the map stays mounted so it never re-initialises. Drill actions sit in a scrollable strip under the header. |
 
 The rail and the tab bar share one mental model and the same badges (`aria-label`s read "Orders, 9 awaiting approval"); only the active section is rendered, so each panel gets the whole viewport height and there is no page scroll.
