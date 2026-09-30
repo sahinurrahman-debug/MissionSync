@@ -18,7 +18,9 @@ services:
     plan: free              # free web services sleep after ~15 min idle (cold start ~1 min)
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn missionsync.main:app --host 0.0.0.0 --port $PORT
+    # --forwarded-allow-ips: Render's load balancer sets X-Forwarded-For; trusting it gives every
+    # visitor their own rate-limit bucket instead of one shared proxy address.
+    startCommand: uvicorn missionsync.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -33,6 +35,16 @@ services:
       - key: KAGGLE_API_TOKEN      # optional: live xBD download; the bundled real snapshot is used without it
         sync: false
       - key: CORS_ORIGINS          # the frontend's public URL, e.g. https://missionsync-web.onrender.com
+        sync: false                # (also the WebSocket origin allow-list)
+      - key: ADMIN_KEY             # protects Restart / End drill / dispatch-mode; shown in the dashboard → Environment
+        generateValue: true
+      - key: AUTO_DISPATCH         # false = agents propose, a human approves (the PRD rule); true = demo auto-commit
+        value: "false"
+      - key: XBD_SOURCE            # snapshot = bundled real xBD records (no download); kaggle = live download
+        value: snapshot
+      - key: LOG_FORMAT            # one JSON object per log line (Render's log search understands it)
+        value: json
+      - key: SENTRY_DSN            # optional error tracking (pip install sentry-sdk to activate)
         sync: false
 
   # ---- Frontend (static site) ------------------------------------------------------
@@ -44,8 +56,8 @@ services:
     staticPublishPath: dist
     autoDeploy: true
     envVars:
-      - key: NODE_VERSION
-        value: 20
+      - key: NODE_VERSION          # Vite 7 needs Node >= 20.19
+        value: 22
       - key: VITE_API_URL          # the API's public URL, e.g. https://missionsync-api.onrender.com
         sync: false
     headers:

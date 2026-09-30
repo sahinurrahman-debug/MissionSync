@@ -1,0 +1,19 @@
+MissionSync — third-party notices
+
+Data
+  xBD building-damage dataset (xView2) — CC BY-NC-SA 4.0 — https://xview2.org
+  Gupta et al., "xBD: A Dataset for Assessing Building Damage from Satellite Imagery", 2019.
+  Non-commercial use only. See backend/missionsync/data/README.md.
+
+Map tiles
+  © OpenStreetMap contributors (ODbL) — https://www.openstreetmap.org/copyright
+  The default public tile server is for demos; set VITE_TILE_URL to a provider for real traffic.
+
+Fonts (bundled via npm, served from this site — no third-party font requests)
+  Inter and JetBrains Mono — SIL Open Font License 1.1 (@fontsource-variable packages)
+
+Icons
+  Lucide — ISC License — https://lucide.dev
+
+Libraries: React, Leaflet, Framer Motion, Tailwind CSS, FastAPI, SQLAlchemy and others under their
+own permissive licences (MIT / BSD / Apache-2.0 / ISC); see each package's LICENSE.

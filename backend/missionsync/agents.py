@@ -11,10 +11,12 @@ must name an available, capable unit within the per-incident caps.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
 import time
+import zlib
 from typing import Any, Optional
 
 from .llm import llm_json
@@ -182,10 +184,13 @@ async def run_surveillance(
     new_signals: list[dict[str, Any]],
     existing_incidents: list[Incident],
     latlon_hint: tuple[float, float] | None = None,
+    allow_llm: bool = True,
 ) -> tuple[list[dict[str, Any]], int]:
     """Returns list of validated incident dicts + latency. Each dict may carry
     'linked_incident_id' to merge into an existing incident."""
     hint = latlon_hint or (0.0, 0.0)
+    if not allow_llm:
+        return _surveillance_fallback(new_signals, hint)["incidents"], 0
     known = [
         {"id": inc.id, "type": inc.type.value, "title": inc.title, "zone": inc.zone,
          "lat": round(inc.lat, 4), "lon": round(inc.lon, 4), "status": inc.status.value}
@@ -356,14 +361,44 @@ def _surveillance_fallback(
 # ~200k tokens/day/model), so unchanged inputs must not be re-scored.
 # ---------------------------------------------------------------------------
 
-CACHE_TTL_S = 900.0
+CACHE_TTL_S = 6 * 3600.0     # LLM scores of identical reports are reusable for hours (and across resets)
 _terrain_cache: dict[str, tuple[tuple, dict[str, Any], float]] = {}
 _risk_cache: dict[str, tuple[tuple, dict[str, Any], float]] = {}
+cache_version = 0            # bumped on every write so callers know when to persist
 
 
 def clear_caches() -> None:
+    global cache_version
     _terrain_cache.clear()
     _risk_cache.clear()
+    cache_version += 1
+
+
+def content_key(incident: Incident) -> str:
+    """Identity of an incident's *content* (not its random id): the same report scored once
+    is reused after a reset, a restart or a re-seed. That is what keeps boots cheap."""
+    basis = f"{incident.type.value}|{incident.zone}|{incident.description[:300]}"
+    return hashlib.sha1(basis.encode("utf-8")).hexdigest()[:16]
+
+
+def export_caches() -> dict[str, Any]:
+    """JSON-safe dump (signatures become lists) for the database."""
+    fresh = time.time() - CACHE_TTL_S
+    return {
+        name: {k: [list(sig), payload, ts] for k, (sig, payload, ts) in cache.items() if ts > fresh}
+        for name, cache in (("terrain", _terrain_cache), ("risk", _risk_cache))
+    }
+
+
+def import_caches(data: dict[str, Any]) -> int:
+    global cache_version
+    loaded = 0
+    for name, cache in (("terrain", _terrain_cache), ("risk", _risk_cache)):
+        for k, (sig, payload, ts) in (data.get(name) or {}).items():
+            cache[k] = (tuple(sig), payload, float(ts))
+            loaded += 1
+    cache_version += 1
+    return loaded
 
 
 def terrain_signature(incident: Incident) -> tuple:
@@ -380,12 +415,12 @@ def scoring_signature(incident: Incident) -> tuple:
     return terrain_signature(incident) + (
         int(math.log(max(incident.affected_population, 1), 1.5)),    # ±50% population steps
         incident.injuries,
-        hash(incident.description) & 0xFFFF,
+        zlib.crc32(incident.description.encode("utf-8")) & 0xFFFF,    # stable across processes (hash() is not)
     )
 
 
 def _cache_get(cache: dict, incident: Incident, signature: tuple) -> Optional[dict[str, Any]]:
-    entry = cache.get(incident.id)
+    entry = cache.get(content_key(incident))
     if entry and entry[0] == signature and time.time() - entry[2] < CACHE_TTL_S:
         return entry[1]
     return None
@@ -437,17 +472,21 @@ def _clean_terrain(parsed: Any) -> Optional[dict[str, Any]]:
     }
 
 
-async def run_terrain(incident: Incident) -> tuple[dict[str, Any], int]:
+async def run_terrain(incident: Incident, allow_llm: bool = True) -> tuple[dict[str, Any], int]:
+    global cache_version
     cached = _cache_get(_terrain_cache, incident, terrain_signature(incident))
     if cached is not None:
         return {**cached, "source": "cached"}, 0
+    if not allow_llm:
+        return {**_terrain_fallback(incident), "source": "rules"}, 0
     parsed, latency = await llm_json(
         TERRAIN_SYSTEM, terrain_context(incident), agent="terrain", max_tokens=700
     )
     result = _clean_terrain(parsed)
     if result is None:
         return {**_terrain_fallback(incident), "source": "rules"}, latency
-    _terrain_cache[incident.id] = (terrain_signature(incident), result, time.time())
+    _terrain_cache[content_key(incident)] = (terrain_signature(incident), result, time.time())
+    cache_version += 1
     return {**result, "source": "llm"}, latency
 
 
@@ -534,11 +573,16 @@ def _clean_components(parsed: Any) -> Optional[dict[str, Any]]:
     return out
 
 
-async def run_risk(incident: Incident, terrain_assessment: dict[str, Any]) -> tuple[RiskScore, int]:
+def has_cached_risk(incident: Incident) -> bool:
+    return _cache_get(_risk_cache, incident, scoring_signature(incident)) is not None
+
+
+async def run_risk(incident: Incident, terrain_assessment: dict[str, Any], allow_llm: bool = True) -> tuple[RiskScore, int]:
+    global cache_version
     latency = 0
     source = "cached"
     parsed = _cache_get(_risk_cache, incident, scoring_signature(incident))
-    if parsed is None:
+    if parsed is None and allow_llm:
         user = terrain_context(incident) + (
             f"\nreport: {incident.description[:300]}"
             f"\naffected_population={incident.affected_population} injuries={incident.injuries} "
@@ -549,7 +593,8 @@ async def run_risk(incident: Incident, terrain_assessment: dict[str, Any]) -> tu
         raw, latency = await llm_json(RISK_SYSTEM, user, agent="risk", max_tokens=700)
         parsed = _clean_components(raw)
         if parsed is not None:
-            _risk_cache[incident.id] = (scoring_signature(incident), parsed, time.time())
+            _risk_cache[content_key(incident)] = (scoring_signature(incident), parsed, time.time())
+            cache_version += 1
             source = "llm"
     if parsed is None:
         breakdown = _risk_fallback(incident, terrain_assessment, as_breakdown=True)
@@ -629,11 +674,16 @@ def crew_needed(incident: Incident, assigned_counts: dict[str, int]) -> int:
     return max(0, TARGET_CREW[tier_of(incident)] - assigned_counts.get(incident.id, 0))
 
 
-def _candidates(incident: Incident, available: list[Resource], exclude: set[str]) -> list[Resource]:
+Rejected = frozenset  # of (incident_id, resource_id) pairs a human turned down
+
+
+def _candidates(incident: Incident, available: list[Resource], exclude: set[str],
+                rejected: frozenset = frozenset()) -> list[Resource]:
     required = required_for(incident.type)
-    capable = [r for r in available if r.id not in exclude and r.type in required]
+    ok = [r for r in available if r.id not in exclude and (incident.id, r.id) not in rejected]
+    capable = [r for r in ok if r.type in required]
     if not capable:   # drones are the one universal resource (recon / size-up)
-        capable = [r for r in available if r.id not in exclude and r.type == ResourceType.DRONE]
+        capable = [r for r in ok if r.type == ResourceType.DRONE]
     return sorted(capable, key=lambda r: _distance_km(r, incident))
 
 
@@ -641,16 +691,21 @@ async def run_logistics(
     ranked: list[tuple[int, Incident]],
     available: list[Resource],
     assigned_counts: Optional[dict[str, int]] = None,
+    rejected: frozenset = frozenset(),
+    allow_llm: bool = True,
 ) -> tuple[list[dict[str, Any]], int]:
     """LLM proposes pairs; code validates them and guarantees P1/P2 coverage."""
     counts = assigned_counts or {}
     needy = [(rank, inc) for rank, inc in ranked if crew_needed(inc, counts) > 0]
     if not needy or not available:
         return [], 0
+    if not allow_llm:
+        return greedy_match(ranked, available, counts, rejected), 0
 
     inc_view = []
     for rank, inc in needy[:8]:
-        cands = sorted((r for r in available if is_capable(r, inc)), key=lambda r: _distance_km(r, inc))[:5]
+        cands = sorted((r for r in available if is_capable(r, inc) and (inc.id, r.id) not in rejected),
+                       key=lambda r: _distance_km(r, inc))[:5]
         if not cands:
             continue                                   # nothing free can serve it: don't ask the LLM
         inc_view.append({
@@ -669,9 +724,9 @@ async def run_logistics(
     )
     raw = parsed.get("assignments") if isinstance(parsed, dict) else None
     if not isinstance(raw, list):
-        return greedy_match(ranked, available, counts), latency
-    valid = sanitize_assignments(raw, ranked, available, counts)
-    return coverage_guard(valid, ranked, available, counts), latency
+        return greedy_match(ranked, available, counts, rejected), latency
+    valid = sanitize_assignments(raw, ranked, available, counts, rejected)
+    return coverage_guard(valid, ranked, available, counts, rejected), latency
 
 
 def sanitize_assignments(
@@ -679,6 +734,7 @@ def sanitize_assignments(
     ranked: list[tuple[int, Incident]],
     available: list[Resource],
     assigned_counts: dict[str, int],
+    rejected: frozenset = frozenset(),
 ) -> list[dict[str, Any]]:
     """Keep only assignments the rules allow: known incident, available + capable
     unit, one unit one incident, within crew size and per-incident cap."""
@@ -693,7 +749,7 @@ def sanitize_assignments(
     for a in items:
         inc = inc_by_id.get(str(a.get("incident_id")))
         res = res_by_id.get(str(a.get("resource_id")))
-        if not inc or not res or res.id in used:
+        if not inc or not res or res.id in used or (inc.id, res.id) in rejected:
             continue
         if inc.status.value in ("closed", "contained") or not is_capable(res, inc):
             continue
@@ -716,6 +772,7 @@ def coverage_guard(
     ranked: list[tuple[int, Incident]],
     available: list[Resource],
     assigned_counts: dict[str, int],
+    rejected: frozenset = frozenset(),
 ) -> list[dict[str, Any]]:
     """Deterministic safety net: no P1/P2 incident is left without a unit while a
     capable one is free, whatever the LLM proposed."""
@@ -725,7 +782,7 @@ def coverage_guard(
     for _rank, inc in ranked:
         if tier_of(inc) not in ("P1", "P2") or inc.id in covered or assigned_counts.get(inc.id, 0) > 0:
             continue
-        cands = _candidates(inc, available, used)
+        cands = _candidates(inc, available, used, rejected)
         if not cands:
             continue
         best = cands[0]
@@ -742,6 +799,7 @@ def greedy_match(
     ranked: list[tuple[int, Incident]],
     available: list[Resource],
     assigned_counts: dict[str, int],
+    rejected: frozenset = frozenset(),
 ) -> list[dict[str, Any]]:
     """Greedy nearest-capable matcher (the rule-based twin): P1 gets the best pick,
     then P2, … up to each incident's target crew size."""
@@ -751,7 +809,7 @@ def greedy_match(
         if inc.status.value in ("closed", "contained"):
             continue
         for _ in range(crew_needed(inc, assigned_counts)):
-            cands = _candidates(inc, available, used)
+            cands = _candidates(inc, available, used, rejected)
             if not cands:
                 break
             best = cands[0]
@@ -824,10 +882,13 @@ async def run_command(
     ranked: list[tuple[int, Incident]],
     deployments: list[Deployment],
     weather: list[WeatherCell],
+    allow_llm: bool = True,
 ) -> tuple[list[dict[str, Any]], int]:
     view = command_view(ranked, deployments, weather)
     if not view["incidents"]:
         return [], 0
+    if not allow_llm:
+        return _command_fallback(ranked, deployments, weather)["recommendations"], 0
     parsed, latency = await llm_json(
         COMMAND_SYSTEM, json.dumps(view), agent="command", max_tokens=1800,
     )

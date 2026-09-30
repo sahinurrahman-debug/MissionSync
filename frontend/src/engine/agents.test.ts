@@ -11,7 +11,7 @@ const sig = (raw_text: string, extra: object = {}) => ({ source: 'radio', lat: 3
 function incident(type: Incident['type'], tier: 'P1' | 'P2' | 'P3' | 'P4', lat = 34.058, lon = -118.245): Incident {
   return {
     id: `inc_${type}_${tier}_${lat}`, type, title: 't', description: 'd', lat, lon, zone: 'Downtown', status: 'new',
-    reported_at: '', updated_at: '', affected_population: 10, injuries: 0, confidence: 0.9, location_known: true,
+    reported_at: '', updated_at: '', affected_population: 10, injuries: 0, confidence: 0.9, location_known: true, provisional: false,
     risk: { incident_id: 'x', urgency: 60, tier, scored_at: '', scoring_latency_ms: 0, source: 'rules',
       breakdown: { severity: 1, population: 1, spread: 1, time_criticality: 1, confidence: 90, rationale: '' } },
   }

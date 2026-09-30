@@ -4,6 +4,8 @@ The planned screens and the report-to-screen flow live in `sketch.excalidraw`, a
 
 `sketch.png` is the static export backup required by Level 1 and is embedded in the root README.
 
+> **Status:** this sketch is the Level 1 *planning* artifact and is kept as submitted. The shipped dashboard follows the same structure (map, ranked feed, recommendations, units, audit log, single intake box) with a redesigned visual language — see the screenshots in the README and the design-system section there. The responder phone view and the after-action view were not built as separate screens: the dashboard is responsive down to a phone, and the after-action record is the CSV export.
+
 ## What the sketch shows
 
 1. **Net control main board** — header metrics strip, live incident map, ranked feed with tier chips and rationales, command recommendations, units panel, audit event log, and the single report-intake box.

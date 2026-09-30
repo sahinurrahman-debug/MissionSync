@@ -26,5 +26,6 @@ export default defineConfig({
       '/ws': { target: BACKEND.replace(/^http/, 'ws'), ws: true, changeOrigin: true },
     },
   },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  // Engine/mapping tests run in node; component tests opt in to jsdom with a `@vitest-environment jsdom` docblock.
+  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'], setupFiles: ['src/test-setup.ts'] },
 })

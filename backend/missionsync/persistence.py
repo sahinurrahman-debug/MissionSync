@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -90,7 +91,13 @@ class Store:
             Column("urgency", Float),
             Column("created_at", DateTime(timezone=True), nullable=False),
         )
-        self._t = {"drills": drills, "events": events, "reports": reports}
+        kv = Table(
+            "kv", meta,
+            Column("key", String(40), primary_key=True),
+            Column("value", Text, nullable=False),
+            Column("updated_at", DateTime(timezone=True), nullable=False),
+        )
+        self._t = {"drills": drills, "events": events, "reports": reports, "kv": kv}
         meta.create_all(self._engine)
         with self._engine.connect() as conn:       # fail now, not on the first drill
             conn.exec_driver_sql("SELECT 1")
@@ -140,6 +147,38 @@ class Store:
         except Exception as exc:
             logger.error("add_report failed: %s", exc)
             return False
+
+    def set_kv(self, key: str, value: Any) -> bool:
+        """Store a JSON document (world state, LLM cache). Replaces any previous value."""
+        if not self.enabled:
+            return False
+        try:
+            payload = json.dumps(value, separators=(",", ":"))
+            kv = self._t["kv"]
+            with self._engine.begin() as conn:
+                conn.execute(kv.delete().where(kv.c.key == key))
+                conn.execute(kv.insert().values(key=key, value=payload, updated_at=_now()))
+            return True
+        except Exception as exc:
+            logger.error("set_kv(%s) failed: %s", key, exc)
+            return False
+
+    def get_kv(self, key: str) -> Optional[tuple[Any, datetime]]:
+        if not self.enabled:
+            return None
+        try:
+            from sqlalchemy import select
+
+            kv = self._t["kv"]
+            with self._engine.connect() as conn:
+                row = conn.execute(select(kv).where(kv.c.key == key)).mappings().first()
+            if row is None:
+                return None
+            at = row["updated_at"]
+            return json.loads(row["value"]), (at if at.tzinfo else at.replace(tzinfo=timezone.utc))
+        except Exception as exc:
+            logger.error("get_kv(%s) failed: %s", key, exc)
+            return None
 
     # -- reads (never raise) ------------------------------------------------------------
 

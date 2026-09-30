@@ -36,6 +36,9 @@ export function mapMetrics(m: Raw = {}): Metrics {
     scoring_sources: m.scoring_sources ?? {},
     drill_id: typeof m.drill_id === 'number' ? m.drill_id : null,
     database: typeof m.database === 'string' ? m.database : 'disabled',
+    pending_proposals: num(quality.pending_proposals),
+    provisional_incidents: num(m.provisional_incidents),
+    viewers: num(m.viewers),
   }
 }
 
@@ -50,12 +53,12 @@ function datasetNote(source: unknown): string {
 
 export function fromBackend(raw: Raw, connection: Connection = 'online'): Snapshot {
   return {
-    status: raw.status === 'live' ? 'live' : 'booting',
+    status: raw.status === 'live' ? 'live' : raw.status === 'ended' ? 'ended' : 'booting',
     connection,
     engine: 'remote',
     tick: num(raw.tick),
     sim_time: String(raw.sim_time ?? new Date().toISOString()),
-    incidents: (raw.incidents ?? []).map((i: Raw) => ({ ...i, location_known: i.location_known !== false })),
+    incidents: (raw.incidents ?? []).map((i: Raw) => ({ ...i, location_known: i.location_known !== false, provisional: i.provisional === true })),
     resources: raw.resources ?? [],
     weather: raw.weather ?? [],
     actions: raw.actions ?? [],
@@ -65,6 +68,13 @@ export function fromBackend(raw: Raw, connection: Connection = 'online'): Snapsh
       stage: raw.pipeline?.stage ?? 'idle',
       origin: raw.pipeline?.origin ?? 'sim',
     },
+    proposals: raw.proposals ?? [],
+    settings: {
+      auto_dispatch: raw.settings?.auto_dispatch === true,
+      dispatch_mode: raw.settings?.auto_dispatch === true ? 'auto' : 'manual',
+      llm_available: raw.settings?.llm_available === true,
+    },
+    elapsed_s: num(raw.elapsed_s),
   }
 }
 
@@ -82,5 +92,8 @@ export function emptySnapshot(connection: Connection, engine: 'remote' | 'local'
     event_log: [],
     metrics: mapMetrics({}),
     pipeline: { stage: 'idle', origin: 'boot' },
+    proposals: [],
+    settings: { auto_dispatch: false, dispatch_mode: 'manual', llm_available: false },
+    elapsed_s: 0,
   }
 }

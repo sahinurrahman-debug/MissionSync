@@ -115,6 +115,11 @@ SEED_COUNT = 5            # incidents present at first paint
 WAVE_COUNT = 4            # incidents the sim spawns mid-demo
 WAVE_TICKS = (2, 4, 6, 8)
 FOLLOWUP_TICK = 3
+# After the scripted opening, a new report arrives every RECYCLE_EVERY ticks (~3 min at 6 s/tick),
+# drawn from the same real xBD cohort, so a drill can run for hours instead of minutes.
+RECYCLE_AFTER = 10
+RECYCLE_EVERY = 30
+MAX_ACTIVE = 12
 _SOURCE_FOR_TYPE = {
     IncidentType.FIRE: "drone",
     IncidentType.FLOOD: "radio",
@@ -137,6 +142,7 @@ class Simulator:
         self._wave_seeds: list[dict[str, Any]] = []
         self._occupied: dict[str, set[str]] = {}     # incident type -> sectors already used
         self.rng = random.Random(42)
+        self._recycle_index = 0
         self.weather: dict[str, WeatherCell] = initial_weather()
         self.ground_truth: dict[str, float] = {}     # incident_id -> hidden urgency
 
@@ -166,7 +172,7 @@ class Simulator:
             events.append(self._signal_from_seed(seed, zlat, zlon))
         return events
 
-    def tick(self) -> tuple[list[dict[str, Any]], list[str]]:
+    def tick(self, active_incidents: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
         """Advance the world. Returns (new signal dicts, event log lines)."""
         self.tick_count += 1
         log: list[str] = []
@@ -211,7 +217,51 @@ class Simulator:
             })
             log.append(f"📡 Follow-up report on {target['zone']} incident")
 
+        # 4. Later in the drill: recycled real-xBD reports keep the picture evolving
+        if (
+            self.tick_count > RECYCLE_AFTER
+            and (self.tick_count - RECYCLE_AFTER) % RECYCLE_EVERY == 0
+            and active_incidents < MAX_ACTIVE
+        ):
+            pool = self._scenario_seeds + self._wave_seeds
+            if pool:
+                seed = dict(pool[self._recycle_index % len(pool)])
+                self._recycle_index += 1
+                zone = self.rng.choice(list(SECTORS))
+                seed["zone"] = zone
+                zlat, zlon = SECTORS[zone]
+                signals.append(self._signal_from_seed(
+                    seed, zlat + self.rng.uniform(-0.002, 0.002), zlon + self.rng.uniform(-0.002, 0.002)))
+                log.append(f"📡 New incoming signal from {zone}")
+
         return signals, log
+
+    # -- state (for restart recovery) ---------------------------------------------------
+
+    def export_state(self) -> dict[str, Any]:
+        ser = lambda seeds: [{**x, "type": x["type"].value} for x in seeds]  # noqa: E731
+        version, internal, gauss = self.rng.getstate()
+        return {
+            "tick_count": self.tick_count, "wave_index": self._wave_index, "recycle_index": self._recycle_index,
+            "scenario_seeds": ser(self._scenario_seeds), "wave_seeds": ser(self._wave_seeds),
+            "occupied": {k: sorted(v) for k, v in self._occupied.items()},
+            "weather": {z: w.model_dump(mode="json") for z, w in self.weather.items()},
+            "ground_truth": dict(self.ground_truth),
+            "rng": [version, list(internal), gauss],
+        }
+
+    def import_state(self, d: dict[str, Any]) -> None:
+        de = lambda seeds: [{**x, "type": IncidentType(x["type"])} for x in seeds]  # noqa: E731
+        self.tick_count = int(d["tick_count"])
+        self._wave_index = int(d["wave_index"])
+        self._recycle_index = int(d.get("recycle_index", 0))
+        self._scenario_seeds = de(d["scenario_seeds"])
+        self._wave_seeds = de(d["wave_seeds"])
+        self._occupied = {k: set(v) for k, v in d["occupied"].items()}
+        self.weather = {z: WeatherCell.model_validate(w) for z, w in d["weather"].items()}
+        self.ground_truth = {k: float(v) for k, v in d["ground_truth"].items()}
+        version, internal, gauss = d["rng"]
+        self.rng.setstate((version, tuple(internal), gauss))
 
     def _signal_from_seed(self, seed: dict[str, Any], lat: float, lon: float) -> dict[str, Any]:
         itype: IncidentType = seed["type"]

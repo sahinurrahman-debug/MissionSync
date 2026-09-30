@@ -310,6 +310,7 @@ export function logisticsMatch(
   ranked: Array<{ rank: number; incident: Incident }>,
   resources: Resource[],
   assignedCounts: Record<string, number>,
+  rejected: ReadonlySet<string> = new Set(),   // "incidentId:resourceId" pairs a human turned down
 ): Assignment[] {
   const used = new Set<string>()
   const counts = { ...assignedCounts }
@@ -319,7 +320,7 @@ export function logisticsMatch(
     const tier = tierOf(incident)
     const need = Math.max(0, TARGET_CREW[tier] - (counts[incident.id] ?? 0))
     for (let n = 0; n < need; n++) {
-      const free = resources.filter((r) => r.status === 'available' && !used.has(r.id))
+      const free = resources.filter((r) => r.status === 'available' && !used.has(r.id) && !rejected.has(`${incident.id}:${r.id}`))
       let candidates = free.filter((r) => requiredFor(incident.type).includes(r.type))
       if (candidates.length === 0) candidates = free.filter((r) => r.type === 'drone')
       if (candidates.length === 0) break

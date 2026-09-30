@@ -2,17 +2,27 @@
 
 *Planned API contract · Journey to Mastery — Level 1 (Ronin)*
 
-Status: **partly implemented.** The backend serves one shared in-memory drill today; the org/auth/drill-session endpoints below are Samurai scope. The dashboard talks to the backend through the routes marked ✅ (or runs its in-browser demo engine when no backend is reachable).
+Status: **partly implemented.** The backend serves one shared drill (checkpointed to Postgres when a database is attached, and restored after a restart); the org/auth/per-drill-session endpoints in §1 are Samurai scope. The implemented single-drill routes below are the Level 2 surface. The dashboard talks to the backend through the routes marked ✅ (or runs its in-browser demo engine when no backend is reachable).
 
 | Route | State | Notes |
 |---|---|---|
 | `GET /api/health` | ✅ | Adds `state` (booting/live), LLM `mode` (`llm` / `fallback` / `quota_exhausted`), active `model`, per-model `quota`, `dataset`, `uptime_s`. |
 | `GET /api/snapshot` | ✅ | The full `WorldSnapshot`: `status`, `incidents`, `resources`, `weather`, `actions`, `metrics`, structured `event_log` (`{seq,t,msg}`), and `pipeline` (`{stage,origin}`). |
-| `POST /api/report` | ✅ | Body `{text (1–2000 chars), source?, lat?, lon?, confidence?}`. Returns `{status, outcome:{kind: created\|merged\|rejected, incident_id, title, tier, urgency, message}, injections, snapshot}`. Rate-limited (burst 5, then 1 per 2 s per client) → `429` with `Retry-After`. |
-| `POST /api/reset` | ✅ | Restarts the drill. |
+| `POST /api/report` | ✅ | Body `{text (1–2000 chars), source?, lat?, lon?, confidence?, client_nonce? (≤64)}`. Answers fast: recognised reports are ranked immediately by rules and flagged `provisional` while the LLM refines them in the background (the refined score arrives over the WebSocket). Returns `{status, outcome:{kind: created\|merged\|rejected, incident_id, title, tier, urgency, provisional, message}, injections, snapshot}`. A repeated `client_nonce` returns the first result instead of creating a duplicate. Rate-limited (burst 5, then 1 per 2 s per client) → `429` with `Retry-After`. |
+| `POST /api/dispatch/approve` | ✅ | Body `{proposal_ids?: string[]}` — omit to approve every pending proposal. Commits the dispatch(es); a stale id → `404`. |
+| `POST /api/dispatch/reject` | ✅ | Body `{proposal_id}`. Removes the proposal; that unit↔incident pairing is not proposed again. |
+| `POST /api/dispatch/manual` | ✅ | Body `{incident_id, resource_id, role?}`. Net-control override; unit must be available and capable, crew cap respected (`409` otherwise). |
+| `POST /api/units/{unit_id}/recall` | ✅ | Sends a unit that is en route / on scene back to base. |
+| `PATCH /api/incidents/{incident_id}` | ✅ | Body `{status: "contained" \| "closed"}`; frees the incident's units. |
+| `POST /api/reset` | 🔒 | Restarts the drill. Admin key. |
+| `POST /api/drill/end` | 🔒 | Ends the drill: snapshot `status` becomes `ended`, all mutating actions answer `409` until a reset. Admin key. |
+| `POST /api/settings` | 🔒 | Body `{auto_dispatch: bool}` — `false` (default): agents propose and a human approves; `true`: commit immediately. Admin key. |
+| `GET /api/drills`, `GET /api/drills/{id}/audit`, `GET /api/drills/{id}/export.csv` | ✅ | With a database: drill history, per-drill audit trail and the after-action CSV (formula-injection safe). |
 | `GET /api/audit` | ✅ | The timestamped event log (last 300 entries). |
-| `WS /ws` | ✅ | Pushes a snapshot after every pipeline **stage**; answers the text frame `ping` with `{"type":"pong"}`. Unauthenticated until Samurai. |
+| `WS /ws` | ✅ | Pushes a snapshot after every pipeline **stage**; answers the text frame `ping` with `{"type":"pong"}`. Browser origins must be in `CORS_ORIGINS` (else close `4403`); more than `MAX_WS_CLIENTS` connections get close `1013`; a client that stops reading is dropped after 5 s and never delays the others. |
 | everything else below | planned | |
+
+🔒 = requires the `X-Admin-Key` header when the server has `ADMIN_KEY` set (`401 unauthorized` otherwise). `GET /api/health` reports `admin_protected` so the dashboard knows whether to ask. The snapshot also carries `proposals` (pending dispatches), `settings.auto_dispatch`, `drill_id`, `elapsed_s` and, in `metrics`, `database`, `viewers`, `peak_viewers`, `provisional_incidents`, `pending_proposals`.
 
 Errors from every implemented route use the standard envelope in §3, including `request_id` (also sent as the `X-Request-ID` header).
 

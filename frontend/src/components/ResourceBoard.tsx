@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react'
+import { Truck, Undo2 } from 'lucide-react'
 import type { Incident, Resource, ResourceStatus } from '../types'
 import { haversineKm } from '../engine/geo'
 import { etaMinutes } from '../engine/agents'
@@ -25,7 +25,9 @@ function etaFor(r: Resource, inc: Incident | undefined): number | null {
   return null
 }
 
-export default function ResourceBoard({ resources, incidents, loading }: { resources: Resource[]; incidents: Incident[]; loading: boolean }) {
+export default function ResourceBoard({
+  resources, incidents, loading, onRecall, disabled,
+}: { resources: Resource[]; incidents: Incident[]; loading: boolean; onRecall?: (unitId: string) => void; disabled?: boolean }) {
   if (loading) return <FleetSkeleton />
   const byId = new Map(incidents.map((i) => [i.id, i]))
   const counts = resources.reduce<Record<string, number>>((acc, r) => ((acc[r.status] = (acc[r.status] ?? 0) + 1), acc), {})
@@ -52,6 +54,18 @@ export default function ResourceBoard({ resources, incidents, loading }: { resou
                 <div className="flex items-center gap-1.5">
                   <Icon size={15} className="shrink-0 text-ink-2" aria-label={RESOURCE_LABEL[r.type]} />
                   <span className="truncate text-base font-semibold text-ink">{r.name}</span>
+                  {onRecall && (r.status === 'en_route' || r.status === 'on_scene') && (
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onRecall(r.id)}
+                      aria-label={`Recall ${r.name}`}
+                      title="Recall this unit"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-ink-2 hover:bg-hi hover:text-p1 disabled:opacity-40 max-lg:h-9 max-lg:w-9"
+                    >
+                      <Undo2 size={14} aria-hidden />
+                    </button>
+                  )}
                   {tags.map((t) => (
                     <span key={t} className="hidden shrink-0 rounded border border-line px-1 text-xs text-ink-2 2xl:inline">{t}</span>
                   ))}

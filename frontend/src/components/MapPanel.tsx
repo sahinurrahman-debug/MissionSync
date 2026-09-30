@@ -10,7 +10,10 @@ import { MapSkeleton } from './Skeletons'
 
 const CENTER: [number, number] = [34.0555, -118.24]
 // OpenStreetMap standard tiles need no API key; the dark theme is a CSS filter over them (see index.css).
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const TILE_URL = (import.meta.env.VITE_TILE_URL as string | undefined) || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const TILE_ATTRIBUTION =
+  (import.meta.env.VITE_TILE_ATTRIBUTION as string | undefined) ||
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
 // Teardrop pins are built once per (rank, tier, selected) — Leaflet icons are not free.
 const pinCache = new Map<string, L.DivIcon>()
@@ -58,7 +61,7 @@ function MapController({ target, recenter }: { target: Incident | null; recenter
 }
 
 const ctl =
-  'inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-panel/95 text-ink-2 shadow-panel backdrop-blur transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent/60 aria-pressed:text-accent'
+  'max-lg:h-11 max-lg:w-11 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-panel/95 text-ink-2 shadow-panel backdrop-blur transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent/60 aria-pressed:text-accent'
 
 export default function MapPanel({
   incidents,
@@ -86,7 +89,7 @@ export default function MapPanel({
       {loading && <MapSkeleton />}
       <MapContainer center={CENTER} zoom={13} scrollWheelZoom={false} zoomControl={false} className="h-full w-full" attributionControl>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution={TILE_ATTRIBUTION}
           url={TILE_URL}
           subdomains="abc"
           maxZoom={19}

@@ -15,9 +15,9 @@ becomes one incident seed:
                          Scale grades 0→10, 1→40, 2→70, 3→90; the agents never see it)
     disaster type     ─► IncidentType (volcano → landslide, flooding → flood, …)
 
-Source order (``DATA_SOURCE``):
-    ``kaggle``        live download via kagglehub (needs KAGGLE_API_TOKEN)
+Source (``DATA_SOURCE``; ``XBD_SOURCE=snapshot|kaggle`` picks the order, default snapshot):
     ``xbd_snapshot``  bundled snapshot of the same real records (data/xbd_seeds.json)
+    ``kaggle``        live download via kagglehub (needs KAGGLE_API_TOKEN)
     ``offline_fallback``  small synthetic cohort built by the same rules
 """
 from __future__ import annotations
@@ -409,8 +409,23 @@ def _fallback_records(count: int = 10) -> list[dict[str, Any]]:
 
 
 def load_seeds(file_path: str | None = None) -> list[dict[str, Any]]:
-    """Primary entry point for the simulator: Kaggle → bundled snapshot → synthetic."""
+    """Primary entry point for the simulator.
+
+    ``XBD_SOURCE`` picks the order (default ``snapshot``):
+      snapshot  bundled real-xBD snapshot → Kaggle → synthetic   (instant, no rate limits)
+      kaggle    live Kaggle download       → snapshot → synthetic (fresh files; needs a token)
+    A specific ``file_path`` / ``XBD_FILE_PATH`` always goes to Kaggle first.
+    """
     global DATA_SOURCE
+    mode = os.environ.get("XBD_SOURCE", "snapshot").strip().lower()
+    want_live = mode in ("kaggle", "auto") or bool(file_path or os.environ.get(FILE_PATH_ENV, "").strip())
+
+    if not want_live:
+        snapshot = load_snapshot()
+        if snapshot:
+            DATA_SOURCE = "xbd_snapshot"
+            return snapshot
+
     records = load_xbd_records(file_path)
     if records:
         return records

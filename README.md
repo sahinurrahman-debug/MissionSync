@@ -45,8 +45,10 @@ The app is honest about which one you're looking at. The header badge says **AI*
 - **Ranked incident feed** — transparent 0–100 urgency (severity / population / spread / time-criticality, weighted composite computed in plain code); click a card for the component breakdown and rationale.
 - **Live incident map** — priority-colored markers sized by urgency (P1/P2 pulse), every responder unit drawn (idle at base, en route, on scene, returning). A dashed ring marks a report that named no place.
 - **Free-text report intake** — type what is happening and where. The place words ("University lab block", "Industrial Park gate 3", "Riverfront levee") put it on the map; the same type within ~1.5 km merges into the existing incident; text that isn't an emergency is rejected instead of dispatching a unit.
+- **Agents propose, you decide** — the recommendation panel lists proposed dispatches (unit → incident, ETA, reason). Nothing moves until net control approves one, approves all, or rejects it (a rejected pairing doesn't come back). You can also dispatch any capable, available unit yourself, recall a unit, mark an incident contained, or close it. A header toggle switches to *auto-dispatch* for unattended demos.
+- **Instant, then refined** — a new report is ranked in well under a second by the rule-based twin and marked *AI scoring…*; the LLM refines the score in the background and the card updates in place.
 - **Command recommendations** — imperative headline orders, action bullets, weather-aware warnings for the top four incidents, with the units *actually deployed* and their ETAs.
-- **Incident lifecycle** — en route → on scene → worked → contained → units return to base and become available again. ↺ restarts the drill.
+- **Incident lifecycle** — en route → on scene → worked → contained → units return to base and become available again. New waves keep arriving, so a drill never runs dry. **Restart** starts over; **End** freezes the drill and unlocks the after-action CSV.
 - **Resource board & event log** — all 12 units with status/assignment/ETA, plus a timestamped audit trail of every parse → merge → rank → deploy step.
 - **After-action record** — with a database attached, every drill's audit trail and submitted reports are stored; ⬇ in the header downloads the CSV (`/api/drills/{id}/export.csv`).
 - **Two engineered themes** (Tactical Night / high-contrast Day), skeletons sized to the real components, a radar empty state, an offline banner, and per-panel error boundaries — the board never blanks or shows a raw error.
@@ -66,13 +68,13 @@ The app is honest about which one you're looking at. The header badge says **AI*
 | Pydantic | Typed models, and the validation gate for LLM output |
 | kagglehub + xBD | Real scenario data |
 | PostgreSQL (SQLAlchemy) | Optional: drill history, audit trail, submitted reports, CSV export |
-| Vitest, pytest | 53 frontend + 91 backend tests, plus a WCAG contrast audit |
+| Vitest + Testing Library + axe-core, pytest | 106 frontend + 124 backend tests, an automated accessibility check, and a WCAG contrast audit |
 
 ---
 
 ## Design system
 
-Direction: *Tactical ops center meets Linear/Vercel* — utilitarian, high-contrast, calm under pressure, dense. The palette and component language were explored in Canva first ([design-system board](https://www.canva.com/d/dZFerA8Z6QapTVw)) and then implemented as tokens in [`frontend/src/index.css`](./frontend/src/index.css).
+Full spec: [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md). Direction: *Tactical ops center meets Linear/Vercel* — utilitarian, high-contrast, calm under pressure, dense. The palette and component language were explored in Canva first ([design-system board](https://www.canva.com/d/dZFerA8Z6QapTVw)) and then implemented as tokens in [`frontend/src/index.css`](./frontend/src/index.css).
 
 | Token | Tactical Night | Day | Used for |
 |---|---|---|---|
@@ -95,7 +97,7 @@ Direction: *Tactical ops center meets Linear/Vercel* — utilitarian, high-contr
 Kenshi is judged on the frontend, so the core loop (report → merge → re-rank → recommend) runs fully in the browser via the demo engine, as the Roadmap's Milestone 1 committed. Deviations from the Level 1 plan, stated plainly:
 
 1. **Scope added beyond Kenshi:** a real FastAPI backend with LLM agents, real xBD data, WebSocket push, and optional Postgres (Roadmap Milestone 2 material). It is optional — the deployed frontend works on its own — but it is in the repo and wired.
-2. **Deferred, as planned:** auth, multi-org roles, human confirm/override of assignments, restoring a live drill after a restart (all Samurai).
+2. **Pulled forward from Samurai:** human confirm/override of assignments (the PRD's FR-7/FR-8 rule — the default), restoring the live drill after a restart (from Postgres), and a shared admin key for the destructive controls. **Still deferred:** real auth and roles, multi-tenant isolation.
 3. **Changed from the Level 1 sketch:** the xBD Kaggle pull is real in the full stack (the Roadmap deferred it to Samurai); the demo engine uses a hand-authored scenario with damage grades on the same 0→10 … 3→90 scale.
 4. **Urgency tiers** stay as the Level 1 docs define them (P1 ≥ 75, P2 ≥ 55, P3 ≥ 35, else P4), so the ranking you see matches the documented methodology.
 
@@ -121,7 +123,7 @@ npm run dev                                                  # http://localhost:
 
 `npm run dev` proxies `/api` and `/ws` to the backend on `:8000`, so there is nothing else to configure. Open http://localhost:5173 — the header should read `LIVE` and `AI · openai/gpt-oss-20b`.
 
-**Try the core loop:** type *"fire spreading near the University lab block, three students trapped"* and inject it. It parses, lands on the University sector, is scored and ranked, and units are dispatched — watch the pipeline chip step through the five agents.
+**Try the core loop:** type *"fire spreading near the University lab block, three students trapped"* and inject it. It parses, lands on the University sector, is ranked immediately (*AI scoring…*), and the agents propose units — review them in **Command recommendations** and press **Approve**. Watch the pipeline chip step through the five agents.
 
 **No backend?** Just run `npm run dev` on its own: the app detects there is no server and runs the in-browser demo engine, badged `DEMO ENGINE`. (`?engine=local` forces it.)
 
@@ -132,7 +134,14 @@ npm run dev                                                  # http://localhost:
 | `GROQ_API_KEY` | backend | Groq key. Without it the agents run rule-based (badge: `RULES · LLM off`). |
 | `GROQ_MODEL` / `GROQ_FALLBACK_MODEL` | backend | Optional. Defaults `openai/gpt-oss-20b` / `openai/gpt-oss-120b`. When one model's daily quota is spent the other is used automatically. |
 | `KAGGLE_API_TOKEN` | backend | Optional. Downloads real xBD labels live. Without it the bundled snapshot of the same real records is used. |
-| `XBD_FILE_PATH` | backend | Optional. Load one specific file from the Kaggle dataset instead. |
+| `XBD_SOURCE` | backend | `snapshot` (default, bundled real records) or `kaggle` (live download). |
+| `XBD_FILE_PATH` | backend | Optional. Load one specific file from the Kaggle dataset instead (implies `kaggle`). |
+| `ADMIN_KEY` | backend | Protects Restart / End / dispatch-mode (`X-Admin-Key`). Empty = open (local dev). Render generates one; the dashboard asks for it once per tab. |
+| `AUTO_DISPATCH` | backend | `false` (default): humans approve dispatches. `true`: commit recommendations immediately. |
+| `LOG_FORMAT` / `LOG_LEVEL` | backend | `json` or `text`; one line per request with a request id. |
+| `MAX_WS_CLIENTS` | backend | Concurrent dashboards (default 200); more get close code 1013. |
+| `SENTRY_DSN` | backend | Optional error tracking (`pip install sentry-sdk`). |
+| `VITE_TILE_URL` / `VITE_TILE_ATTRIBUTION` | frontend | Map tile provider (default OpenStreetMap — fine for demos, use a provider for real traffic). |
 | `DATABASE_URL` | backend | Optional Postgres URL (Render injects it). Enables drill history + CSV export; without it everything runs in memory. |
 | `CORS_ORIGINS` | backend | Comma-separated allowed origins. Defaults to the local dev origins; **set it to your frontend URL in production.** |
 | `VITE_API_URL` | frontend | Backend base URL for production builds. Empty in dev. |
@@ -140,7 +149,16 @@ npm run dev                                                  # http://localhost:
 
 ### Groq free-tier quota — read this
 
-The free tier allows roughly **200,000 tokens per day per model**. MissionSync is built for that budget: terrain/risk results are cached until their inputs materially change, logistics is consulted only when an incident needs units, command is re-drafted only when the picture changes, and idle ticks cost **zero** calls. A full boot is about five agent calls. If both models are spent the badge turns to `AI QUOTA HIT`, a banner says when it resumes, and the rule-based twins keep the board running. For live demos on the free tier, restart the drill sparingly, or upgrade to Groq's Dev tier.
+The free tier allows roughly **200,000 tokens per day per model, per organization** (a second key in the same org shares the budget). MissionSync is built for that budget: terrain/risk results are cached by report *content* (and persisted to Postgres, so a restart doesn't re-spend tokens), logistics is consulted only when an incident needs units, command is re-drafted only when the picture changes, and idle ticks cost **zero** calls. If both models are spent the badge turns to `AI QUOTA HIT`, a banner says when it resumes, and the rule-based twins keep the board running. For live demos on the free tier, restart the drill sparingly, or upgrade to Groq's Dev tier.
+
+### Measured
+
+| What | Result | How |
+|---|---|---|
+| Ranking accuracy vs hidden xBD ground truth | Spearman ρ = **0.90** (live LLM) | `scripts/measure_live.py` |
+| Report → ranked on the board | **~70 ms** p50 with one dashboard open (rule-ranked, then LLM-refined in the background) | `scripts/load_test.py` |
+| Fan-out cost | Intake stays fast for a demo-sized audience: p50 ≈ 70 ms (1 dashboard), ≈ 250 ms (10), ≈ 0.8 s (50, measured on one shared laptop CPU that also ran the load generator). All 50 sockets held, 0 drops, 0 failed reports. A stuck client is dropped after 5 s and never blocks the drill | `scripts/load_test.py --clients N` |
+| Contrast | every token pair ≥ WCAG AA in both themes | `npm run audit:contrast` |
 
 ### Tests
 
@@ -149,7 +167,7 @@ cd backend  && .venv/Scripts/python -m pip install -r requirements-dev.txt && .v
 cd frontend && npm test && npm run typecheck && npm run audit:contrast
 ```
 
-Backend tests never touch the network. A fake Groq client proves the whole pipeline runs in **pure LLM mode with zero rule-based fallbacks**, that bad LLM output (invalid types, unavailable or incapable units, out-of-range scores) never reaches world state, and that quota exhaustion degrades visibly.
+CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs all of it on every push. The frontend suite includes component tests (Testing Library), keyboard/ARIA behaviour, an axe-core accessibility scan, and a mock-WebSocket test of reconnect/backoff. Backend tests never touch the network. A fake Groq client proves the whole pipeline runs in **pure LLM mode with zero rule-based fallbacks**, that bad LLM output (invalid types, unavailable or incapable units, out-of-range scores) never reaches world state, and that quota exhaustion degrades visibly.
 
 ---
 
@@ -177,20 +195,24 @@ The repo ships a Blueprint, [`render.yaml`](./render.yaml), that creates all thr
 
 1. Push the repo to GitHub (it already is: `sahinurrahman-debug/MissionSync`).
 2. Render dashboard → **New → Blueprint** → select the repo → **Apply**.
-3. When prompted, set the secrets: `GROQ_API_KEY` (and optionally `KAGGLE_API_TOKEN`). Leave `CORS_ORIGINS` and `VITE_API_URL` for now (put any placeholder, e.g. `https://x.onrender.com`).
+3. When prompted, set the secrets: `GROQ_API_KEY` (and optionally `KAGGLE_API_TOKEN`). Leave `CORS_ORIGINS` and `VITE_API_URL` for now (put any placeholder, e.g. `https://x.onrender.com`). `ADMIN_KEY` is generated for you — read it under the API service's **Environment** tab when you need to restart or end a drill.
 4. Wait for the first deploy, then copy the two public URLs from the dashboard (e.g. `https://missionsync-api.onrender.com` and `https://missionsync-web.onrender.com`).
 5. Set **`CORS_ORIGINS`** on `missionsync-api` = the *frontend* URL, and **`VITE_API_URL`** on `missionsync-web` = the *API* URL (no trailing slash). Then **Manual Deploy → Clear build cache & deploy** the frontend (Vite bakes `VITE_API_URL` in at build time) and redeploy the API.
 6. Open the frontend URL. The header should read `LIVE` and `AI · openai/gpt-oss-20b`; `GET <api-url>/api/health` should show `"database": "postgresql"`.
 
-State note: the live drill is in memory (one instance, one shared drill); the database is an append-only record for review. A sleeping free instance restarts the drill on wake-up — hit ↺ or wait for the scripted waves.
+State note: one instance runs one shared drill. With a database attached the drill is checkpointed and **restored after a restart or a free-tier wake-up**; without one it starts fresh. The API start command trusts Render's proxy headers (`--forwarded-allow-ips='*'`) so each visitor gets their own rate-limit bucket. Free-tier limits to know: the API sleeps after ~15 min idle (first request takes ~1 min) and the free Postgres is deleted after 30 days.
+
+## Data and asset licences
+
+See [`NOTICE`](./NOTICE): the xBD data is **CC BY-NC-SA 4.0 (non-commercial)**, map tiles © OpenStreetMap contributors, fonts are bundled (SIL OFL) and served from this site.
 
 ## Planning Docs
 
-- [PRD](./docs/PRD.md) · [Architecture](./docs/ARCHITECTURE.md) · [Requirements](./docs/REQUIREMENTS.md) · [API spec](./docs/API_SPEC.md) · [Roadmap](./docs/ROADMAP.md)
+- [PRD](./docs/PRD.md) · [Architecture](./docs/ARCHITECTURE.md) · [Requirements](./docs/REQUIREMENTS.md) · [API spec](./docs/API_SPEC.md) · [Roadmap](./docs/ROADMAP.md) · [Design system](./docs/DESIGN_SYSTEM.md)
 - [Sketch](./docs/SKETCH.md) — live board: <https://excalidraw.com/#room=dc45f75888800794e0e6,kvfdLtfMVJnRXNi0TIiYJw> · static backup [`docs/sketch.png`](./docs/sketch.png)
 - [Legacy prototype notes](./docs/LEGACY_MISSIONSYNC_NOTES.md)
 
-**Scope notes.** Implemented: report intake, parse → merge → risk → logistics → command pipeline, live push, incident lifecycle, error envelope + rate limit, drill restart, audit endpoint. Postgres history + CSV export are in (optional). **Not yet (Samurai/Shogun):** Firebase auth and roles, restoring a live drill from the database after a restart, human commit controls (confirm/override an assignment), multi-tenant isolation. Until then the backend serves a single shared in-memory drill and `/api/report` is unauthenticated (rate-limited and length-capped).
+**Scope notes.** Implemented: report intake, parse → merge → risk → logistics → command pipeline, live push, incident lifecycle, error envelope + rate limit, drill restart, audit endpoint. Postgres history + CSV export are in (optional). Also in: human approval of dispatches, manual dispatch/recall/close, end-drill, drill restore after restart, idempotent report submits, an admin key for destructive controls, WebSocket origin check and connection cap, structured JSON logs. **Not yet (Samurai/Shogun):** per-user auth and roles, multi-tenant isolation. Until then the backend serves a single shared drill; `/api/report` is open (rate-limited per client and length-capped) and restart/end need the admin key.
 
 ---
 

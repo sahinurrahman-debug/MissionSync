@@ -1,22 +1,25 @@
 import { useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { ListOrdered } from 'lucide-react'
-import type { Incident, Resource } from '../types'
+import type { Incident, Proposal, Resource } from '../types'
 import { useNow } from '../lib/useNow'
 import EmptyRadar from './EmptyRadar'
-import IncidentCard from './IncidentCard'
+import IncidentCard, { type IncidentActions } from './IncidentCard'
 import { IncidentFeedSkeleton } from './Skeletons'
 import { Panel, PanelHeader } from './ui'
 
 export default function IncidentFeed({
-  incidents, resources, selectedId, onSelect, loading, fill = true,
+  incidents, resources, proposals = [], selectedId, onSelect, loading, fill = true, actions, disabled,
 }: {
   incidents: Incident[]
   resources: Resource[]
+  proposals?: Proposal[]
   selectedId: string | null
   onSelect: (id: string | null) => void
   loading: boolean
   fill?: boolean
+  actions?: IncidentActions
+  disabled?: boolean
 }) {
   const now = useNow(1000)
   const p1p2 = incidents.filter((i) => i.risk?.tier === 'P1' || i.risk?.tier === 'P2').length
@@ -50,6 +53,10 @@ export default function IncidentFeed({
                   selected={selectedId === inc.id}
                   onSelect={onSelect}
                   units={resources.filter((r) => r.assigned_incident === inc.id)}
+                  proposed={proposals.filter((p) => p.incident_id === inc.id)}
+                  availableUnits={resources.filter((r) => r.status === 'available')}
+                  actions={actions}
+                  disabled={disabled}
                   now={now}
                 />
               ))}

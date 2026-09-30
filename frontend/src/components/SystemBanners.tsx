@@ -1,4 +1,4 @@
-import { CloudOff, Info, RadioTower, TriangleAlert, Wind } from 'lucide-react'
+import { CloudOff, Flag, Info, RadioTower, TriangleAlert, Wind } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Snapshot } from '../types'
 
@@ -26,6 +26,11 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
       {offline && (
         <Banner tone="bad" icon={<CloudOff size={16} className="text-p1" />}>
           Lost the connection to the MissionSync server — showing the last known picture and reconnecting…
+        </Banner>
+      )}
+      {snap.status === 'ended' && (
+        <Banner tone="info" icon={<Flag size={16} className="text-accent" />}>
+          <b>Drill ended.</b> The picture is frozen for after-action review{snap.metrics.database !== 'disabled' && snap.metrics.database !== 'error' ? ' — download the CSV from the toolbar' : ''}. Restart (↺) to run another.
         </Banner>
       )}
       {snap.engine === 'local' && (

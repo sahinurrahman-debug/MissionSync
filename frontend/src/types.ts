@@ -75,6 +75,8 @@ export interface Incident {
   risk: RiskScore | null
   /** false ⇒ the report named no place; pinned to the city centre. */
   location_known: boolean
+  /** true ⇒ scored by the rules just now; the LLM is refining it in the background. */
+  provisional: boolean
 }
 
 export interface TerrainCell {
@@ -136,6 +138,27 @@ export interface RecommendedAction {
   deployments: Deployment[]
 }
 
+/** A recommended assignment awaiting a human decision (agents propose, net control commits). */
+export interface Proposal {
+  id: string
+  incident_id: string
+  incident_title: string
+  resource_id: string
+  resource_name: string
+  resource_type: ResourceType
+  eta_minutes: number
+  role: string
+  priority: number
+  rationale: string
+  source: 'llm' | 'rules'
+}
+
+export interface Settings {
+  auto_dispatch: boolean
+  dispatch_mode: 'auto' | 'manual'
+  llm_available: boolean
+}
+
 export interface EventLine {
   seq: number
   t: string
@@ -168,15 +191,18 @@ export interface Metrics {
   drill_id: number | null
   /** 'postgresql' | 'sqlite' | 'disabled' | 'error' */
   database: string
+  pending_proposals: number
+  provisional_incidents: number
+  viewers: number
 }
 
 export type PipelineStage = 'idle' | 'surveillance' | 'terrain' | 'risk' | 'logistics' | 'command'
-export type PipelineOrigin = 'boot' | 'sim' | 'inject' | 'reset'
+export type PipelineOrigin = 'boot' | 'sim' | 'inject' | 'reset' | 'refine' | 'restore'
 
 export type Connection = 'connecting' | 'online' | 'offline' | 'demo'
 
 export interface Snapshot {
-  status: 'booting' | 'live'
+  status: 'booting' | 'live' | 'ended'
   connection: Connection
   engine: 'remote' | 'local'
   tick: number
@@ -188,6 +214,10 @@ export interface Snapshot {
   event_log: EventLine[]
   metrics: Metrics
   pipeline: { stage: PipelineStage; origin: PipelineOrigin }
+  proposals: Proposal[]
+  settings: Settings
+  /** Seconds since the drill started (frozen once it has ended). */
+  elapsed_s: number
 }
 
 export interface InjectResult {
@@ -196,6 +226,8 @@ export interface InjectResult {
   tier: Tier | null
   urgency: number | null
   message: string
+  /** true ⇒ rule-scored now; the AI refinement follows and the card updates itself. */
+  provisional: boolean
 }
 
 /** A failure from the backend, in the standard error envelope (docs/API_SPEC.md). */

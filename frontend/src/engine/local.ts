@@ -7,20 +7,22 @@
 // plus the incident lifecycle: en route → on scene → worked → contained → units
 // return to base and become available again.
 
-import type {
-  Deployment,
-  EventLine,
-  Incident,
-  IncidentType,
-  InjectResult,
-  Metrics,
-  PipelineOrigin,
-  PipelineStage,
-  RecommendedAction,
-  Resource,
-  Snapshot,
-  TerrainCell,
-  WeatherCell,
+import {
+  ApiError,
+  type Deployment,
+  type EventLine,
+  type Incident,
+  type IncidentType,
+  type InjectResult,
+  type Metrics,
+  type PipelineOrigin,
+  type PipelineStage,
+  type Proposal,
+  type RecommendedAction,
+  type Resource,
+  type Snapshot,
+  type TerrainCell,
+  type WeatherCell,
 } from '../types'
 import { SAMPLE_REPORTS, type DataSource, type Subscriber } from '../source'
 import { haversineKm, round1 } from './geo'
@@ -37,6 +39,10 @@ import {
 export const TICK_MS = 6000
 const WAVE_TICKS = [2, 4, 6, 8]
 const FOLLOWUP_TICK = 3
+/** After the scripted opening a report arrives every RECYCLE_EVERY ticks (~3 min), so a drill can run for hours. */
+const RECYCLE_AFTER = 10
+const RECYCLE_EVERY = 30
+const MAX_ACTIVE = 12
 const LOG_CAP = 300
 /** Ticks a crew works on scene before the incident is contained (6 s per tick). */
 const WORK_TICKS = { P1: 24, P2: 20, P3: 12, P4: 8 } as const
@@ -61,7 +67,9 @@ export class LocalEngine implements DataSource {
 
   /** The demo engine computes instantly; `paceMs` walks the five stages visibly for an injected report
    *  (so the pipeline stepper reads like the real one). The backend streams genuine stages instead. */
-  constructor(private opts: { paceMs?: number } = {}) {}
+  constructor(private opts: { paceMs?: number; autoDispatch?: boolean } = {}) {
+    this.autoDispatch = opts.autoDispatch ?? false
+  }
 
   private incidents = new Map<string, WorldIncident>()
   private resources: Resource[] = buildResources()
@@ -87,6 +95,14 @@ export class LocalEngine implements DataSource {
   private cachedSnap: Snapshot | null = null
   private booted = false
   private sampleIndex = 0
+  // Agents recommend, a person commits: proposals wait for approval unless auto-dispatch (demo) is on.
+  private proposals = new Map<string, Proposal>()
+  private rejected = new Set<string>()
+  private autoDispatch = false
+  private startedAt = Date.now()
+  private endedAt: number | null = null
+  private ended = false
+  private recycleIndex = 0
 
   // -- DataSource -----------------------------------------------------------
 
@@ -131,15 +147,111 @@ export class LocalEngine implements DataSource {
     this.popBaseline = new Map()
     this.rng = new Rng(42)
     this.recs = []
+    this.proposals = new Map()
+    this.rejected = new Set()
+    this.startedAt = Date.now()
+    this.endedAt = null
+    this.ended = false
+    this.recycleIndex = 0
     this.booted = false
     this.boot('reset')
     if (running) this.start()
   }
 
+  // -- net control: the human-commit actions ---------------------------------------------
+
+  private requireLive(): void {
+    if (this.ended) throw new ApiError('The drill has ended — restart it to continue.', 'conflict', 409)
+  }
+
+  async approve(proposalIds?: string[]): Promise<void> {
+    this.requireLive()
+    let chosen = [...this.proposals.values()]
+    if (proposalIds) {
+      const missing = proposalIds.filter((id) => !this.proposals.has(id))
+      if (missing.length) throw new ApiError('That proposal no longer exists — the picture changed. Review the new recommendations.', 'not_found', 404)
+      chosen = proposalIds.map((id) => this.proposals.get(id)!)
+    }
+    const n = this.commit(chosen)
+    if (chosen.length) this.log(`✅ Net control approved ${n} dispatch(es)`)
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async reject(proposalId: string): Promise<void> {
+    this.requireLive()
+    const p = this.proposals.get(proposalId)
+    if (!p) throw new ApiError('That proposal no longer exists.', 'not_found', 404)
+    this.rejected.add(`${p.incident_id}:${p.resource_id}`)
+    this.proposals.delete(proposalId)
+    this.log(`✋ Net control rejected ${p.resource_name} → ${p.incident_title.slice(0, 40)}`)
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async dispatchManual(incidentId: string, resourceId: string): Promise<void> {
+    this.requireLive()
+    const inc = this.incidents.get(incidentId)
+    const res = this.resources.find((r) => r.id === resourceId)
+    if (!inc || !ACTIVE.has(inc.status) || !inc.risk) throw new ApiError('That incident is not active.', 'not_found', 404)
+    if (!res) throw new ApiError('Unknown unit.', 'not_found', 404)
+    if (res.status !== 'available') throw new ApiError(`${res.name} is not available (${res.status.replace('_', ' ')}). Recall it first.`, 'conflict', 409)
+    if (!isCapable(res, inc)) throw new ApiError(`${res.name} cannot serve a ${inc.type.replace(/_/g, ' ')}.`, 'conflict', 409)
+    if ((this.assignedCounts()[inc.id] ?? 0) >= CREW_CAP[tierOf(inc)]) throw new ApiError('That incident already has its maximum crew.', 'conflict', 409)
+    this.applyAssignments([{ incident_id: inc.id, resource_id: res.id, role: roleFor(res, inc), rationale: 'Net control override' }], this.ranked())
+    this.log(`🎛 Net control dispatched ${res.name} → ${inc.title.slice(0, 40)}`)
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async recall(unitId: string): Promise<void> {
+    this.requireLive()
+    const res = this.resources.find((r) => r.id === unitId)
+    if (!res) throw new ApiError('Unknown unit.', 'not_found', 404)
+    if (res.status !== 'en_route' && res.status !== 'on_scene') {
+      throw new ApiError(`${res.name} is ${res.status.replace('_', ' ')} — nothing to recall.`, 'conflict', 409)
+    }
+    const inc = res.assigned_incident ? this.incidents.get(res.assigned_incident) : undefined
+    res.status = 'returning'; res.assigned_incident = null; res.role = ''
+    this.log(`↩️ Net control recalled ${res.name}`)
+    if (inc && (inc.status === 'on_scene' || inc.status === 'units_en_route')) {
+      const mine = this.resources.filter((r) => r.assigned_incident === inc.id)
+      inc.status = mine.some((r) => r.status === 'on_scene') ? 'on_scene' : mine.length ? 'units_en_route' : 'triaged'
+    }
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async resolveIncident(incidentId: string, status: 'contained' | 'closed'): Promise<void> {
+    this.requireLive()
+    const inc = this.incidents.get(incidentId)
+    if (!inc) throw new ApiError('Unknown incident.', 'not_found', 404)
+    if (!ACTIVE.has(inc.status)) throw new ApiError(`That incident is already ${inc.status}.`, 'conflict', 409)
+    this.contain(inc, 'net control', status === 'closed')
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async setAutoDispatch(enabled: boolean): Promise<void> {
+    this.autoDispatch = enabled
+    this.log(`⚙️ Dispatch mode: ${enabled ? 'AUTO (demo) — recommendations are committed immediately' : 'MANUAL — recommendations await your approval'}`)
+    this.recomputeProposals()
+    this.push()
+  }
+
+  async endDrill(): Promise<void> {
+    if (this.ended) throw new ApiError('The drill has already ended.', 'conflict', 409)
+    this.ended = true
+    this.endedAt = Date.now()
+    this.log(`🏁 Drill ended by net control after ${Math.round((this.endedAt - this.startedAt) / 1000)} s — ${this.resolved} incident(s) resolved`)
+    this.push()
+  }
+
   async injectReport(text: string): Promise<InjectResult> {
+    if (this.ended) throw new ApiError('The drill has ended — restart it to inject more reports.', 'conflict', 409)
     const clean = text.trim().slice(0, 2000)
     if (!clean) {
-      return { kind: 'rejected', incident_title: '', tier: null, urgency: null, message: 'Type a report first.' }
+      return { kind: 'rejected', incident_title: '', tier: null, urgency: null, message: 'Type a report first.', provisional: false }
     }
     this.injectionCount += 1
     this.log(`🔥 INJECTED REPORT #${this.injectionCount}: “${clean.slice(0, 70)}${clean.length > 70 ? '…' : ''}”`)
@@ -163,7 +275,7 @@ export class LocalEngine implements DataSource {
     if (outcomes.length === 0) {
       this.log('🚫 No emergency recognised in that report — nothing logged')
       result = {
-        kind: 'rejected', incident_title: '', tier: null, urgency: null,
+        kind: 'rejected', incident_title: '', tier: null, urgency: null, provisional: false,
         message: 'No emergency recognised. Say what is happening and where (e.g. “smoke from the University chemistry lab, two people coughing”).',
       }
     } else {
@@ -174,6 +286,7 @@ export class LocalEngine implements DataSource {
         tier: last.incident.risk?.tier ?? null,
         urgency: last.incident.risk?.urgency ?? null,
         message: '',
+        provisional: false,
       }
     }
     this.push()
@@ -197,6 +310,7 @@ export class LocalEngine implements DataSource {
   }
 
   private tick(): void {
+    if (this.ended || !this.booted) return          // an ended drill is frozen
     try {
       this.tickCount += 1
       for (const cell of Object.values(this.weather)) {
@@ -222,6 +336,14 @@ export class LocalEngine implements DataSource {
         const seed = SEED_ITEMS[0]
         signals.push({ source: 'ground_report', lat: seed.lat, lon: seed.lon, raw_text: FOLLOWUP_TEXT, confidence: 0.92, located: true, type_hint: seed.type })
         this.log('📡 Follow-up report on Downtown collapse')
+      }
+
+      if (this.tickCount > RECYCLE_AFTER && (this.tickCount - RECYCLE_AFTER) % RECYCLE_EVERY === 0 && this.ranked().length < MAX_ACTIVE) {
+        const pool = [...SEED_ITEMS, ...WAVE_ITEMS]
+        const item = pool[this.recycleIndex % pool.length]
+        this.recycleIndex += 1
+        signals.push({ ...this.signalFromItem(item), lat: item.lat + this.rng.jitter(0.002), lon: item.lon + this.rng.jitter(0.002) })
+        this.log(`📡 New incoming signal from ${this.zoneOf(item.lat, item.lon)}`)
       }
 
       this.advanceWorld()
@@ -284,7 +406,7 @@ export class LocalEngine implements DataSource {
 
     t = performance.now()
     this.stage = 'logistics'
-    const assigned = this.assign()
+    this.recomputeProposals()
     stages.logistics_ms = Math.max(1, Math.round(performance.now() - t))
 
     t = performance.now()
@@ -295,7 +417,7 @@ export class LocalEngine implements DataSource {
     this.stage = 'idle'
     this.lastStages = stages
     this.lastCycleMs = Math.round(performance.now() - t0)
-    this.log(`🚁 Logistics assigned ${assigned} unit(s) · Command issued ${this.recs.length} recommendation(s)`)
+    this.log(`🚁 ${this.proposals.size} dispatch proposal(s) pending · Command issued ${this.recs.length} recommendation(s)`)
     this.log(`⚡ Pipeline cycle complete in ${this.lastCycleMs}ms (${origin})`)
     return outcomes
   }
@@ -309,7 +431,7 @@ export class LocalEngine implements DataSource {
 
   private refreshRankings(): void {
     for (const { incident } of this.ranked()) this.rescore(incident)
-    this.assign()
+    this.recomputeProposals()
     this.recs = commandRecommend(this.ranked(), this.deployments(), Object.values(this.weather))
   }
 
@@ -321,9 +443,33 @@ export class LocalEngine implements DataSource {
     return counts
   }
 
-  private assign(): number {
+  /** Rebuild the pending recommendations; auto-dispatch (demo) commits them at once. */
+  private recomputeProposals(): void {
     const ranked = this.ranked()
-    return this.applyAssignments(logisticsMatch(ranked, this.resources, this.assignedCounts()), ranked)
+    const rankById = new Map(ranked.map(({ rank, incident }) => [incident.id, rank]))
+    const next = new Map<string, Proposal>()
+    for (const a of logisticsMatch(ranked, this.resources, this.assignedCounts(), this.rejected)) {
+      const inc = this.incidents.get(a.incident_id)
+      const res = this.resources.find((r) => r.id === a.resource_id)
+      if (!inc || !res) continue
+      const id = `${inc.id}:${res.id}`
+      next.set(id, {
+        id, incident_id: inc.id, incident_title: inc.title, resource_id: res.id, resource_name: res.name,
+        resource_type: res.type, eta_minutes: etaMinutes(res, inc), role: a.role, priority: rankById.get(inc.id) ?? 99,
+        rationale: a.rationale, source: 'rules',
+      })
+    }
+    this.proposals = next
+    if (this.autoDispatch && next.size > 0) this.commit([...next.values()])
+  }
+
+  private commit(props: Proposal[]): number {
+    const applied = this.applyAssignments(
+      props.map((p) => ({ incident_id: p.incident_id, resource_id: p.resource_id, role: p.role, rationale: p.rationale })),
+      this.ranked(),
+    )
+    for (const p of props) this.proposals.delete(p.id)
+    return applied
   }
 
   /** Final gate: available + capable + within the per-incident cap. */
@@ -425,9 +571,10 @@ export class LocalEngine implements DataSource {
     return false
   }
 
-  private contain(inc: WorldIncident): void {
-    inc.status = 'contained'
+  private contain(inc: WorldIncident, by = '', closed = false): void {
+    inc.status = closed ? 'closed' : 'contained'
     this.resolved += 1
+    for (const [k, p] of this.proposals) if (p.incident_id === inc.id) this.proposals.delete(k)
     let released = 0
     for (const r of this.resources) {
       if (r.assigned_incident === inc.id) {
@@ -435,7 +582,7 @@ export class LocalEngine implements DataSource {
         released += 1
       }
     }
-    this.log(`🛡 Contained: ${inc.title.slice(0, 60)} — ${released} unit(s) released`)
+    this.log(`🛡 ${closed ? 'Closed' : 'Contained'}${by ? ` by ${by}` : ''}: ${inc.title.slice(0, 60)} — ${released} unit(s) released`)
   }
 
   // -- merge/create helpers -------------------------------------------------------------
@@ -479,6 +626,7 @@ export class LocalEngine implements DataSource {
       confidence: cand.confidence,
       risk: null,
       location_known: located,
+      provisional: false,
       terrain: TERRAIN[sector] ?? TERRAIN.Downtown,
       mergedCount: 0,
     }
@@ -544,6 +692,9 @@ export class LocalEngine implements DataSource {
       scoring_sources: sources,
       drill_id: null,
       database: 'disabled',
+      pending_proposals: this.proposals.size,
+      provisional_incidents: 0,
+      viewers: 1,
     }
   }
 
@@ -552,7 +703,7 @@ export class LocalEngine implements DataSource {
     for (const { incident } of ranked) if (incident.risk) incident.risk.tier = tierFor(incident.risk.urgency)
     // Fresh copies every snapshot: React (and memo hooks) rely on new identities to see change.
     return structuredClone({
-      status: this.booted ? 'live' : 'booting',
+      status: this.ended ? 'ended' : this.booted ? 'live' : 'booting',
       connection: 'demo',
       engine: 'local',
       tick: this.tickCount,
@@ -567,6 +718,9 @@ export class LocalEngine implements DataSource {
       event_log: this.eventLog.slice(-40),
       metrics: this.metrics(ranked),
       pipeline: { stage: this.stage, origin: this.origin },
+      proposals: [...this.proposals.values()].sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id)),
+      settings: { auto_dispatch: this.autoDispatch, dispatch_mode: this.autoDispatch ? 'auto' : 'manual', llm_available: false },
+      elapsed_s: Math.round(((this.endedAt ?? Date.now()) - this.startedAt) / 1000),
     }) as unknown as Snapshot
   }
 

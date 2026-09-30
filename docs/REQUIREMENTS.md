@@ -70,3 +70,20 @@ The system shall:
 ---
 
 *Milestones and dates: [ROADMAP.md](./ROADMAP.md) · Endpoints/auth/error shape: [API_SPEC.md](./API_SPEC.md) · Stack choices: [ARCHITECTURE.md](./ARCHITECTURE.md)*
+
+---
+
+## Implementation status (Level 2)
+
+| Requirement | Status |
+|---|---|
+| FR-7 human confirmation | Done — proposals wait for approve / reject; manual dispatch, recall, close. `AUTO_DISPATCH` exists for unattended demos and is off by default. |
+| FR-9 live push | Done — WebSocket, per-client outbox, REST snapshot on connect. |
+| FR-14 CSV export | Done with a database attached (`/api/drills/{id}/export.csv`). |
+| NFR-1 freshness | Reports are ranked in ~70 ms (rules) and LLM-refined in the background; the refined score follows within seconds (live LLM). Measured with `scripts/load_test.py` / `scripts/measure_live.py`. |
+| NFR-2 concurrency | 50 sockets held with zero drops (see README → Measured); intake slows on a single shared CPU at that load. |
+| NFR-4/5 auth | **Not done** — a shared admin key guards destructive actions; Firebase roles remain Samurai scope. |
+| NFR-6 secrets | Done — environment only; `.env` ignored. |
+| NFR-8/9 accessibility | WAI-ARIA tabs with arrow keys, focus-trapped dialog, skip link, axe-core tests, contrast audit (AA) in both themes, ≥16 px primary text, 44 px touch targets. |
+| NFR-11 observability | JSON request logs with request ids, `/api/health`, optional Sentry. |
+| NFR-12 backups | Not done (free Postgres; restore procedure undocumented). |

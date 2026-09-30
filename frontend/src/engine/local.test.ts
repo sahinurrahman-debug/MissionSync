@@ -4,8 +4,8 @@ import { SEED_ITEMS, WAVE_ITEMS } from './scenario'
 import type { Snapshot } from '../types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function boot(): LocalEngine {
-  const e = new LocalEngine({ paceMs: 0 })
+function boot(autoDispatch = true): LocalEngine {
+  const e = new LocalEngine({ paceMs: 0, autoDispatch })
   e.start()
   e.stop() // no timers in tests: we drive ticks by hand
   return e

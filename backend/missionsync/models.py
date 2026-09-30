@@ -188,6 +188,7 @@ class Incident(BaseModel):
     risk: Optional[RiskScore] = None
     location_known: bool = True       # False ⇒ report gave no place; pinned to city centre
     merged_reports: int = 0
+    provisional: bool = False         # scored by the rules just now; the LLM is refining it
 
 
 # --------------------------------------------------------------------------
@@ -206,6 +207,22 @@ class Deployment(BaseModel):
     priority: int = 0         # rank of the incident this serves
     rationale: str = ""
     created_at: str = Field(default_factory=lambda: utcnow().isoformat())
+
+
+class Proposal(BaseModel):
+    """A recommended unit→incident assignment awaiting a human decision (PRD: the system
+    recommends, a person commits). In auto-dispatch (demo) mode proposals are committed at once."""
+    id: str
+    incident_id: str
+    incident_title: str = ""
+    resource_id: str
+    resource_name: str
+    resource_type: ResourceType
+    eta_minutes: float = 0.0
+    role: str = ""
+    priority: int = 0
+    rationale: str = ""
+    source: Literal["llm", "rules"] = "rules"
 
 
 class RecommendedAction(BaseModel):
@@ -234,11 +251,11 @@ class EventLine(BaseModel):
 
 class Pipeline(BaseModel):
     stage: Literal["idle", "surveillance", "terrain", "risk", "logistics", "command"] = "idle"
-    origin: Literal["boot", "sim", "inject", "reset"] = "boot"
+    origin: Literal["boot", "sim", "inject", "reset", "refine", "restore"] = "boot"
 
 
 class WorldSnapshot(BaseModel):
-    status: Literal["booting", "live"] = "booting"
+    status: Literal["booting", "live", "ended"] = "booting"
     tick: int = 0
     sim_time: str = Field(default_factory=lambda: utcnow().isoformat())
     incidents: list[Incident] = Field(default_factory=list)
@@ -248,6 +265,9 @@ class WorldSnapshot(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
     event_log: list[EventLine] = Field(default_factory=list)
     pipeline: Pipeline = Field(default_factory=Pipeline)
+    proposals: list[Proposal] = Field(default_factory=list)
+    settings: dict[str, Any] = Field(default_factory=dict)
+    elapsed_s: int = 0
 
 
 # --------------------------------------------------------------------------
@@ -264,6 +284,8 @@ class IncomingReport(BaseModel):
     lat: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     lon: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
     confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+    # Idempotency key: a retried or double-clicked submit with the same nonce is processed once.
+    client_nonce: Optional[str] = Field(default=None, max_length=64)
 
     @field_validator("text")
     @classmethod
@@ -282,3 +304,4 @@ class ReportOutcome(BaseModel):
     tier: Optional[Literal["P1", "P2", "P3", "P4"]] = None
     urgency: Optional[float] = None
     message: str = ""
+    provisional: bool = False        # True ⇒ rule-scored now, the LLM refinement follows

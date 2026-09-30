@@ -70,8 +70,10 @@ describe('RemoteEngine', () => {
     const e = new RemoteEngine('http://api.test/')
     const r = await e.injectReport('fire at downtown')
     expect(seen.url).toBe('http://api.test/api/report')
-    expect(seen.body).toEqual({ text: 'fire at downtown', source: 'radio' })
-    expect(r).toEqual({ kind: 'created', incident_title: 'Fire at Downtown', tier: 'P2', urgency: 61.5, message: '' })
+    expect(seen.body).toMatchObject({ text: 'fire at downtown', source: 'radio' })
+    expect(typeof seen.body.client_nonce).toBe('string')
+    expect(seen.body.client_nonce.length).toBeGreaterThan(8)                 // idempotency key on every submit
+    expect(r).toEqual({ kind: 'created', incident_title: 'Fire at Downtown', tier: 'P2', urgency: 61.5, message: '', provisional: false })
     expect(e.getSnapshot().tick).toBe(7)                       // the returned picture is applied immediately
     expect(e.getSnapshot().metrics.injections).toBe(2)
   })

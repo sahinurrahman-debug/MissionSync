@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Download, Loader2, Moon, RotateCcw, Sun, Truck } from 'lucide-react'
+import { Download, Flag, Loader2, Moon, RotateCcw, Sun, Timer, Truck, Zap } from 'lucide-react'
 import type { Metrics, Snapshot } from '../types'
 import { modeChip } from '../lib/format'
 import { Chip } from './ui'
@@ -63,17 +63,30 @@ interface Props {
   onReset: () => void
   resetting: boolean
   exportUrl: string | null
+  autoDispatch: boolean
+  onToggleAuto: () => void
+  onEndDrill: () => void
+}
+
+/** 3725 s → "01:02:05" */
+export function clockOf(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
 }
 
 const iconBtn =
-  'inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-hi text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent'
+  'inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-hi text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent max-lg:h-11 max-lg:w-11'
 
-export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl }: Props) {
+export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl, autoDispatch, onToggleAuto, onEndDrill }: Props) {
   const m = snap.metrics
   const booted = snap.status === 'live'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
 
-  const status = offline ? { label: 'OFFLINE', tone: 'bad' as const } : booted ? { label: 'LIVE', tone: 'ok' as const } : { label: 'BOOTING', tone: 'warn' as const }
+  const ended = snap.status === 'ended'
+  const status = offline ? { label: 'OFFLINE', tone: 'bad' as const }
+    : ended ? { label: 'ENDED', tone: 'neutral' as const }
+    : booted ? { label: 'LIVE', tone: 'ok' as const } : { label: 'BOOTING', tone: 'warn' as const }
   const beacon = status.tone === 'ok' ? 'bg-ok' : status.tone === 'bad' ? 'bg-p1' : 'bg-warn'
 
   return (
@@ -94,12 +107,27 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
 
       {/* Engine mode + live pipeline stage */}
       <EngineChips snap={snap} className="hidden md:flex" />
+      <Chip className="hidden lg:inline-flex" title="Time since the drill started (stops when it ends)">
+        <Timer size={13} aria-hidden />
+        <span className="font-mono tnum">T+{clockOf(snap.elapsed_s)}</span>
+      </Chip>
 
       {/* Drill telemetry (wide screens; smaller ones get the strip under the header) */}
       <TelemetryChips m={m} snap={snap} className="ml-auto hidden xl:flex" />
 
       {/* Utilities */}
       <div className="ml-auto flex items-center gap-1.5 xl:ml-0">
+        <button
+          type="button"
+          className={iconBtn}
+          onClick={onToggleAuto}
+          aria-pressed={autoDispatch}
+          disabled={ended || offline}
+          title={autoDispatch ? 'Auto-dispatch (demo) is ON — click to require your approval' : 'Dispatch is manual — click to auto-dispatch (demo)'}
+          aria-label={autoDispatch ? 'Auto-dispatch is on. Switch to manual approval' : 'Dispatch is manual. Switch to auto-dispatch'}
+        >
+          <Zap size={18} aria-hidden />
+        </button>
         <button type="button" className={iconBtn} onClick={onToggleUnits} aria-pressed={showUnits} title="Toggle unit layer" aria-label="Toggle unit layer">
           <Truck size={18} aria-hidden />
         </button>
@@ -112,6 +140,9 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
             <Download size={18} aria-hidden />
           </button>
         )}
+        <button type="button" className={iconBtn} onClick={onEndDrill} disabled={ended || offline || !booted} title="End the drill (freezes the picture)" aria-label="End the drill">
+          <Flag size={18} aria-hidden />
+        </button>
         <button type="button" className={iconBtn} onClick={onReset} disabled={resetting || offline} title="Restart the drill" aria-label="Restart the drill">
           {resetting ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <RotateCcw size={18} aria-hidden />}
         </button>

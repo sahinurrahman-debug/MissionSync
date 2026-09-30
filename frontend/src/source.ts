@@ -14,6 +14,20 @@ export interface DataSource {
   /** Start the drill over. */
   reset(): Promise<void>
   nextSampleReport(): string
+
+  // -- net control: the human-commit actions (reject with ApiError when the picture has moved on) --
+  /** Approve the given proposals, or every pending one when omitted. */
+  approve(proposalIds?: string[]): Promise<void>
+  reject(proposalId: string): Promise<void>
+  /** Override: send a specific available unit to a specific incident. */
+  dispatchManual(incidentId: string, resourceId: string): Promise<void>
+  recall(unitId: string): Promise<void>
+  resolveIncident(incidentId: string, status: 'contained' | 'closed'): Promise<void>
+  /** Demo setting: commit recommendations immediately instead of waiting for a person. */
+  setAutoDispatch(enabled: boolean): Promise<void>
+  endDrill(): Promise<void>
+  /** Remember the admin key for protected actions (remote backends only). */
+  setAdminKey?(key: string): void
   /** URL of the after-action CSV for a stored drill (backends with a database only). */
   exportUrl?(drillId: number): string
 }

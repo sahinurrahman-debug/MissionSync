@@ -97,13 +97,24 @@ def test_bundled_snapshot_is_real_data_with_variety() -> None:
     assert all(s["source_file"].endswith(".json") and not any(w in s["text"].lower() for w in GRADE_WORDS) for s in seeds)
 
 
-def test_load_seeds_prefers_kaggle_then_snapshot_then_synthetic(monkeypatch) -> None:
+def test_load_seeds_defaults_to_the_bundled_snapshot_and_kaggle_is_opt_in(monkeypatch) -> None:
     kaggle = [{"type": IncidentType.FIRE, "gt_urgency": 50.0}]
     monkeypatch.setattr(xbd, "load_xbd_records", lambda *a, **k: kaggle)
-    assert xbd.load_seeds() == kaggle
 
+    monkeypatch.delenv("XBD_SOURCE", raising=False)
+    snapshot_first = xbd.load_seeds()
+    assert snapshot_first != kaggle and xbd.DATA_SOURCE == "xbd_snapshot"      # instant, no Kaggle traffic
+
+    monkeypatch.setenv("XBD_SOURCE", "kaggle")
+    assert xbd.load_seeds() == kaggle
+    monkeypatch.delenv("XBD_SOURCE")
+    monkeypatch.setenv("XBD_FILE_PATH", FLORENCE)                              # a specific file always goes to Kaggle
+    assert xbd.load_seeds() == kaggle
+    monkeypatch.delenv("XBD_FILE_PATH")
+
+    monkeypatch.setenv("XBD_SOURCE", "kaggle")
     monkeypatch.setattr(xbd, "load_xbd_records", lambda *a, **k: [])
-    assert xbd.load_seeds() and xbd.DATA_SOURCE == "xbd_snapshot"
+    assert xbd.load_seeds() and xbd.DATA_SOURCE == "xbd_snapshot"               # Kaggle down → real snapshot
 
     monkeypatch.setattr(xbd, "load_snapshot", lambda *a, **k: [])
     fallback = xbd.load_seeds()

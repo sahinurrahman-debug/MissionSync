@@ -10,7 +10,8 @@ function describe(result: InjectResult): { text: string; tone: 'ok' | 'warn' } {
   if (result.kind === 'rejected') {
     return { text: result.message || 'No emergency recognised in that report.', tone: 'warn' }
   }
-  const scored = result.tier ? `${result.tier} · urgency ${result.urgency?.toFixed(0) ?? '—'}` : 'scored'
+  const base = result.tier ? `${result.tier} · urgency ${result.urgency?.toFixed(0) ?? '—'}` : 'scored'
+  const scored = result.provisional ? `${base} (provisional — the AI is refining it)` : base
   return result.kind === 'merged'
     ? { text: `Merged into existing incident “${result.incident_title}” — now ${scored}; ranking refreshed.`, tone: 'ok' }
     : { text: `New incident logged: “${result.incident_title}” — ${scored}.`, tone: 'ok' }
@@ -80,7 +81,7 @@ export default function ReportIntake({
             <button
               type="button"
               onClick={() => { setReport(onSample()); setError(null) }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent max-lg:h-11"
             >
               <Sparkles size={14} aria-hidden /> Inject sample
             </button>
@@ -89,7 +90,7 @@ export default function ReportIntake({
               type="button"
               onClick={() => void submit()}
               disabled={busy || disabled || !report.trim()}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-bold text-bg transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-bold text-bg max-lg:h-11 transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Send size={15} aria-hidden />
               {busy ? 'Processing…' : 'Dispatch'}

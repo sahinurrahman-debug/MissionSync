@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bot, Cpu } from 'lucide-react'
+import { Bot, Cpu, Loader2 } from 'lucide-react'
 import type { Tier } from '../types'
 import { TIER_LABEL } from '../lib/format'
 
@@ -49,7 +49,18 @@ export function TierPill({ tier, urgency, rank }: { tier: Tier; urgency?: number
   )
 }
 
-export function SourceBadge({ source }: { source: 'llm' | 'cached' | 'rules' | undefined }) {
+export function SourceBadge({ source, provisional }: { source: 'llm' | 'cached' | 'rules' | undefined; provisional?: boolean }) {
+  if (provisional) {
+    return (
+      <span
+        title="Scored by the rules just now; the AI agents are refining it and this card will update itself."
+        className="inline-flex items-center gap-1 rounded border border-accent/50 px-1.5 py-0.5 text-xs font-bold uppercase tracking-micro text-accent"
+      >
+        <Loader2 size={12} className="animate-spin" aria-hidden />
+        AI scoring…
+      </span>
+    )
+  }
   const ai = source === 'llm' || source === 'cached'
   return (
     <span

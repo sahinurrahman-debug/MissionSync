@@ -13,10 +13,25 @@ def run(coro):
     return asyncio.run(coro)
 
 
-async def booted() -> Orchestrator:
-    o = Orchestrator()
+async def booted(auto: bool = True, store=None) -> Orchestrator:
+    """A booted drill. Most tests exercise the lifecycle, so they run in auto-dispatch (demo) mode;
+    tests/test_dispatch.py covers the default human-approval mode."""
+    o = Orchestrator(store, auto_dispatch=auto)
     await o.bootstrap()
     return o
+
+
+async def settle(o: Orchestrator, timeout: float = 5.0) -> None:
+    """Run the background LLM refinement to completion."""
+    if o._refine_task is None or o._refine_task.done():
+        o._refine_task = asyncio.create_task(o._refine_loop())
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        await asyncio.sleep(0.02)
+        busy = o._refine_pending or o._refine_event.is_set() or o._command_dirty or o.stage != "idle"
+        if not busy and not any(i.provisional for i in o.incidents.values()):
+            return
+    raise AssertionError("background refinement did not settle")
 
 
 async def tick(o: Orchestrator, n: int = 1) -> None:
@@ -40,7 +55,7 @@ def test_bootstrap_seeds_real_incidents_ranks_them_and_deploys_units() -> None:
         urgencies = [i.risk.urgency for i in snap.incidents]
         assert urgencies == sorted(urgencies, reverse=True)
         assert all(i.risk.tier == agents.tier_for(i.risk.urgency) for i in snap.incidents)
-        assert {r.status for r in snap.resources} & {"en_route"}
+        assert {r.status for r in snap.resources} & {"en_route"}          # auto-dispatch: units already moving
         assert set(o.sim.ground_truth) == {i.id for i in snap.incidents}
         assert snap.metrics["ranking_accuracy"]["evaluated_incidents"] == 5
         assert snap.event_log[0].seq < snap.event_log[-1].seq and snap.event_log[-1].t.endswith("Z")
@@ -230,7 +245,9 @@ def test_full_pipeline_runs_in_pure_llm_mode(monkeypatch) -> None:
     async def go():
         o = await booted()
         outcome, snap = await inject(o, "Fire spreading near the University lab block, three students trapped")
-        assert outcome.kind == "created"
+        assert outcome.kind == "created" and outcome.provisional       # ranked at once, AI scoring follows
+        await settle(o)
+        snap = o.snapshot()
         stats = llm.llm_stats()
         assert stats["mode"] == "llm" and stats["success_rate"] == 1.0
         assert all(a["fallbacks"] == 0 and a["llm_successes"] > 0 for a in stats["agents"].values())
@@ -242,7 +259,7 @@ def test_full_pipeline_runs_in_pure_llm_mode(monkeypatch) -> None:
         await tick(o, 5)                                     # idle ticks must be (nearly) free
         return len(fake.calls) - calls_before
     idle_calls = run(go())
-    assert idle_calls <= 10, f"5 idle ticks burned {idle_calls} LLM calls"          # the old code made ~12 *per tick*
+    assert idle_calls <= 6, f"5 idle ticks burned {idle_calls} LLM calls"           # the old code made ~12 *per tick*
 
 
 def test_bad_llm_proposals_never_reach_world_state(monkeypatch) -> None:

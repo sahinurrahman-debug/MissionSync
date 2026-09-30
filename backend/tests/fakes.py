@@ -1,5 +1,6 @@
 """A fake Groq client that answers every agent with schema-correct JSON, so the
 whole pipeline can be exercised in pure LLM mode (no rule-based fallback)."""
+import asyncio
 import json
 from types import SimpleNamespace
 from typing import Any, Callable, Optional
@@ -17,13 +18,21 @@ def _resp(payload: dict[str, Any], finish: str = "stop") -> SimpleNamespace:
 class FakeGroq:
     """Routes on the system prompt. `hooks` lets a test override one agent's payload."""
 
-    def __init__(self, hooks: Optional[dict[str, Callable[[dict], dict]]] = None) -> None:
+    def __init__(self, hooks: Optional[dict[str, Callable[[dict], dict]]] = None, delay: float = 0.0) -> None:
         self.calls: list[dict[str, Any]] = []
         self.hooks = hooks or {}
+        self.delay = delay                      # simulated LLM latency per call, seconds
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    def count(self, agent: str) -> int:
+        marker = {"surveillance": "Surveillance Agent", "terrain": "Terrain Agent", "risk": "Risk-Scoring Agent",
+                  "logistics": "Logistics Agent", "command": "Command Recommendation Agent"}[agent]
+        return sum(1 for c in self.calls if marker in c["messages"][0]["content"])
 
     async def _create(self, **kw: Any) -> SimpleNamespace:
         self.calls.append(kw)
+        if self.delay:
+            await asyncio.sleep(self.delay)
         system = kw["messages"][0]["content"]
         user = kw["messages"][1]["content"]
         for name, marker in (("surveillance", "Surveillance Agent"), ("terrain", "Terrain Agent"),

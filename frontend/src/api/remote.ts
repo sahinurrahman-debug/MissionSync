@@ -10,6 +10,16 @@ import { ApiError, type Connection, type InjectResult, type Snapshot } from '../
 import { emptySnapshot, fromBackend } from './mapping'
 
 const PING_MS = 25_000
+const ADMIN_KEY_STORAGE = 'ms-admin-key'
+
+/** A unique id per submit: a retried or double-clicked request is processed once by the server. */
+function nonce(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  }
+}
 const REQUEST_TIMEOUT_MS = 90_000      // a real LLM pipeline can take a while
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -43,9 +53,25 @@ export class RemoteEngine implements DataSource {
   private retries = 0
   private stopped = true
   private sampleIndex = 0
+  private adminKey = ''
 
   /** `baseUrl` '' ⇒ same origin (Vite proxy in dev, a reverse proxy in production). */
-  constructor(private baseUrl: string = '') {}
+  constructor(private baseUrl: string = '') {
+    try {
+      this.adminKey = sessionStorage.getItem(ADMIN_KEY_STORAGE) ?? ''
+    } catch {
+      /* storage blocked: the key just isn't remembered */
+    }
+  }
+
+  setAdminKey(key: string): void {
+    this.adminKey = key
+    try {
+      sessionStorage.setItem(ADMIN_KEY_STORAGE, key)
+    } catch {
+      /* ignore */
+    }
+  }
 
   subscribe(fn: Subscriber): () => void {
     this.subscribers.add(fn)
@@ -85,7 +111,10 @@ export class RemoteEngine implements DataSource {
   }
 
   async injectReport(text: string): Promise<InjectResult> {
-    const body = await this.request('/api/report', { method: 'POST', body: JSON.stringify({ text, source: 'radio' }) })
+    const body = await this.request('/api/report', {
+      method: 'POST',
+      body: JSON.stringify({ text, source: 'radio', client_nonce: nonce() }),
+    })
     this.apply(fromBackend(body.snapshot, this.snap.connection))
     const o = body.outcome ?? {}
     return {
@@ -94,12 +123,31 @@ export class RemoteEngine implements DataSource {
       tier: o.tier ?? null,
       urgency: typeof o.urgency === 'number' ? o.urgency : null,
       message: o.message ?? '',
+      provisional: o.provisional === true,
     }
   }
 
-  async reset(): Promise<void> {
-    const body = await this.request('/api/reset', { method: 'POST' })
-    this.apply(fromBackend(body.snapshot, this.snap.connection))
+  /** POST/PATCH an action and apply the snapshot the server answers with. */
+  private async act(path: string, method: 'POST' | 'PATCH', body?: unknown, admin = false): Promise<void> {
+    const res = await this.request(path, {
+      method,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: admin && this.adminKey ? { 'X-Admin-Key': this.adminKey } : undefined,
+    })
+    if (res?.snapshot) this.apply(fromBackend(res.snapshot, this.snap.connection))
+  }
+
+  reset(): Promise<void> { return this.act('/api/reset', 'POST', undefined, true) }
+  endDrill(): Promise<void> { return this.act('/api/drill/end', 'POST', undefined, true) }
+  setAutoDispatch(enabled: boolean): Promise<void> { return this.act('/api/settings', 'POST', { auto_dispatch: enabled }, true) }
+  approve(proposalIds?: string[]): Promise<void> { return this.act('/api/dispatch/approve', 'POST', proposalIds ? { proposal_ids: proposalIds } : {}) }
+  reject(proposalId: string): Promise<void> { return this.act('/api/dispatch/reject', 'POST', { proposal_id: proposalId }) }
+  dispatchManual(incidentId: string, resourceId: string): Promise<void> {
+    return this.act('/api/dispatch/manual', 'POST', { incident_id: incidentId, resource_id: resourceId })
+  }
+  recall(unitId: string): Promise<void> { return this.act(`/api/units/${encodeURIComponent(unitId)}/recall`, 'POST') }
+  resolveIncident(incidentId: string, status: 'contained' | 'closed'): Promise<void> {
+    return this.act(`/api/incidents/${encodeURIComponent(incidentId)}`, 'PATCH', { status })
   }
 
   // -- plumbing ----------------------------------------------------------------
