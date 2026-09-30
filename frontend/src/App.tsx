@@ -8,7 +8,7 @@ import ActionToast, { type ToastMessage } from './components/ActionToast'
 import AdminKeyDialog from './components/AdminKeyDialog'
 import ErrorBoundary from './components/ErrorBoundary'
 import FleetAndLog from './components/FleetAndLog'
-import HeaderHud, { EngineChips, TelemetryChips } from './components/HeaderHud'
+import HeaderHud from './components/HeaderHud'
 import IncidentFeed from './components/IncidentFeed'
 import MapPanel from './components/MapPanel'
 import MobileTabs, { type MobileTab } from './components/MobileTabs'
@@ -233,12 +233,6 @@ function Board({ source }: { source: DataSource }) {
         onToggleAuto={doToggleAuto}
         onEndDrill={doEnd}
       />
-
-      {/* Telemetry for screens too narrow to show it in the HUD */}
-      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 xl:hidden" aria-label="Drill telemetry">
-        <EngineChips snap={snap} className="flex md:hidden" />
-        <TelemetryChips m={m} snap={snap} />
-      </div>
 
       <SystemBanners snap={snap} />
 

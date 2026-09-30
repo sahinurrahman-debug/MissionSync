@@ -4,7 +4,7 @@ import type { Tier } from '../types'
 import { TIER_LABEL } from '../lib/format'
 
 /** Shared class fragments: one place to keep the type scale honest.
- *  Body/titles 16px, secondary 14px, uppercase micro-labels 12px. */
+ *  All text is >= 16px (Tailwind xs/sm are remapped to 1rem); hierarchy comes from weight, colour and case. */
 export const micro = 'text-xs font-semibold uppercase tracking-micro text-ink-2'
 
 export const TIER_BG: Record<Tier, string> = { P1: 'bg-p1', P2: 'bg-p2', P3: 'bg-p3', P4: 'bg-p4' }
@@ -86,7 +86,7 @@ const TONE: Record<Tone, string> = {
 
 export function Chip({ tone = 'neutral', children, title, className = '' }: { tone?: Tone; children: ReactNode; title?: string; className?: string }) {
   return (
-    <span title={title} className={`inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-xs font-semibold tnum ${TONE[tone]} ${className}`}>
+    <span title={title} className={`inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-xs font-semibold tnum ${TONE[tone]} ${className}`}>
       {children}
     </span>
   )

@@ -27,6 +27,7 @@ command -v cygpath >/dev/null 2>&1 && OUT_ABS=$(cygpath -w "$OUT_ABS")   # Windo
 
 shot() {  # name width height querystring
   # A fresh profile per shot: a lingering browser process would otherwise swallow the next launch.
+  rm -f "$OUT/$1.png"   # a failed shot must not look like a fresh one
   PROFILE=$(mktemp -d)
   PROFILE_ARG="$PROFILE"
   command -v cygpath >/dev/null 2>&1 && PROFILE_ARG=$(cygpath -w "$PROFILE")

@@ -230,9 +230,9 @@ describe('HeaderHud', () => {
   it('shows LIVE, and the telemetry keeps the Greek rho (not an upper-cased P)', () => {
     hud({ elapsed_s: 754 })
     expect(screen.getByText('LIVE')).toBeTruthy()
-    expect(screen.getByText('T+00:12:34')).toBeTruthy()
+    expect(screen.getAllByText('T+00:12:34').length).toBeGreaterThan(0)   // header (xl) and strip (smaller) share one component
     expect(document.body.textContent).toContain('ρ')
-    expect(screen.getByText('ρ').className).toContain('normal-case')
+    expect(screen.getAllByText('ρ')[0].className).toContain('normal-case')
   })
 
   it('reports OFFLINE and ENDED distinctly', () => {

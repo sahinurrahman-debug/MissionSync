@@ -28,11 +28,7 @@ Both themes are swapped by `data-theme` on `<html>`; no component has theme-spec
 
 Inter Variable (UI) and JetBrains Mono Variable (numbers, IDs, telemetry), self-hosted through `@fontsource-variable/*` — no third-party font requests.
 
-| Role | Size |
-|---|---|
-| Primary content (incident titles, orders, inputs) | 16 px |
-| Secondary (descriptions, metadata) | 15 px (`text-sm` is remapped to 0.9375 rem) |
-| Micro-labels (uppercase section tags only) | 12 px, +0.08 em tracking |
+**Every text size is ≥ 16 px (1 rem).** Tailwind's `text-xs` and `text-sm` are remapped to 1 rem in `tailwind.config.js`, so there is no smaller step to reach for; the map's sector labels, Leaflet attribution and tab captions follow. Hierarchy is carried by weight (400 / 600 / 800), colour (`ink` vs `ink-2`), uppercase + tracking (+0.08 em) for section labels, and the mono face for data — never by shrinking type. A test (`src/typography.test.ts`) fails if a smaller size is reintroduced in the config or as an arbitrary `text-[Npx]` class.
 
 Numbers use tabular figures (`.tnum`) so columns don't shimmer as values change.
 

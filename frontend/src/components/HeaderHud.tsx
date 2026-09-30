@@ -1,3 +1,4 @@
+import { useMedia } from '../lib/useMedia'
 import type { ReactNode } from 'react'
 import { Download, Flag, Loader2, Moon, RotateCcw, Sun, Timer, Truck, Zap } from 'lucide-react'
 import type { Metrics, Snapshot } from '../types'
@@ -39,14 +40,23 @@ export function TelemetryChips({ m, snap, className = '' }: { m: Metrics; snap: 
   )
 }
 
+export function ClockChip({ snap, className = '' }: { snap: Snapshot; className?: string }) {
+  return (
+    <Chip className={`shrink-0 ${className}`} title="Time since the drill started (stops when it ends)">
+      <Timer size={13} aria-hidden />
+      <span className="font-mono tnum">T+{clockOf(snap.elapsed_s)}</span>
+    </Chip>
+  )
+}
+
 export function EngineChips({ snap, className = '' }: { snap: Snapshot; className?: string }) {
   const m = snap.metrics
   const mode = modeChip(m.mode, m.model, snap.status !== 'live')
   const busy = snap.pipeline.stage !== 'idle'
   return (
-    <div className={`min-w-0 items-center gap-1.5 ${className}`}>
+    <div className={`shrink-0 items-center gap-1.5 ${className}`}>
       <Chip tone={mode.tone} title={mode.title}>{mode.label}</Chip>
-      <Chip className="w-[172px] justify-start" title="Active AI pipeline stage">
+      <Chip className="w-[150px] justify-start" title="Active AI pipeline stage">
         {busy ? <Loader2 size={13} className="animate-spin text-accent" aria-hidden /> : <span className="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />}
         <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : `tick ${snap.tick}`}</span>
       </Chip>
@@ -79,6 +89,7 @@ const iconBtn =
   'inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-hi text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent max-lg:h-11 max-lg:w-11'
 
 export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl, autoDispatch, onToggleAuto, onEndDrill }: Props) {
+  const wide = useMedia('(min-width: 640px)')
   const m = snap.metrics
   const booted = snap.status === 'live'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
@@ -89,34 +100,9 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
     : booted ? { label: 'LIVE', tone: 'ok' as const } : { label: 'BOOTING', tone: 'warn' as const }
   const beacon = status.tone === 'ok' ? 'bg-ok' : status.tone === 'bad' ? 'bg-p1' : 'bg-warn'
 
-  return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-panel px-3 lg:px-4">
-      {/* Brand + drill status */}
-      <div className="flex min-w-0 items-center gap-2.5">
-        <h1 className="whitespace-nowrap text-lg font-extrabold tracking-tight text-ink">
-          Mission<span className="text-accent">Sync</span>
-        </h1>
-        <Chip tone={status.tone} title={`Drill status: ${status.label}`}>
-          <span className="relative flex h-2 w-2" aria-hidden>
-            {status.tone === 'ok' && <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${beacon}`} />}
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${beacon}`} />
-          </span>
-          {status.label}
-        </Chip>
-      </div>
+  const actionButtons = (
+    <>
 
-      {/* Engine mode + live pipeline stage */}
-      <EngineChips snap={snap} className="hidden md:flex" />
-      <Chip className="hidden lg:inline-flex" title="Time since the drill started (stops when it ends)">
-        <Timer size={13} aria-hidden />
-        <span className="font-mono tnum">T+{clockOf(snap.elapsed_s)}</span>
-      </Chip>
-
-      {/* Drill telemetry (wide screens; smaller ones get the strip under the header) */}
-      <TelemetryChips m={m} snap={snap} className="ml-auto hidden xl:flex" />
-
-      {/* Utilities */}
-      <div className="ml-auto flex items-center gap-1.5 xl:ml-0">
         <button
           type="button"
           className={iconBtn}
@@ -146,10 +132,50 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
         <button type="button" className={iconBtn} onClick={onReset} disabled={resetting || offline} title="Restart the drill" aria-label="Restart the drill">
           {resetting ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <RotateCcw size={18} aria-hidden />}
         </button>
+    </>
+  )
+
+  return (
+    <>
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-panel px-3 lg:px-4">
+      {/* Brand + drill status */}
+      <div className="flex shrink-0 items-center gap-2.5">
+        <h1 className="whitespace-nowrap text-lg font-extrabold tracking-tight text-ink">
+          Mission<span className="text-accent">Sync</span>
+        </h1>
+        <Chip tone={status.tone} title={`Drill status: ${status.label}`}>
+          <span className="relative flex h-2 w-2" aria-hidden>
+            {status.tone === 'ok' && <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${beacon}`} />}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${beacon}`} />
+          </span>
+          {status.label}
+        </Chip>
+      </div>
+
+      {/* Engine mode + live pipeline stage */}
+      <EngineChips snap={snap} className="hidden lg:flex" />
+      <ClockChip snap={snap} className="hidden xl:inline-flex" />
+
+      {/* Drill telemetry (wide screens; smaller ones get the strip under the header) */}
+      <TelemetryChips m={m} snap={snap} className="ml-auto hidden min-[1700px]:flex" />
+
+      {/* Utilities: all of them from sm up; on a phone they move to the strip below so nothing is crushed */}
+      <div className="ml-auto flex items-center gap-1.5 min-[1700px]:ml-0">
+        {wide && actionButtons}
         <button type="button" className={iconBtn} onClick={onToggleTheme} title="Toggle light / dark" aria-label="Toggle color theme">
           {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
         </button>
       </div>
     </header>
+
+      {/* Telemetry + (on phones) the drill actions, for screens too narrow to show them in the HUD */}
+      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 min-[1700px]:hidden" aria-label="Drill telemetry and actions">
+        {!wide && <div className="flex items-center gap-1.5">{actionButtons}</div>}
+        <EngineChips snap={snap} className="flex lg:hidden" />
+        <ClockChip snap={snap} className="xl:hidden" />
+        <TelemetryChips m={m} snap={snap} />
+      </div>
+    </>
+
   )
 }

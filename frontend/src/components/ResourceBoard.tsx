@@ -49,7 +49,7 @@ export default function ResourceBoard({
           const eta = etaFor(r, inc)
           const tags = r.capacity_note.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 2)
           return (
-            <li key={r.id} className="grid h-[52px] grid-cols-[minmax(0,1fr)_92px_64px] items-center gap-2 px-3">
+            <li key={r.id} className="grid h-[52px] grid-cols-[minmax(0,1fr)_120px_64px] items-center gap-2 px-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Icon size={15} className="shrink-0 text-ink-2" aria-label={RESOURCE_LABEL[r.type]} />

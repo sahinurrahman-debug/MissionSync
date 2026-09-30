@@ -31,8 +31,9 @@ export default {
         sans: ['"Inter Variable"', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'Cascadia Code', 'Consolas', 'monospace'],
       },
-      // Secondary text is 15px (not 14): primary content is 16px, only uppercase micro-labels stay at 12px.
-      fontSize: { sm: ['0.9375rem', { lineHeight: '1.4' }] },
+      // Every text size in the UI is >= 16px: `sm` and `xs` are deliberately remapped to 1rem, so
+      // hierarchy comes from weight, colour, case and letter-spacing instead of shrinking type.
+      fontSize: { xs: ['1rem', { lineHeight: '1.3' }], sm: ['1rem', { lineHeight: '1.4' }] },
       borderRadius: { DEFAULT: '6px', md: '6px', lg: '8px' },
       boxShadow: {
         panel: '0 4px 12px rgba(0, 0, 0, 0.4)',

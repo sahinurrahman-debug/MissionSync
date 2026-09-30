@@ -95,17 +95,17 @@ body {
 
 /* ---------- Leaflet ---------------------------------------------------------------- */
 .leaflet-container { background: rgb(var(--bg)); font-family: theme('fontFamily.sans'); outline: none; }
-.leaflet-control-attribution { background: rgb(var(--panel) / 0.8) !important; color: rgb(var(--ink-2)) !important; font-size: 10px !important; }
+.leaflet-control-attribution { background: rgb(var(--panel) / 0.8) !important; color: rgb(var(--ink-2)) !important; font-size: 16px !important; }
 .leaflet-control-attribution a { color: rgb(var(--ink-2)) !important; }
 .leaflet-control-zoom a { background: rgb(var(--panel)) !important; color: rgb(var(--ink)) !important; border-color: rgb(var(--line)) !important; }
 .leaflet-tooltip {
   background: rgb(var(--panel)); color: rgb(var(--ink)); border: 1px solid rgb(var(--line));
-  border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); font-size: 13px; padding: 6px 8px;
+  border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); font-size: 16px; padding: 6px 8px;
 }
 .leaflet-tooltip-top:before { border-top-color: rgb(var(--line)); }
 .sector-label {
   background: transparent; border: 0; box-shadow: none; color: rgb(var(--ink-2));
-  font: 600 10px/1 theme('fontFamily.mono'); letter-spacing: 0.1em; text-transform: uppercase; padding: 0;
+  font: 600 16px/1 theme('fontFamily.mono'); letter-spacing: 0.04em; text-transform: uppercase; padding: 0;
 }
 .sector-label:before { display: none; }
 
