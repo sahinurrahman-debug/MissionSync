@@ -3,7 +3,7 @@
 > One live, ranked operational picture for volunteer emergency-response drills — built for the net control lead who is currently juggling a radio, a notebook, and a whiteboard.
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge)](LIVE_DEMO_URL)
-[![Repo](https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github)](https://github.com/sahinurrahman-debug/webdevmastery)
+[![Repo](https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github)](https://github.com/sahinurrahman-debug/MissionSync)
 
 <!-- ⚠️ BEFORE SUBMITTING: replace LIVE_DEMO_URL above with your Render frontend URL (https://<your-static-site>.onrender.com). Judges deduct for placeholders. -->
 
@@ -144,7 +144,7 @@ The repo ships a Blueprint, [`render.yaml`](./render.yaml), that creates all thr
 | `missionsync-api` | Python web service (`backend/`) | `uvicorn missionsync.main:app`, health check `/api/health`, WebSocket included. Free plan sleeps when idle (~1 min cold start). |
 | `missionsync-web` | Static site (`frontend/`) | `npm ci && npm run build` → `dist`. |
 
-1. Push the repo to GitHub (it already is: `sahinurrahman-debug/webdevmastery`).
+1. Push the repo to GitHub (it already is: `sahinurrahman-debug/MissionSync`).
 2. Render dashboard → **New → Blueprint** → select the repo → **Apply**.
 3. When prompted, set the secrets: `GROQ_API_KEY` (and optionally `KAGGLE_API_TOKEN`). Leave `CORS_ORIGINS` and `VITE_API_URL` for now (put any placeholder, e.g. `https://x.onrender.com`).
 4. Wait for the first deploy, then copy the two public URLs from the dashboard (e.g. `https://missionsync-api.onrender.com` and `https://missionsync-web.onrender.com`).
