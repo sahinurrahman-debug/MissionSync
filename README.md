@@ -1,91 +1,96 @@
 # MissionSync
 
-> Small volunteer emergency-response teams run drills on paper logs and group chats; MissionSync gives them one live, ranked operational picture instead.
+> One live, ranked operational picture for volunteer emergency-response drills — built for the net control lead who is currently juggling a radio, a notebook, and a whiteboard.
+
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge)](LIVE_DEMO_URL)
+[![Repo](https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github)](REPO_URL)
+
+<!-- ⚠️ BEFORE SUBMITTING: replace LIVE_DEMO_URL and REPO_URL above with your real URLs. Judges deduct for placeholders. -->
 
 ---
 
-## The Idea
+## Preview
 
-Campus CERT clubs and amateur-radio emergency teams run their exercises the same way professionals run real incidents — reports, triage, unit assignments — but with a notebook and a whiteboard, so duplicate reports become duplicate entries and the genuinely urgent call waits behind the roll call. MissionSync turns typed field reports into a structured, ranked, live operational picture: incidents are parsed, merged when they're duplicates, scored on transparent 0–100 urgency components, and matched to available units with capability-aware recommendations that a human approves. Net control gets one screen to run the drill from; responders and the exercise director see the same picture from their own devices. The bet worth testing is that volunteer teams don't need CAD-system infrastructure to get professional-grade triage — they need the paper log they already keep, made live and shared.
+| Desktop | Mobile |
+|---|---|
+| ![desktop](./screenshots/desktop.png) | ![mobile](./screenshots/mobile.png) |
 
----
+<em>Light mode:</em>
 
-## Sketch
-
-![Sketch](./docs/sketch.png)
-
-[View live board (Excalidraw)](https://excalidraw.com/#room=dc45f75888800794e0e6,kvfdLtfMVJnRXNi0TIiYJw) — opens in the browser, no login or access request.
-
-*Scene source: [docs/sketch.excalidraw](./docs/sketch.excalidraw) — regenerates the board at any time. Publishing and export steps: [docs/SKETCH.md](./docs/SKETCH.md).*
+| Desktop (light) | — |
+|---|---|
+| ![desktop light](./screenshots/desktop-light.png) | |
 
 ---
 
-## Documents
+## What It Does
 
-- [Product Requirements](./docs/PRD.md)
+During a 3-hour drill, the net control lead of a campus CERT or amateur-radio team transcribes every radio call onto a paper log and decides in their head which incident matters most. MissionSync turns typed field reports into a structured, ranked operational picture: reports are parsed into incidents, duplicates are merged into one entry, every incident is scored on a transparent 0–100 urgency scale (four auditable components → P1–P4 tier), and available units are matched to the top incidents with capability-aware deployments and ETAs. The whole thing updates live — units move toward their assignments, unaddressed incidents get worse, and the ranking legitimately re-orders itself as the drill evolves. A judge can open the site, type a mid-drill report, and watch the board re-rank without touching a key or a config file.
+
+---
+
+## Features
+
+- **Ranked incident feed** — every open incident scored on transparent 0–100 urgency (severity / population / spread / time-criticality, weighted composite in plain code); click a card to see the auditable component breakdown and rationale.
+- **Live incident map** — priority-colored markers sized by urgency (P1/P2 pulse), responder units shown moving toward their assignments, with a legend and a one-tap clear-selection control.
+- **Free-text report intake with duplicate merging** — type a field report mid-drill (or pick a sample); the pipeline parses it, merges it into an existing incident when it's the same type within ~1.5 km, and refreshes ranking, deployments, and recommendations in place.
+- **Command recommendations** — imperative headline orders, action bullets, and terrain/weather-aware warnings for the top four incidents, each with deployment chips (unit, role, ETA).
+- **Resource board & live event log** — all 12 units with status (available / en route / on scene), current assignment and ETA, plus a timestamped audit trail of every parse → merge → rank → deploy step for after-action review.
+- **Dark & light mode** with skeleton loaders, designed empty states, and graceful error handling — the board never blanks, crashes, or shows raw errors when something goes wrong.
+
+---
+
+## Planning Docs
+
+- [PRD](./docs/PRD.md)
 - [Architecture](./docs/ARCHITECTURE.md)
-- [API Spec](./docs/API_SPEC.md)
 - [Roadmap](./docs/ROADMAP.md)
-- [Requirements](./docs/REQUIREMENTS.md)
-- [Sketch notes & publishing steps](./docs/SKETCH.md)
+
+**Deviations from the plan:** The Roadmap's Kenshi milestone committed to the full three-pane board with the report → merge → re-rank → recommend loop running in the browser via a mock state layer — that's exactly what shipped. Three intentional changes: (1) the browser engine uses the prototype's deterministic fallback twins (the rule-based scoring/parsing/matching path) rather than porting the LLM calls — Kenshi is frontend-only, so the LLM moves to Samurai's server-side pipeline unchanged; (2) the xBD Kaggle dataset pull is replaced by a fixed, seeded cohort of incident scenarios with hidden ground-truth urgencies derived from the same damage-grade conversion — the Spearman ρ metric in the header is still computed against hidden ground truth, just from the offline cohort; (3) incidents are pinned to the six fictional sectors deterministically instead of cyclic sector assignment from dataset rows. Nothing was dropped: all seven PRD MVP features are present except multi-viewer WebSocket sync, which the Roadmap explicitly deferred to Samurai because it needs server state.
 
 ---
 
-## Planned Stack
+## Tech Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| Framework | React 18 + TypeScript + Vite (frontend) · FastAPI + uvicorn (backend) | Both already proven in this repo's prototype; WebSocket push onto a React re-render is exactly what a live drill board needs. |
-| Mapping | Leaflet + react-leaflet | Free OpenStreetMap tiles with no API key to manage, and the drill map is markers on a city — a paid map platform buys nothing here. |
-| Database | PostgreSQL (via SQLAlchemy 2.0 async) | Org → drill → incident → assignment state is relational, and JSONB absorbs the free-form fields LLM parsing produces. |
-| Auth | Firebase Authentication (email/password + Google) | Managed email verification, reset, and refresh tokens for free; org roles stay in Postgres keyed by Firebase UID. |
-| Hosting | Railway (API + Postgres) · Netlify/Vercel (frontend) | Cheapest path to HTTPS, managed Postgres, and git-push deploys at the free tiers that suffice for 25 users. |
-| Realtime | Single WebSocket pushing full world snapshots | Every drill screen must show the same picture within seconds; snapshot-on-cycle is simple and debuggable at ≤ 50 viewers. |
-| Intelligence | Groq (JSON-mode) + deterministic fallback twins | Sub-second structured completions fit the cycle budget; rule-based twins mean an LLM outage can never stall a drill. |
-| Scenario dataset | xBD damage assessment (`rayanhossain239/damageactu-xbd-full`) via kagglehub | Real building-damage records seed the simulator; ordinal damage grades convert to hidden ground-truth urgency for honest ranking metrics, with an offline fallback cohort when Kaggle is unreachable. |
-
----
-
-## What I'm Building Toward
-
-**Kenshi (frontend).** The full three-pane drill board — live map, ranked incident feed with auditable rationales, command recommendation cards, units panel, event log, and the one-box report intake — deployed as a static site with a mock state layer that streams simulated radio traffic and accepts typed reports, so the report → merge → re-rank → recommend loop genuinely runs in the browser at a public URL. No login, no persistence, no multi-viewer sync; those need a server and I'd rather show them honestly at Samurai.
-
-**Samurai (full-stack).** Firebase auth, PostgreSQL persistence, and per-org roles turn the board into a real tool: accounts and drill sessions, the agent pipeline running server-side behind the API with WebSocket snapshot push to every signed-in viewer, net control's human-commit actions (confirm assignments, close incidents), and a ground-truth harness that measures ranking accuracy instead of claiming it. Two friendly orgs dogfood the flow end to end.
-
-**Shogun (production).** Done means *used*: at least three real drill-running organizations and 25+ accounts active during live exercises, on a hardened deployment — HTTPS, CI, tested backups, uptime checks, rate-limited intake, and the LLM-outage fallback verified in production — with post-drill surveys and adoption metrics feeding the next iteration. Recruiting those orgs and running their drills is the milestone, not an afterthought.
+| Technology | Purpose |
+|---|---|
+| React 18 + TypeScript | UI framework, typed end to end |
+| Vite | Build tool & dev server |
+| Vanilla CSS (custom properties) | Design system: themes, tokens, responsive layout |
+| Leaflet + react-leaflet | Free OpenStreetMap incident map (no API key) |
+| Custom TS engine (`src/engine/`) | Deterministic agent pipeline: parse → merge → score → match → recommend |
+| Mulberry32 seeded RNG | Reproducible drill scenarios |
+| Vercel | Deployment |
 
 ---
 
-## Repo Status
+## Run Locally
 
-This repo currently contains a working prototype of the agent pipeline and dashboard (backend + frontend, built before Journey to Mastery). Level 2 (Kenshi) rebuilds the dashboard as a self-contained frontend deliverable per the roadmap above; the prototype's notes are archived in [docs/LEGACY_MISSIONSYNC_NOTES.md](./docs/LEGACY_MISSIONSYNC_NOTES.md).
-
----
-
-## Run the prototype
-
-The backend runs five distinct agents (surveillance, terrain, risk, logistics, and command). Set `GROQ_API_KEY` in `backend/.env` to use Groq; without a working key, the deterministic fallback implementations keep the demo operational. The dashboard reports per-agent LLM/fallback status.
-
-The simulator loads native xBD post-disaster label JSON files from the Kaggle dataset `rayanhossain239/damageactu-xbd-full` through kagglehub. It downloads a small annotation sample rather than the full ~33 GB image dataset. Configure `KAGGLE_API_TOKEN` in `backend/.env` using a token from [Kaggle account settings](https://www.kaggle.com/settings); if access is unavailable, the app labels the deterministic offline cohort in its dashboard.
-
-On Windows, from the repository root:
-
-```powershell
-Copy-Item backend\.env.example backend\.env
-# Edit backend\.env and set GROQ_API_KEY and KAGGLE_API_TOKEN.
-python -m venv backend\.venv
-backend\.venv\Scripts\python -m pip install -r backend\requirements.txt
-backend\.venv\Scripts\python -m uvicorn missionsync.main:app --app-dir backend --reload --port 8000
-```
-
-In another terminal, start the dashboard:
-
-```powershell
+```bash
+git clone REPO_URL
+cd MissionSync
 cd frontend
 npm install
+cp .env.example .env.local   # optional — no secrets required at Kenshi
 npm run dev
 ```
 
+Open http://localhost:5173. The drill starts immediately: five seeded incidents, units deploying on a 6-second tick, wave reports arriving mid-exercise.
+
+**Try the core loop:** type a report like *"fire spreading near the University lab block, three students trapped"* into the intake box and inject it — watch it parse, merge or create an incident, and the whole board re-rank.
+
+### Environment Variables
+
+| Variable | Description |
+|---|---|
+| `VITE_APP_ENV` | Optional build tag. Empty at Kenshi — no runtime secrets needed; the engine runs fully client-side. |
+
 ---
 
-*Submitted to Journey to Mastery — Level 1: Ronin*
+## What I Learned
+
+The hardest part was porting the backend's agent pipeline to the browser without it becoming fake: keeping the merge guard (same type within 1.5 km), the per-incident assignment caps, and the hidden-ground-truth Spearman ρ metric all genuinely computing, then proving it by injecting the follow-up collapse report and watching it merge instead of duplicate. The design decision I'm most proud of is the auditable breakdown: click any incident and animated bars show exactly how severity, population, spread, and time-criticality produced its urgency — the transparency that made the Level-1 ranking trustworthy, now *felt* instead of documented. I also learned that "loading states" matter most where judges land first: skeletons render during the boot cycle so the first paint is never a blank flash, and the theme restores before first paint to avoid a light-mode flash in dark mode. Finally, sizing markers by urgency and pulsing only P1/P2 taught me that the most purposeful animations are the ones that encode information — the eye is drawn to exactly the incident that needs it.
+
+---
+
+*Submitted to Journey to Mastery — Level 2: Kenshi*

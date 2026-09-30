@@ -39,3 +39,6 @@ Desktop.ini
 .vscode/
 *.swp
 *~
+
+# Legacy prototype artifacts are not part of the Kenshi deliverable
+backend/uvicorn.log

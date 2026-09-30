@@ -25,6 +25,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -99,7 +100,7 @@ def _urgency_for_grade(grade: Any) -> float:
     """Grade may arrive as 0-3 int, word form, or a coordinate-ish string."""
     if grade is None:
         return 40.0
-    g = _norm(grade)
+    g = _norm(grade).replace("-", " ")  # xBD subtypes are hyphenated: 'no-damage', 'major-damage'
     # Robust ordinal extraction: prefer any digit 0-3 in the value.
     for ch in g:
         if ch.isdigit() and int(ch) <= 3:
@@ -160,10 +161,44 @@ def row_to_seed(row: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _features_of(document: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten a GeoJSON FeatureCollection into a plain feature list.
+
+    Native xBD annotation files nest features under a dict keyed by
+    coordinate space (``{"lng_lat": [...], "xy": [...]}``); ``lng_lat``
+    features carry real lon/lat WKT polygons. Standard GeoJSON uses a
+    plain list, which some older xBD exports also use.
+    """
+    features = document.get("features")
+    if isinstance(features, list):
+        return [f for f in features if isinstance(f, dict)]
+    if isinstance(features, dict):
+        for key in ("lng_lat", "xy"):
+            coll = features.get(key)
+            if isinstance(coll, list):
+                return [f for f in coll if isinstance(f, dict)]
+    return []
+
+
+def _wkt_point(wkt: str) -> tuple[float, float] | None:
+    """Representative (lon, lat) from the first coordinates of a WKT polygon.
+
+    Returns None when the numbers are not plausible geographic degrees
+    (the ``xy`` collection is image-pixel space, so its values fail this
+    check and the seed stays at (0, 0)).
+    """
+    nums = re.findall(r"-?\d+(?:\.\d+)?", wkt or "")
+    if len(nums) >= 2:
+        lon, lat = float(nums[0]), float(nums[1])
+        if -180 <= lon <= 180 and -90 <= lat <= 90:
+            return lon, lat
+    return None
+
+
 def geojson_to_seed(document: dict[str, Any], file_path: str) -> dict[str, Any] | None:
     """Convert one native xBD post-disaster GeoJSON file into a scenario seed."""
-    features = document.get("features")
-    if not isinstance(features, list):
+    features = _features_of(document)
+    if not features:
         return None
 
     buildings = [
@@ -180,14 +215,16 @@ def geojson_to_seed(document: dict[str, Any], file_path: str) -> dict[str, Any] 
     worst = max(damage, key=_urgency_for_grade)
     event = Path(file_path).name.split("_")[0].replace("-", " ")
     urgency = _urgency_for_grade(worst)
+    # lng_lat features carry real coordinates in WKT (kept as provenance only);
+    # xy/pixel-space or coordinate-less files stay at (0, 0) — the simulator
+    # assigns every seed a fictional operational-sector location anyway.
+    point = _wkt_point(str(features[0].get("wkt", ""))) if features else None
     seed = row_to_seed({
         "disaster": event,
         "damage_grade": worst,
         "raw_text": f"xBD {event} assessment: {len(buildings)} building footprints identified.",
-        # xBD annotation geometry is image-pixel space, not latitude/longitude.
-        # The simulator assigns a fictional operational-sector location.
-        "lat": 0.0,
-        "lon": 0.0,
+        "lat": point[1] if point else 0.0,
+        "lon": point[0] if point else 0.0,
     })
     return seed
 
