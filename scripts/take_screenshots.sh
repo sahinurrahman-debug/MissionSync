@@ -39,8 +39,11 @@ shot() {  # name width height querystring
 }
 
 sep=$([[ "$URL" == *\?* ]] && echo "&" || echo "?")
-shot desktop        1600 900 "${sep}theme=dark"
-shot desktop-light  1366 768 "${sep}theme=light"
+shot desktop        1600 900 "${sep}theme=dark&view=situation"
+shot view-orders    1600 900 "${sep}theme=dark&view=orders"
+shot view-report    1600 900 "${sep}theme=dark&view=report"
+shot view-fleet     1600 900 "${sep}theme=dark&view=fleet"
+shot desktop-light  1366 768 "${sep}theme=light&view=situation"
 
 # Headless Edge/Chrome won't open a window narrower than ~500px; the phone layout
 # applies at anything <= 560px, so 500px wide shows the real mobile layout uncropped.

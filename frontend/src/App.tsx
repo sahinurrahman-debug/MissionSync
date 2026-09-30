@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ScrollText, Truck } from 'lucide-react'
 import { createSource } from './api/connect'
 import type { DataSource } from './source'
 import { ApiError } from './types'
@@ -7,11 +7,16 @@ import { useMedia } from './lib/useMedia'
 import ActionToast, { type ToastMessage } from './components/ActionToast'
 import AdminKeyDialog from './components/AdminKeyDialog'
 import ErrorBoundary from './components/ErrorBoundary'
+import EventLog from './components/EventLog'
 import FleetAndLog from './components/FleetAndLog'
-import HeaderHud from './components/HeaderHud'
+import HeaderHud, { ClockChip, TelemetryChips } from './components/HeaderHud'
 import IncidentFeed from './components/IncidentFeed'
+import ResourceBoard from './components/ResourceBoard'
+import { FleetSkeleton } from './components/Skeletons'
+import { Panel, PanelHeader } from './components/ui'
 import MapPanel from './components/MapPanel'
 import MobileTabs, { type MobileTab } from './components/MobileTabs'
+import SideNav, { VIEWS, type View } from './components/SideNav'
 import Recommendations from './components/Recommendations'
 import ReportIntake from './components/ReportIntake'
 import SystemBanners from './components/SystemBanners'
@@ -90,6 +95,24 @@ function Board({ source }: { source: DataSource }) {
   const [showUnits, setShowUnits] = useState(true)
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState<MobileTab>('feed')
+  const [view, setViewState] = useState<View>(() => {
+    const qs = new URLSearchParams(window.location.search).get('view')       // ?view=orders (links, screenshots)
+    if (VIEWS.some((v) => v.id === qs)) return qs as View
+    try {
+      const saved = localStorage.getItem('ms-view')
+      return VIEWS.some((v) => v.id === saved) ? (saved as View) : 'situation'
+    } catch {
+      return 'situation'
+    }
+  })
+  const setView = useCallback((v: View) => {
+    setViewState(v)
+    try {
+      localStorage.setItem('ms-view', v)
+    } catch {
+      /* the choice just isn't remembered */
+    }
+  }, [])
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [adminPrompt, setAdminPrompt] = useState<{ label: string; run: () => Promise<void>; rejected: boolean } | null>(null)
   const toastId = useRef(0)
@@ -108,6 +131,20 @@ function Board({ source }: { source: DataSource }) {
     toastId.current += 1
     setToast({ id: toastId.current, tone, text })
   }, [])
+
+  // 1-4 jump between sections (desktop), unless the user is typing.
+  useEffect(() => {
+    if (!desktop) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || adminPrompt) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      const v = VIEWS[Number(e.key) - 1]
+      if (v) setView(v.id)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [desktop, adminPrompt, setView])
 
   /** Runs a net-control action. Protected actions that the server refuses ask for the admin key once. */
   const act = useCallback(async (label: string, run: () => Promise<void>, opts: { admin?: boolean; ok?: string; retry?: boolean } = {}) => {
@@ -205,6 +242,29 @@ function Board({ source }: { source: DataSource }) {
       />
     </ErrorBoundary>
   )
+  const fleetPanel = (
+    <Panel className="h-full" label="Resource fleet">
+      <PanelHeader
+        title="Resource fleet"
+        icon={<Truck size={15} />}
+        right={<span>{snap.resources.filter((r) => r.status === 'available').length}/{snap.resources.length} free</span>}
+      />
+      <div className="min-h-0 flex-1">
+        <ErrorBoundary label="The fleet board">
+          <ResourceBoard resources={snap.resources} incidents={snap.incidents} loading={loading} onRecall={actions.onRecall} disabled={busy || inputsLocked} />
+        </ErrorBoundary>
+      </div>
+    </Panel>
+  )
+  const logPanel = (
+    <Panel className="h-full" label="Live audit log">
+      <PanelHeader title="Live audit log" icon={<ScrollText size={15} />} right={<span>{m.injections} injected</span>} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ErrorBoundary label="The audit log">{loading ? <FleetSkeleton /> : <EventLog lines={snap.event_log} />}</ErrorBoundary>
+      </div>
+    </Panel>
+  )
+  const mapFrame = <div className="relative h-full min-h-0 overflow-hidden rounded-lg border border-line">{map}</div>
   const fleet = <FleetAndLog snap={snap} loading={loading} injections={m.injections} onRecall={actions.onRecall} disabled={busy || inputsLocked} />
 
   return (
@@ -214,7 +274,8 @@ function Board({ source }: { source: DataSource }) {
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[3000] focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-bold focus:text-bg"
         onClick={(e) => {
           e.preventDefault()
-          if (!desktop) setTab('feed')
+          if (desktop) setView('situation')
+          else setTab('feed')
           requestAnimationFrame(() => document.getElementById('incident-feed')?.focus())
         }}
       >
@@ -237,17 +298,40 @@ function Board({ source }: { source: DataSource }) {
       <SystemBanners snap={snap} />
 
       {desktop ? (
-        <main id="main" className="grid min-h-0 flex-1 grid-cols-[55fr_45fr] gap-2 p-2">
-          <div className="flex min-h-0 flex-col gap-2">
-            <div className="relative min-h-0 flex-[48] overflow-hidden rounded-lg border border-line">{map}</div>
-            <div id="incident-feed" tabIndex={-1} className="min-h-0 flex-[52] outline-none">{feed}</div>
-          </div>
-          <div className="flex min-h-0 flex-col gap-2">
-            <div className="min-h-0 flex-[46]">{orders}</div>
-            <div className="shrink-0">{intake}</div>
-            <div className="min-h-0 flex-[36]">{fleet}</div>
-          </div>
-        </main>
+        <div className="flex min-h-0 flex-1">
+          <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length }} />
+          <main id="main" className="min-h-0 min-w-0 flex-1 p-2">
+            {view === 'situation' && (
+              <div className="flex h-full min-h-0 flex-col gap-2">
+                <div className="no-scrollbar shrink-0 overflow-x-auto min-[1700px]:hidden" aria-label="Drill telemetry">
+                  <div className="flex items-center gap-1.5"><ClockChip snap={snap} className="xl:hidden" /><TelemetryChips m={m} snap={snap} /></div>
+                </div>
+                <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,58fr)_minmax(0,42fr)] gap-2">
+                  {mapFrame}
+                  <div id="incident-feed" tabIndex={-1} className="min-h-0 outline-none">{feed}</div>
+                </div>
+              </div>
+            )}
+            {view === 'orders' && (
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                {orders}
+                {mapFrame}
+              </div>
+            )}
+            {view === 'report' && (
+              <div className="flex h-full min-h-0 flex-col gap-2">
+                <div className="shrink-0">{intake}</div>
+                <div className="min-h-0 flex-1">{logPanel}</div>
+              </div>
+            )}
+            {view === 'fleet' && (
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                {fleetPanel}
+                {mapFrame}
+              </div>
+            )}
+          </main>
+        </div>
       ) : (
         <>
           <main id="main" className="min-h-0 flex-1 p-2">

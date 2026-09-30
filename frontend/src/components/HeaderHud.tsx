@@ -169,7 +169,7 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
     </header>
 
       {/* Telemetry + (on phones) the drill actions, for screens too narrow to show them in the HUD */}
-      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 min-[1700px]:hidden" aria-label="Drill telemetry and actions">
+      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 lg:hidden" aria-label="Drill telemetry and actions">
         {!wide && <div className="flex items-center gap-1.5">{actionButtons}</div>}
         <EngineChips snap={snap} className="flex lg:hidden" />
         <ClockChip snap={snap} className="xl:hidden" />

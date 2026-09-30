@@ -18,6 +18,15 @@
 |---|---|
 | ![Desktop, light](./screenshots/desktop-light.png) | ![Mobile](./screenshots/mobile.png) |
 
+**One section per panel.** A left navigation rail (keys `1`–`4`) splits the dashboard so nothing competes for space — *Situation* (map + ranked incidents), *Orders* (approve / reject dispatches beside the map), *Report* (intake + live audit log), *Fleet* (every unit beside the map). Phones get the same sections as a bottom tab bar.
+
+| Orders | Report | Fleet |
+|---|---|---|
+| ![Orders](./screenshots/view-orders.png) | ![Report](./screenshots/view-report.png) | ![Fleet](./screenshots/view-fleet.png) |
+
+---|---|
+| ![Desktop, light](./screenshots/desktop-light.png) | ![Mobile](./screenshots/mobile.png) |
+
 ---
 
 ## What It Does
@@ -41,6 +50,7 @@ The app is honest about which one you're looking at. The header badge says **AI*
 
 ## Features
 
+- **Sectioned navigation** — a side rail (desktop) / bottom tabs (phone) gives each job its own panel, with live badges for P1/P2 incidents and dispatches awaiting approval; `1`–`4` switch sections and the last one is remembered.
 - **Ranked incident feed** — transparent 0–100 urgency (severity / population / spread / time-criticality, weighted composite computed in plain code); click a card for the component breakdown and rationale.
 - **Live incident map** — priority-colored markers sized by urgency (P1/P2 pulse), every responder unit drawn (idle at base, en route, on scene, returning). A dashed ring marks a report that named no place.
 - **Free-text report intake** — type what is happening and where. The place words ("University lab block", "Industrial Park gate 3", "Riverfront levee") put it on the map; the same type within ~1.5 km merges into the existing incident; text that isn't an emergency is rejected instead of dispatching a unit.
