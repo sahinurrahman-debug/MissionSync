@@ -2,7 +2,7 @@
 
 > One live, ranked operational picture for volunteer emergency-response drills — built for the net control lead who is currently juggling a radio, a notebook, and a whiteboard.
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge)](LIVE_DEMO_URL)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge)](https://missionsync-web.onrender.com)
 [![Repo](https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github)](https://github.com/sahinurrahman-debug/MissionSync)
 
 <!-- ⚠️ BEFORE SUBMITTING: replace LIVE_DEMO_URL above with your Render frontend URL (https://<your-static-site>.onrender.com). Judges deduct for placeholders. -->
