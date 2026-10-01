@@ -84,7 +84,7 @@ export default function App() {
     )
   }
   return (
-    <ErrorBoundary label="MissionSync">
+    <ErrorBoundary label="MissionSync" scope="app">
       <Board source={source} />
     </ErrorBoundary>
   )

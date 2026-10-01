@@ -333,10 +333,28 @@ describe('ActionToast and ErrorBoundary', () => {
     }
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<ErrorBoundary label="The map"><Bomb /></ErrorBoundary>)
-    expect(screen.getByRole('alert').textContent).toContain('The map hit a problem')
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('The map hit a problem')
+    expect(alert.textContent).toContain('The rest of the board is still live')
+    expect(alert.textContent).not.toContain('kaboom')                         // the technical message never reaches the user ...
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('The map crashed'), expect.any(Error), expect.anything())   // ... only the console
     explode = false
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(screen.getByText('recovered')).toBeTruthy()
+    spy.mockRestore()
+  })
+
+  it('a crash of the whole app offers a reload instead of a retry, still without raw errors', () => {
+    function Bomb(): never {
+      throw new TypeError("Cannot read properties of undefined (reading 'incidents')")
+    }
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<ErrorBoundary label="MissionSync" scope="app"><Bomb /></ErrorBoundary>)
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('MissionSync hit a problem')
+    expect(alert.textContent).not.toMatch(/Cannot read|undefined|TypeError/)
+    expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     spy.mockRestore()
   })
 })
