@@ -20,7 +20,7 @@
   --ink-2: 147 161 168;      /* #93A1A8 */
   --muted: 58 69 75;         /* #3A454B (borders/dividers, never text) */
   --accent: 45 212 191;      /* #2DD4BF teal */
-  --p1: 239 68 68;           /* #EF4444 critical */
+  --p1: 248 113 113;          /* #F87171 critical (4.5:1 even on its own 10-15% tinted chip) */
   --p2: 245 158 11;          /* #F59E0B urgent */
   --p3: 234 179 8;           /* #EAB308 moderate */
   --p4: 100 116 139;         /* #64748B advisory */

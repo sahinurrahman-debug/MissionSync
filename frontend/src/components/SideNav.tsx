@@ -22,7 +22,6 @@ export default function SideNav({ view, onChange, badge }: { view: View; onChang
             type="button"
             onClick={() => onChange(id)}
             aria-current={active ? 'page' : undefined}
-            aria-label={n != null && n > 0 ? `${label}, ${n} ${id === 'orders' ? 'awaiting approval' : 'P1/P2'}` : label}
             aria-keyshortcuts={String(i + 1)}
             title={`${hint} (${i + 1})`}
             className={`relative flex h-[72px] flex-col items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-colors ${
@@ -30,15 +29,14 @@ export default function SideNav({ view, onChange, badge }: { view: View; onChang
             }`}
           >
             {active && <span className="absolute -left-2 top-3 h-[calc(100%-24px)] w-1 rounded-r bg-accent" aria-hidden />}
-            <span className="relative">
-              <Icon size={22} aria-hidden />
-              {n != null && n > 0 && (
-                <span className="absolute -right-3.5 -top-2 min-w-[22px] rounded-full bg-p1 px-1 text-center font-mono text-base font-bold leading-5 text-white tnum" aria-hidden>
-                  {n}
-                </span>
-              )}
-            </span>
+            <Icon size={22} aria-hidden />
             {label}
+            {n != null && n > 0 && (
+              <span className="absolute right-1.5 top-1 min-w-[22px] rounded-full bg-p1 px-1 text-center font-mono text-base font-bold leading-5 text-on-tier tnum">
+                {n}
+                <span className="sr-only"> {id === 'orders' ? 'awaiting approval' : 'P1/P2'}</span>
+              </span>
+            )}
           </button>
         )
       })}

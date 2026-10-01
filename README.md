@@ -167,7 +167,12 @@ The free tier allows roughly **200,000 tokens per day per model, per organizatio
 | Ranking accuracy vs hidden xBD ground truth | Spearman ρ = **0.90** (live LLM) | `scripts/measure_live.py` |
 | Report → ranked on the board | **~70 ms** p50 with one dashboard open (rule-ranked, then LLM-refined in the background) | `scripts/load_test.py` |
 | Fan-out cost | Intake stays fast for a demo-sized audience: p50 ≈ 70 ms (1 dashboard), ≈ 250 ms (10), ≈ 0.8 s (50, measured on one shared laptop CPU that also ran the load generator). All 50 sockets held, 0 drops, 0 failed reports. A stuck client is dropped after 5 s and never blocks the drill | `scripts/load_test.py --clients N` |
-| Contrast | every token pair ≥ WCAG AA in both themes | `npm run audit:contrast` |
+| Contrast | every token pair ≥ WCAG AA in both themes (incl. tinted status chips) | `npm run audit:contrast` |
+| Lighthouse, desktop | Performance **95–97** · Accessibility **96** · Best practices **100** · SEO **100**; FCP 0.5 s, LCP 1.3–1.5 s, TBT ≈ 0 ms, CLS 0.025 | Lighthouse 13, production build via `vite preview`, Edge headless |
+| Lighthouse, mobile (simulated slow 4G + 4× CPU) | Performance **84–85** · Accessibility **100** · Best practices **100** · SEO **100**; FCP 2.3 s, LCP 3.2 s, TBT ≈ 240 ms, CLS 0.07 | same |
+| Frame pacing while using the board (section switches, approving, scrolling, selecting) | **55 fps** average, p95 frame 17.2 ms, 98 % of frames faster than 30 fps; the slow frames are section switches that remount the map. Software-rendered headless Edge, so a real GPU is faster | `node scripts/measure_fps.mjs` |
+
+The one remaining Lighthouse accessibility note on desktop is Leaflet's overlapping map pins (target-size); the incident feed offers the same selection with large targets.
 
 ### Tests
 
@@ -211,9 +216,9 @@ The repo ships a Blueprint, [`render.yaml`](./render.yaml), that creates all thr
 
 State note: one instance runs one shared drill. With a database attached the drill is checkpointed and **restored after a restart or a free-tier wake-up**; without one it starts fresh. The API start command trusts Render's proxy headers (`--forwarded-allow-ips='*'`) so each visitor gets their own rate-limit bucket. Free-tier limits to know: the API sleeps after ~15 min idle (first request takes ~1 min) and the free Postgres is deleted after 30 days.
 
-## Data and asset licences
+## Licence
 
-See [`NOTICE`](./NOTICE): the xBD data is **CC BY-NC-SA 4.0 (non-commercial)**, map tiles © OpenStreetMap contributors, fonts are bundled (SIL OFL) and served from this site.
+Code: [MIT](./LICENSE). Data and assets: see [`NOTICE`](./NOTICE): the xBD data is **CC BY-NC-SA 4.0 (non-commercial)**, map tiles © OpenStreetMap contributors, fonts are bundled (SIL OFL) and served from this site.
 
 ## Planning Docs
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Loader2, ScrollText, Truck } from 'lucide-react'
 import { createSource } from './api/connect'
 import type { DataSource } from './source'
@@ -14,12 +14,25 @@ import IncidentFeed from './components/IncidentFeed'
 import ResourceBoard from './components/ResourceBoard'
 import { FleetSkeleton } from './components/Skeletons'
 import { Panel, PanelHeader } from './components/ui'
-import MapPanel from './components/MapPanel'
 import MobileTabs, { type MobileTab } from './components/MobileTabs'
 import SideNav, { VIEWS, type View } from './components/SideNav'
 import Recommendations from './components/Recommendations'
 import ReportIntake from './components/ReportIntake'
 import SystemBanners from './components/SystemBanners'
+
+// Leaflet is ~90 KB gzipped: load it after first paint so the shell appears sooner (most of all on phones).
+const loadMap = () => import('./components/MapPanel')
+const MapPanel = lazy(loadMap)
+// Desktop opens on the map: start fetching it immediately, in parallel with the rest of the app.
+// Phones open on the feed, so the map waits until the browser is idle.
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  if (window.matchMedia('(min-width: 1024px)').matches) void loadMap()
+  else (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1500)))(() => void loadMap())
+}
+
+function MapFallback() {
+  return <div className="h-full w-full animate-pulse bg-hi" role="status" aria-label="Loading the map" />
+}
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -195,6 +208,7 @@ function Board({ source }: { source: DataSource }) {
 
   const map = (
     <ErrorBoundary label="The map">
+      <Suspense fallback={<MapFallback />}>
       <MapPanel
         incidents={snap.incidents}
         resources={showUnits ? snap.resources : []}
@@ -203,6 +217,7 @@ function Board({ source }: { source: DataSource }) {
         theme={theme}
         loading={loading}
       />
+      </Suspense>
     </ErrorBoundary>
   )
   const feed = (

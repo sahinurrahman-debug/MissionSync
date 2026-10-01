@@ -18,6 +18,8 @@ const pairs = (t) => [
   ['ok text on panel', t.ok, t.panel], ['route text on panel', t.route, t.panel], ['scene text on panel', t.scene, t.panel], ['warn text on panel', t.warn, t.panel],
   ['ok on ok/15 status chip', t.ok, mix(t.ok, t.panel, 0.15)], ['route on route/15', t.route, mix(t.route, t.panel, 0.15)], ['scene on scene/15', t.scene, mix(t.scene, t.panel, 0.15)],
   ['warn text on warn/10 chip', t.warn, mix(t.warn, t.panel, 0.1)],
+  ['p1 text on p1/10 chip (AI QUOTA HIT, OFFLINE)', t.p1, mix(t.p1, t.panel, 0.1)],
+  ['p1 text on p1/10 chip over page bg', t.p1, mix(t.p1, t.bg, 0.1)],
   ['ink on warn/10 banner', t.ink, mix(t.warn, t.bg, 0.1)],
   ['on-tier on P1 pill', t['on-tier'], t.p1], ['on-tier on P2 pill', t['on-tier'], t.p2], ['on-tier on P3 pill', t['on-tier'], t.p3], ['white on P4 pill', [255,255,255], t.p4],
 ]

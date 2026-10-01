@@ -366,3 +366,22 @@ def test_audit_events_are_not_lost_when_the_database_hiccups(tmp_path, monkeypat
         assert any("first line" in m for m in stored) and any("second line" in m for m in stored)
         assert not o._unsaved
     run(go())
+
+
+def test_an_ended_drill_is_history_and_a_restart_opens_a_fresh_one(tmp_path) -> None:
+    """A redeploy or free-tier wake-up must never come back frozen on 'Drill ended'."""
+    async def go():
+        url = f"sqlite:///{tmp_path / 'e.db'}"
+        a = await booted(auto=True, store=Store(url))
+        await a.end_drill()
+        assert a.snapshot().status == "ended"
+
+        b = Orchestrator(Store(url))
+        assert await b._try_restore() is False                                   # not resumed ...
+        await b.bootstrap()                                                      # ... so the server boots a new drill
+        snap = b.snapshot()
+        assert snap.status == "live" and snap.incidents and b.drill_id != a.drill_id
+        outcome, _ = await b.inject_report(IncomingReport(text="Ammonia leak at Industrial Park depot, 4 workers hurt"))
+        assert outcome.kind != "rejected"                                        # and it accepts reports
+        assert len(b.store.list_drills()) >= 2                                   # the ended drill stays in the history
+    run(go())

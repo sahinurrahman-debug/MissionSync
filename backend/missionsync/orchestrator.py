@@ -306,7 +306,9 @@ class Orchestrator:
                 return False
             state, at = saved
             age = (datetime.now(timezone.utc) - at).total_seconds()
-            if state.get("version") != STATE_VERSION or state.get("status") not in ("live", "ended") or age > STATE_MAX_AGE_S:
+            # An ended drill is history (its audit trail and CSV stay in the database); a restart or a
+            # free-tier wake-up must open a fresh, usable drill rather than a frozen one.
+            if state.get("version") != STATE_VERSION or state.get("status") != "live" or age > STATE_MAX_AGE_S:
                 return False
             async with self._lock:
                 self.import_state(state)

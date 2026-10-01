@@ -1,5 +1,9 @@
 MissionSync — third-party notices
 
+MissionSync's own source code is MIT-licensed (see LICENSE). The notices below cover the
+third-party data and assets it uses, which keep their own terms — notably the xBD data is
+non-commercial (CC BY-NC-SA 4.0), so a deployment that uses it is non-commercial too.
+
 Data
   xBD building-damage dataset (xView2) — CC BY-NC-SA 4.0 — https://xview2.org
   Gupta et al., "xBD: A Dataset for Assessing Building Damage from Satellite Imagery", 2019.

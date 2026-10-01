@@ -21,8 +21,8 @@ describe('SideNav', () => {
 
   it('says what the badges mean, in words', () => {
     render(<SideNav view="situation" onChange={vi.fn()} badge={{ situation: 4, orders: 9 }} />)
-    expect(screen.getByRole('button', { name: 'Orders, 9 awaiting approval' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Situation, 4 P1/P2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Orders\s*9\s*awaiting approval$/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Situation\s*4\s*P1\/P2$/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Fleet' })).toBeTruthy()            // no badge ⇒ plain name
   })
 

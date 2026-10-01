@@ -29,7 +29,7 @@ export default function MobileTabs({ tab, onChange, badge }: { tab: MobileTab; o
             <span className="relative">
               <Icon size={20} aria-hidden />
               {n != null && n > 0 && (
-                <span className="absolute -right-2.5 -top-1.5 min-w-[22px] rounded-full bg-p1 px-1 text-center font-mono text-base font-bold leading-5 text-white tnum">{n}</span>
+                <span className="absolute -right-2.5 -top-1.5 min-w-[22px] rounded-full bg-p1 px-1 text-center font-mono text-base font-bold leading-5 text-on-tier tnum">{n}</span>
               )}
             </span>
             {label}

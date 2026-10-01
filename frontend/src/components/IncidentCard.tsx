@@ -72,7 +72,7 @@ export default function IncidentCard({
           type="button"
           onClick={() => onSelect(selected ? null : incident.id)}
           aria-pressed={selected}
-          aria-label={`${incident.title}. Rank ${rank}, ${tier}. ${selected ? 'Selected' : 'Select to focus on the map'}`}
+          title={selected ? 'Selected — shown on the map' : 'Select to focus on the map'}
           className="block w-full px-3 pb-2 pt-2.5 text-left"
         >
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

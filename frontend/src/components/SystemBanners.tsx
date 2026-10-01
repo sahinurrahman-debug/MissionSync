@@ -49,6 +49,9 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
           <b>Degraded mode:</b> the LLM is unavailable (no API key, or the provider is failing) — rule-based agents are running.
         </Banner>
       )}
+      {alerts.length === 0 && snap.status === 'booting' && (
+        <div className="h-[41px] border-b border-line bg-hi" aria-hidden />   // reserve the advisory row so the page doesn't jump when data arrives
+      )}
       {alerts.length > 0 && (
         <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-line bg-hi px-3 py-1.5 lg:px-4" role="status" aria-label="Weather advisories">
           {alerts.map((w) => (
