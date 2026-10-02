@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import time
@@ -23,6 +24,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -44,10 +47,10 @@ if API_KEY:
 
         _client = AsyncGroq(api_key=API_KEY, max_retries=0)
     except Exception as exc:  # pragma: no cover
-        print(f"[llm] Groq SDK unavailable, agents will use fallbacks: {exc}")
+        logger.warning("Groq SDK unavailable, agents will use fallbacks: %s", exc)
         _client = None
 else:
-    print("[llm] GROQ_API_KEY not set — agents running in rule-based fallback mode")
+    logger.warning("GROQ_API_KEY not set — agents running in rule-based fallback mode")
 
 latency_log: deque[dict[str, Any]] = deque(maxlen=300)
 _REQUIRED_AGENTS = ("surveillance", "terrain", "risk", "logistics", "command")

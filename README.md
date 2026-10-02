@@ -31,7 +31,7 @@
 
 ## What It Does
 
-During a 3-hour drill, the net control lead of a campus CERT or amateur-radio team transcribes every radio call onto a paper log and decides in their head which incident matters most. MissionSync turns typed field reports into a structured, ranked operational picture: reports are parsed into incidents, duplicates are merged into one entry, every incident is scored on a transparent 0–100 urgency scale (four auditable components → P1–P4 tier), and available units are matched to incidents with capability-aware deployments and ETAs. It updates live — units drive to their assignments, work the scene, contain it, and return to base; unaddressed casualties get worse; the ranking re-orders itself as the drill evolves. A judge can open the site, type a mid-drill report, and watch the board re-rank.
+During a 3-hour drill, the net control lead of a campus CERT or amateur-radio team transcribes every radio call onto a paper log and decides in their head which incident matters most. MissionSync turns typed field reports into a live, ranked operational picture: reports become incidents, duplicates merge into one entry, every incident gets a transparent 0–100 urgency score (four auditable components → P1–P4), and available units are matched to incidents with capability-aware deployments and ETAs. The agents only *propose* — you approve or reject each dispatch, then watch units drive to the scene, work it, and return to base while the ranking re-orders itself as the drill evolves. A judge can open the site, type a mid-drill report such as “fire near the University lab block, three trapped”, and watch the board re-rank.
 
 ---
 
@@ -77,7 +77,9 @@ The app is honest about which one you're looking at. The header badge says **AI*
 | Pydantic | Typed models, and the validation gate for LLM output |
 | kagglehub + xBD | Real scenario data |
 | PostgreSQL (SQLAlchemy) | Optional: drill history, audit trail, submitted reports, CSV export |
-| Vitest + Testing Library + axe-core, pytest | 106 frontend + 124 backend tests, an automated accessibility check, and a WCAG contrast audit |
+| Vitest + Testing Library + axe-core, pytest | 115 frontend + 126 backend tests, an automated accessibility check, and a WCAG contrast audit |
+| Render (static site + web service + Postgres) | Deployment, described by the `render.yaml` Blueprint |
+| GitHub Actions | CI: typecheck, tests, contrast audit and build on every push |
 
 ---
 
@@ -114,9 +116,12 @@ Kenshi is judged on the frontend, so the core loop (report → merge → re-rank
 
 ## Run locally (full stack)
 
-You need Python 3.11+ and Node 18+.
+You need Python 3.11+ and Node 20.19+ (22 recommended).
 
 ```bash
+git clone https://github.com/sahinurrahman-debug/MissionSync
+cd MissionSync
+
 # 1. Backend  (terminal 1)
 cd backend
 python -m venv .venv
@@ -225,6 +230,8 @@ Code: [MIT](./LICENSE). Data and assets: see [`NOTICE`](./NOTICE): the xBD data 
 - [PRD](./docs/PRD.md) · [Architecture](./docs/ARCHITECTURE.md) · [Requirements](./docs/REQUIREMENTS.md) · [API spec](./docs/API_SPEC.md) · [Roadmap](./docs/ROADMAP.md) · [Design system](./docs/DESIGN_SYSTEM.md)
 - [Sketch](./docs/SKETCH.md) — live board: <https://excalidraw.com/#room=dc45f75888800794e0e6,kvfdLtfMVJnRXNi0TIiYJw> · static backup [`docs/sketch.png`](./docs/sketch.png)
 - [Legacy prototype notes](./docs/LEGACY_MISSIONSYNC_NOTES.md)
+
+**Deviations from the plan:** documented in full under [Level 1 alignment & scope drift](#level-1-alignment--scope-drift) — a real backend, LLM agents and real xBD data were added; human dispatch approval and drill restore were pulled forward; auth/roles stay deferred.
 
 **Scope notes.** Implemented: report intake, parse → merge → risk → logistics → command pipeline, live push, incident lifecycle, error envelope + rate limit, drill restart, audit endpoint. Postgres history + CSV export are in (optional). Also in: human approval of dispatches, manual dispatch/recall/close, end-drill, drill restore after restart, idempotent report submits, an admin key for destructive controls, WebSocket origin check and connection cap, structured JSON logs. **Not yet (Samurai/Shogun):** per-user auth and roles, multi-tenant isolation. Until then the backend serves a single shared drill; `/api/report` is open (rate-limited per client and length-capped) and restart/end need the admin key.
 
