@@ -43,7 +43,7 @@ function DrillCard({ d, onRename, onDelete }: { d: Item; onRename: (id: number, 
       <div className="flex items-start gap-2">
         {editing ? (
           <form onSubmit={save} className="flex min-w-0 flex-1 items-center gap-1.5">
-            <label className="sr-only" htmlFor={`rename-${d.id}`}>Drill name</label>
+            <label className="sr-only" htmlFor={`rename-${d.id}`}>New name for {d.name}</label>
             <input
               id={`rename-${d.id}`} autoFocus value={name} maxLength={80} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') { setName(d.name); setEditing(false) } }}

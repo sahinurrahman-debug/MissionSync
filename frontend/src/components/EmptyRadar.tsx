@@ -16,7 +16,7 @@ export default function EmptyRadar({ title = 'Airwaves quiet.', hint }: { title?
         <circle cx="66" cy="66" r="3" fill="currentColor" />
       </svg>
       <div>
-        <p className="text-base font-semibold text-ink">{title} No active incidents.</p>
+        <p className="text-base font-semibold text-ink">{title}</p>
         {hint && <p className="mt-1 max-w-xs text-sm text-ink-2">{hint}</p>}
       </div>
     </div>
