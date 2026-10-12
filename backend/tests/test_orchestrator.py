@@ -13,10 +13,10 @@ def run(coro):
     return asyncio.run(coro)
 
 
-async def booted(auto: bool = True, store=None) -> Orchestrator:
+async def booted(auto: bool = True, store=None, drill_id=None) -> Orchestrator:
     """A booted drill. Most tests exercise the lifecycle, so they run in auto-dispatch (demo) mode;
     tests/test_dispatch.py covers the default human-approval mode."""
-    o = Orchestrator(store, auto_dispatch=auto)
+    o = Orchestrator(store, auto_dispatch=auto, drill_id=drill_id)
     await o.bootstrap()
     return o
 

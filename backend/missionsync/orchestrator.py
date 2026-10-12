@@ -59,7 +59,6 @@ LOG_CAP = 300
 UNSAVED_CAP = 2000
 NONCE_CAP = 200
 STATE_VERSION = 1
-STATE_MAX_AGE_S = 6 * 3600            # a saved drill older than this is not resumed
 # Ticks a crew works on scene before the incident is contained (6 s per tick).
 WORK_TICKS = {"P1": 24, "P2": 20, "P3": 12, "P4": 8}
 ACTIVE_STATUSES = (
@@ -86,8 +85,9 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 class Orchestrator:
-    def __init__(self, store: Optional[Store] = None, auto_dispatch: Optional[bool] = None) -> None:
+    def __init__(self, store: Optional[Store] = None, auto_dispatch: Optional[bool] = None, drill_id: Optional[int] = None) -> None:
         self.store = store or Store(None)          # disabled store = pure in-memory
+        self._fixed_drill_id = drill_id             # the database row this drill lives in (None = in-memory only)
         self.auto_dispatch = _env_flag("AUTO_DISPATCH") if auto_dispatch is None else auto_dispatch
         self.viewers = 0                            # maintained by the WebSocket hub
         self.peak_viewers = 0
@@ -110,7 +110,7 @@ class Orchestrator:
         self.resources: list[Resource] = sim.build_resources()
         self.event_log: list[EventLine] = []
         self._unsaved = []
-        self.drill_id = None
+        self.drill_id = self._fixed_drill_id
         self._seq = 0
         self.tick = 0
         self.status = "booting"
@@ -165,7 +165,7 @@ class Orchestrator:
                 self.store.add_events, self.drill_id, [(e.seq, e.t, e.msg) for e in batch])
             if not ok:
                 self._unsaved = (batch + self._unsaved)[-UNSAVED_CAP:]
-        await asyncio.to_thread(self.store.set_kv, "drill_state", self.export_state())
+        await asyncio.to_thread(self.store.save_state, self.drill_id, self.export_state(), self.status, self.dataset_source)
         if agents.cache_version != self._saved_cache_version:
             version = agents.cache_version
             if await asyncio.to_thread(self.store.set_kv, "llm_cache", agents.export_caches()):
@@ -219,7 +219,6 @@ class Orchestrator:
             "kaggle": f"real xBD data via Kaggle ({xbd.KAGGLE_SLUG})",
             "xbd_snapshot": "bundled real xBD snapshot",
         }.get(self.dataset_source, "synthetic offline cohort")
-        self.drill_id = await asyncio.to_thread(self.store.start_drill, self.dataset_source)
         signals = self.sim.seed_events()
         mode = "auto-dispatch" if self.auto_dispatch else "awaiting your approval"
         self._log(f"🟢 Scenario loaded: {len(signals)} initial incidents, {len(self.resources)} resources — "
@@ -233,6 +232,7 @@ class Orchestrator:
         """Start the drill over (same scenario, fresh state, LLM scores reused)."""
         async with self._lock:
             self._reset_state()
+            await asyncio.to_thread(self.store.clear_drill_data, self.drill_id)   # a restart wipes the audit trail
             self.origin = "reset"
             await self._bootstrap_locked()
             return self.snapshot()
@@ -273,7 +273,7 @@ class Orchestrator:
         self._reset_state()
         self.sim.import_state(d["sim"])
         self.status = d["status"]
-        self.tick, self._seq, self.drill_id = int(d["tick"]), int(d["seq"]), d.get("drill_id")
+        self.tick, self._seq = int(d["tick"]), int(d["seq"])           # the drill id is this runtime's own, never the saved one
         self.started_at, self.ended_at = float(d["started_at"]), d.get("ended_at")
         self._injection_count, self._resolved = int(d["injection_count"]), int(d["resolved"])
         self.dataset_source = d.get("dataset_source", self.dataset_source)
@@ -301,14 +301,13 @@ class Orchestrator:
             if cache:
                 agents.import_caches(cache[0])
                 self._saved_cache_version = agents.cache_version
-            saved = await asyncio.to_thread(self.store.get_kv, "drill_state")
+            saved = await asyncio.to_thread(self.store.load_state, self.drill_id)
             if not saved:
                 return False
             state, at = saved
             age = (datetime.now(timezone.utc) - at).total_seconds()
-            # An ended drill is history (its audit trail and CSV stay in the database); a restart or a
-            # free-tier wake-up must open a fresh, usable drill rather than a frozen one.
-            if state.get("version") != STATE_VERSION or state.get("status") != "live" or age > STATE_MAX_AGE_S:
+            # A finished drill is restored frozen: its owner can still review it and download the CSV.
+            if state.get("version") != STATE_VERSION or state.get("status") not in ("live", "ended"):
                 return False
             async with self._lock:
                 self.import_state(state)

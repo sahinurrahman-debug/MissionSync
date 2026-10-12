@@ -12,6 +12,7 @@ from missionsync.orchestrator import DomainError, Orchestrator
 from missionsync.persistence import Store
 
 from .fakes import FakeGroq
+from .helpers import make_store
 from .test_orchestrator import booted, inject, run, settle, tick
 
 
@@ -298,35 +299,36 @@ def test_world_state_round_trips_through_json() -> None:
 
 def test_a_restarted_server_resumes_the_saved_drill(tmp_path) -> None:
     async def go():
-        url = f"sqlite:///{tmp_path / 'r.db'}"
-        a = await booted(auto=True, store=Store(url))
+        store, drill_id, _ = make_store(tmp_path)
+        a = await booted(auto=True, store=store, drill_id=drill_id)
         await inject(a, "Ammonia leak at Industrial Park depot, 4 workers hurt")
         await tick(a, 4)
         snap_a = a.snapshot()
 
-        b = Orchestrator(Store(url), auto_dispatch=False)
+        b = Orchestrator(store, auto_dispatch=False, drill_id=drill_id)
         assert await b._try_restore() is True
         snap_b = b.snapshot()
-        assert snap_b.status == "live" and b.tick == a.tick and b.drill_id == a.drill_id
+        assert snap_b.status == "live" and b.tick == a.tick and b.drill_id == drill_id
         assert [i.id for i in snap_b.incidents] == [i.id for i in snap_a.incidents]
         assert any("restored from the database" in e.msg for e in b.event_log)
-        assert snap_b.metrics["injections"] if "injections" in snap_b.metrics else True
         await tick(b, 2)                                                        # and it keeps running
         assert b.tick == a.tick + 2
 
-        fresh = Orchestrator(Store(f"sqlite:///{tmp_path / 'empty.db'}"))
-        assert await fresh._try_restore() is False                              # nothing saved → bootstrap instead
+        fresh_store, fresh_id, _ = make_store(tmp_path, "empty.db")
+        assert await Orchestrator(fresh_store, drill_id=fresh_id)._try_restore() is False   # nothing saved → bootstrap instead
         assert await Orchestrator()._try_restore() is False                     # no database at all
     run(go())
 
 
-def test_a_stale_saved_drill_is_not_resumed(tmp_path, monkeypatch) -> None:
+def test_each_drill_restores_only_its_own_state(tmp_path) -> None:
     async def go():
-        url = f"sqlite:///{tmp_path / 's.db'}"
-        await booted(store=Store(url))
-        from missionsync import orchestrator
-        monkeypatch.setattr(orchestrator, "STATE_MAX_AGE_S", -1)                # anything is "too old"
-        assert await Orchestrator(Store(url))._try_restore() is False
+        store, first_id, svc = make_store(tmp_path)
+        other = svc.drills.create(svc.users.create("b@example.com", "B", "x").id, "Other")
+        a = await booted(auto=True, store=store, drill_id=first_id)
+        await inject(a, "Ammonia leak at Industrial Park depot, 4 workers hurt")
+        c = Orchestrator(store, drill_id=other.id)
+        assert await c._try_restore() is False                                  # the other drill has no saved state
+        assert c.drill_id == other.id
     run(go())
 
 
@@ -347,14 +349,14 @@ def test_llm_cache_survives_json_and_a_fresh_process(tmp_path) -> None:
 
 def test_audit_events_are_not_lost_when_the_database_hiccups(tmp_path, monkeypatch) -> None:
     async def go():
-        store = Store(f"sqlite:///{tmp_path / 'e.db'}")
-        o = await booted(store=store)
+        store, drill_id, svc = make_store(tmp_path)
+        o = await booted(store=store, drill_id=drill_id)
         real = store.add_events
         calls = {"n": 0}
 
-        def flaky(drill_id, events):
+        def flaky(did, events):
             calls["n"] += 1
-            return False if calls["n"] == 1 else real(drill_id, events)
+            return False if calls["n"] == 1 else real(did, events)
 
         monkeypatch.setattr(store, "add_events", flaky)
         o._log("first line written while the database is down")
@@ -362,26 +364,25 @@ def test_audit_events_are_not_lost_when_the_database_hiccups(tmp_path, monkeypat
         assert any("first line" in e.msg for e in o._unsaved)                   # re-queued, not dropped
         o._log("second line")
         await o._persist()
-        stored = [e["msg"] for e in store.drill_events(o.drill_id)]
+        stored = [e["msg"] for e in svc.drills.events(drill_id)]
         assert any("first line" in m for m in stored) and any("second line" in m for m in stored)
         assert not o._unsaved
     run(go())
 
 
-def test_an_ended_drill_is_history_and_a_restart_opens_a_fresh_one(tmp_path) -> None:
-    """A redeploy or free-tier wake-up must never come back frozen on 'Drill ended'."""
+def test_a_finished_drill_is_restored_frozen_so_it_can_still_be_reviewed(tmp_path) -> None:
     async def go():
-        url = f"sqlite:///{tmp_path / 'e.db'}"
-        a = await booted(auto=True, store=Store(url))
+        store, drill_id, svc = make_store(tmp_path)
+        a = await booted(auto=True, store=store, drill_id=drill_id)
         await a.end_drill()
         assert a.snapshot().status == "ended"
 
-        b = Orchestrator(Store(url))
-        assert await b._try_restore() is False                                   # not resumed ...
-        await b.bootstrap()                                                      # ... so the server boots a new drill
-        snap = b.snapshot()
-        assert snap.status == "live" and snap.incidents and b.drill_id != a.drill_id
-        outcome, _ = await b.inject_report(IncomingReport(text="Ammonia leak at Industrial Park depot, 4 workers hurt"))
-        assert outcome.kind != "rejected"                                        # and it accepts reports
-        assert len(b.store.list_drills()) >= 2                                   # the ended drill stays in the history
+        b = Orchestrator(store, drill_id=drill_id)
+        assert await b._try_restore() is True
+        assert b.snapshot().status == "ended"
+        with pytest.raises(DomainError):
+            await b.inject_report(IncomingReport(text="Ammonia leak at Industrial Park depot, 4 workers hurt"))
+        await b.reset()                                                          # a restart opens a fresh run in the same drill
+        assert b.snapshot().status == "live" and b.snapshot().incidents and b.drill_id == drill_id
+        assert svc.drills.events(drill_id)                                       # and the new run is being audited
     run(go())
