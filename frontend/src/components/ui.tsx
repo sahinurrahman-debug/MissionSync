@@ -21,9 +21,9 @@ export function Panel({ children, className = '', label }: { children: ReactNode
 
 export function PanelHeader({ title, icon, right }: { title: string; icon?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
+    <header className="flex min-h-11 shrink-0 items-center gap-2 border-b border-line px-3 py-0.5">
       {icon && <span className="text-ink-2" aria-hidden>{icon}</span>}
-      <h2 className={micro}>{title}</h2>
+      <h2 className={`${micro} whitespace-nowrap`}>{title}</h2>
       <div className="ml-auto flex min-w-0 items-center gap-2 text-sm text-ink-2 tnum">{right}</div>
     </header>
   )

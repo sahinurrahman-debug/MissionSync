@@ -85,7 +85,7 @@ export default function IncidentCard({
           </span>
 
           <span className="mt-1.5 block truncate text-base font-bold leading-snug text-ink">{incident.title}</span>
-          <span className="mt-0.5 line-clamp-2 block text-sm leading-snug text-ink-2">{summaryOf(incident)}</span>
+          <span className={`mt-0.5 line-clamp-2 block text-sm leading-snug text-ink-2 ${selected ? '' : 'max-sm:hidden'}`}>{summaryOf(incident)}</span>
 
           <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
             <span className="inline-flex items-center gap-1"><TypeIcon size={14} aria-hidden />{TYPE_LABEL[incident.type]}</span>
@@ -93,8 +93,8 @@ export default function IncidentCard({
               <MapPin size={14} aria-hidden />
               {incident.zone}{incident.location_known ? '' : ' · approx.'}
             </span>
-            <span className="inline-flex items-center gap-1 tnum"><Users size={14} aria-hidden />{incident.affected_population} at risk · {incident.injuries} inj</span>
-            <span className="rounded border border-line px-1.5 text-xs font-semibold uppercase tracking-micro">{INCIDENT_STATUS_LABEL[incident.status]}</span>
+            <span className="inline-flex items-center gap-1 tnum"><Users size={14} aria-hidden />{incident.affected_population} at risk · {incident.injuries} hurt</span>
+            <span className={`rounded border border-line px-1.5 text-xs font-semibold uppercase tracking-micro ${selected ? '' : 'max-sm:hidden'}`}>{INCIDENT_STATUS_LABEL[incident.status]}</span>
           </span>
         </button>
 
