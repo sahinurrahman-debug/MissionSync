@@ -11,7 +11,9 @@ import IncidentCard from './IncidentCard'
 import Recommendations from './Recommendations'
 import ReportIntake from './ReportIntake'
 import SystemBanners from './SystemBanners'
-import AdminKeyDialog from './AdminKeyDialog'
+import ConfirmDialog from './ConfirmDialog'
+import HowItWorks from './HowItWorks'
+import NextStep from './NextStep'
 
 async function violations(container: Element) {
   const res = await axe.run(container, { rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } })
@@ -64,15 +66,21 @@ describe('axe-core: no detectable a11y violations', () => {
     const { container } = render(
       <div>
         <HeaderHud snap={s} theme="dark" showUnits resetting={false} exportUrl="/x.csv" autoDispatch={false}
-          onToggleTheme={vi.fn()} onToggleUnits={vi.fn()} onReset={vi.fn()} onToggleAuto={vi.fn()} onEndDrill={vi.fn()} />
+          onToggleTheme={vi.fn()} onToggleUnits={vi.fn()} onReset={vi.fn()} onToggleAuto={vi.fn()} onEndDrill={vi.fn()} onGuide={vi.fn()} />
         <SystemBanners snap={{ ...s, engine: 'remote', connection: 'offline' }} />
       </div>,
     )
     expect(await violations(container)).toEqual([])
   })
 
-  it('admin key dialog', async () => {
-    const { baseElement } = render(<AdminKeyDialog action="Restart the drill" rejected onSubmit={vi.fn()} onCancel={vi.fn()} />)
+  it('dialogs and the next-step bar', async () => {
+    const { baseElement, unmount } = render(<ConfirmDialog title="End this drill?" body="It freezes." confirmLabel="End drill" onConfirm={vi.fn()} onCancel={vi.fn()} />)
     expect(await violations(baseElement)).toEqual([])
+    unmount()
+    const guide = render(<HowItWorks onClose={vi.fn()} />)
+    expect(await violations(guide.baseElement)).toEqual([])
+    guide.unmount()
+    const bar = render(<NextStep snap={world()} onGo={vi.fn()} />)
+    expect(await violations(bar.container)).toEqual([])
   })
 })

@@ -20,7 +20,6 @@ function Banner({ tone, icon, children }: { tone: 'warn' | 'bad' | 'info'; icon:
 export default function SystemBanners({ snap }: { snap: Snapshot }) {
   const m = snap.metrics
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
-  const alerts = snap.weather.filter((w) => w.alert)
   return (
     <div className="shrink-0">
       {offline && (
@@ -49,23 +48,26 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
           <b>Degraded mode:</b> the LLM is unavailable (no API key, or the provider is failing) — rule-based agents are running.
         </Banner>
       )}
-      {alerts.length === 0 && snap.status === 'booting' && (
-        <div className="h-[41px] border-b border-line bg-hi" aria-hidden />   // reserve the advisory row so the page doesn't jump when data arrives
-      )}
-      {alerts.length > 0 && (
-        <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-line bg-hi px-3 py-1.5 lg:px-4" role="status" aria-label="Weather advisories">
-          {alerts.map((w) => (
-            <span key={w.zone} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2 py-0.5 text-sm text-warn">
-              <Wind size={14} aria-hidden />
-              <b className="font-semibold">{w.zone}</b>
-              <span className="text-ink-2">
-                {(w.alert ?? '').replace(/_/g, ' ')} · wind <span className="font-mono tnum">{Math.round(w.wind_kph)}</span> kph
-                {w.forecast_note ? ` · ${w.forecast_note}` : ''}
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
+    </div>
+  )
+}
+
+/** Simulated weather advisories. Shown where they matter (the map), not as a permanent global strip. */
+export function WeatherStrip({ snap }: { snap: Snapshot }) {
+  const alerts = snap.weather.filter((w) => w.alert)
+  if (alerts.length === 0) return null
+  return (
+    <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto" role="status" aria-label="Weather advisories (simulated)">
+      {alerts.map((w) => (
+        <span key={w.zone} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2 py-0.5 text-sm text-warn">
+          <Wind size={14} aria-hidden />
+          <b className="font-semibold">{w.zone}</b>
+          <span className="text-ink-2">
+            {(w.alert ?? '').replace(/_/g, ' ')} · wind <span className="font-mono tnum">{Math.round(w.wind_kph)}</span> kph
+            {w.forecast_note ? ` · ${w.forecast_note}` : ''}
+          </span>
+        </span>
+      ))}
     </div>
   )
 }

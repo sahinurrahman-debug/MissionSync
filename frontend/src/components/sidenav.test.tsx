@@ -39,6 +39,7 @@ describe('Board navigation (desktop layout)', () => {
     window.history.pushState({}, '', '/?engine=local')
     try {
       localStorage.clear()
+      localStorage.setItem('ms-guide-seen', '1')          // the first-run walkthrough has its own tests
     } catch {
       /* ignore */
     }

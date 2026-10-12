@@ -5,14 +5,17 @@ import userEvent from '@testing-library/user-event'
 import { LocalEngine } from '../engine/local'
 import { ApiError, type Snapshot } from '../types'
 import ActionToast from './ActionToast'
-import AdminKeyDialog from './AdminKeyDialog'
+import ConfirmDialog from './ConfirmDialog'
+import DrillMenu from './DrillMenu'
+import HowItWorks from './HowItWorks'
+import NextStep, { nextStepOf } from './NextStep'
 import ErrorBoundary from './ErrorBoundary'
 import FleetAndLog from './FleetAndLog'
-import HeaderHud, { clockOf } from './HeaderHud'
+import HeaderHud, { StatGrid, TelemetryBar, clockOf, statsOf } from './HeaderHud'
 import IncidentCard from './IncidentCard'
 import Recommendations from './Recommendations'
 import ReportIntake from './ReportIntake'
-import SystemBanners from './SystemBanners'
+import SystemBanners, { WeatherStrip } from './SystemBanners'
 
 /** A real snapshot from the demo engine (manual dispatch: proposals waiting for a human). */
 function world(autoDispatch = false): { engine: LocalEngine; snap: Snapshot } {
@@ -49,14 +52,16 @@ describe('Recommendations — the approval surface', () => {
   it('disables every decision while an action is in flight', () => {
     const { snap } = world()
     render(<Recommendations actions={snap.actions} proposals={snap.proposals} loading={false} autoDispatch={false} onApprove={vi.fn()} onReject={vi.fn()} disabled />)
-    for (const b of screen.getAllByRole('button')) expect((b as HTMLButtonElement).disabled).toBe(true)
+    const decisions = screen.getAllByRole('button', { name: /Approve|Reject/ })
+    expect(decisions.length).toBeGreaterThan(2)
+    for (const b of decisions) expect((b as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('shows dispatched units (not proposals) once auto-dispatch has committed them', () => {
     const { snap } = world(true)
     render(<Recommendations actions={snap.actions} proposals={snap.proposals} loading={false} autoDispatch onApprove={vi.fn()} onReject={vi.fn()} />)
     expect(screen.queryByText(/Nothing moves until you approve/)).toBeNull()
-    expect(screen.getAllByText('Dispatched').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('On the way').length).toBeGreaterThan(0)
     expect(snap.actions.some((a) => a.deployments.length > 0)).toBe(true)
   })
 
@@ -216,10 +221,11 @@ describe('HeaderHud', () => {
   function hud(patch: Partial<Snapshot> = {}, props: Record<string, unknown> = {}) {
     const { snap } = world()
     const s = { ...snap, ...patch } as Snapshot
-    const handlers = { onToggleTheme: vi.fn(), onToggleUnits: vi.fn(), onReset: vi.fn(), onToggleAuto: vi.fn(), onEndDrill: vi.fn() }
+    const handlers = { onToggleTheme: vi.fn(), onToggleUnits: vi.fn(), onReset: vi.fn(), onToggleAuto: vi.fn(), onEndDrill: vi.fn(), onGuide: vi.fn() }
     render(<HeaderHud snap={s} theme="dark" showUnits resetting={false} exportUrl={null} autoDispatch={false} {...handlers} {...props} />)
     return { snap: s, ...handlers }
   }
+  const openMenu = () => userEvent.click(screen.getByRole('button', { name: 'Menu' }))
 
   it('formats the drill clock', () => {
     expect(clockOf(0)).toBe('00:00:00')
@@ -227,39 +233,125 @@ describe('HeaderHud', () => {
     expect(clockOf(-5)).toBe('00:00:00')
   })
 
-  it('shows LIVE, and the telemetry keeps the Greek rho (not an upper-cased P)', () => {
-    hud({ elapsed_s: 754 })
-    expect(screen.getByText('LIVE')).toBeTruthy()
-    expect(screen.getAllByText('T+00:12:34').length).toBeGreaterThan(0)   // header (xl) and strip (smaller) share one component
-    expect(document.body.textContent).toContain('ρ')
-    expect(screen.getAllByText('ρ')[0].className).toContain('normal-case')
+  it('names the six telemetry numbers in plain words, with the maths in the tooltip', () => {
+    const { snap } = world()
+    const stats = statsOf({ ...snap, elapsed_s: 754 })
+    expect(stats.map((x) => x.label)).toEqual(['Ranking accuracy', 'Critical covered', 'Units free', 'Resolved', 'Response time', 'Drill time'])
+    expect(stats[5].value).toBe('T+00:12:34')
+    expect(stats[0].title).toContain('Spearman ρ')
+    render(<><TelemetryBar snap={snap} /><StatGrid snap={snap} /></>)
+    expect(screen.getAllByText('Ranking accuracy')).toHaveLength(2)
   })
 
-  it('reports OFFLINE and ENDED distinctly', () => {
+  it('shows LIVE and the engine, and OFFLINE / ENDED distinctly', () => {
+    hud()
+    expect(screen.getByText('LIVE')).toBeTruthy()
+    document.body.innerHTML = ''
     hud({ engine: 'remote', connection: 'offline' })
     expect(screen.getByText('OFFLINE')).toBeTruthy()
     document.body.innerHTML = ''
     hud({ status: 'ended' })
     expect(screen.getByText('ENDED')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'End the drill' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('exposes dispatch mode as a pressed toggle and calls the handlers', async () => {
-    const { onToggleAuto, onEndDrill, onReset } = hud({}, { autoDispatch: true })
-    const toggle = screen.getByRole('button', { name: /Auto-dispatch is on/ })
-    expect(toggle.getAttribute('aria-pressed')).toBe('true')
-    await userEvent.click(toggle)
-    await userEvent.click(screen.getByRole('button', { name: 'End the drill' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Restart the drill' }))
-    expect([onToggleAuto, onEndDrill, onReset].every((f) => f.mock.calls.length === 1)).toBe(true)
+  it('puts every drill action in one labelled menu (no cryptic icon row)', async () => {
+    const { onToggleAuto, onEndDrill, onReset, onGuide, onToggleUnits } = hud({}, { autoDispatch: true })
+    await openMenu()
+    expect(screen.getByRole('menu')).toBeTruthy()
+    const auto = screen.getByRole('menuitemcheckbox', { name: /Auto-dispatch/ })
+    expect(auto.getAttribute('aria-checked')).toBe('true')
+    await userEvent.click(auto)
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /How it works/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitemcheckbox', { name: /Show units on the map/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /End the drill/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /Restart the drill/ }))
+    expect([onToggleAuto, onGuide, onToggleUnits, onEndDrill, onReset].every((f) => f.mock.calls.length === 1)).toBe(true)
   })
 
-  it('offers the CSV only when there is something to download', () => {
-    hud({}, { exportUrl: null })
-    expect((screen.getByRole('button', { name: /export unavailable/i }) as HTMLButtonElement).disabled).toBe(true)
+  it('disables ending an ended drill, and offers the CSV only when there is one', async () => {
+    hud({ status: 'ended' }, { exportUrl: null })
+    await openMenu()
+    expect((screen.getByRole('menuitem', { name: /End the drill/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('menuitem', { name: /Download after-action CSV/ }) as HTMLButtonElement).disabled).toBe(true)
     document.body.innerHTML = ''
     hud({}, { exportUrl: '/api/drills/3/export.csv' })
-    expect(screen.getByRole('link', { name: /Download after-action CSV/ }).getAttribute('href')).toBe('/api/drills/3/export.csv')
+    await openMenu()
+    expect(screen.getByRole('menuitem', { name: /Download after-action CSV/ }).getAttribute('href')).toBe('/api/drills/3/export.csv')
+  })
+})
+
+describe('DrillMenu', () => {
+  it('opens on click, moves with the arrow keys, closes on Escape and returns focus', async () => {
+    const a = vi.fn()
+    render(<DrillMenu items={[{ id: 'a', label: 'Alpha', icon: null, onSelect: a }, { id: 'b', label: 'Bravo', icon: null }]} />)
+    const trigger = screen.getByRole('button', { name: 'Menu' })
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    await userEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(document.activeElement?.textContent).toContain('Alpha')
+    await userEvent.keyboard('{ArrowDown}')
+    expect(document.activeElement?.textContent).toContain('Bravo')
+    await userEvent.keyboard('{ArrowDown}')
+    expect(document.activeElement?.textContent).toContain('Alpha')           // wraps
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
+})
+
+describe('NextStep — the board explains itself', () => {
+  it('derives one plain instruction from the state', () => {
+    const { snap } = world()
+    expect(nextStepOf({ ...snap, status: 'booting' }).id).toBe('booting')
+    expect(nextStepOf({ ...snap, status: 'ended' }).id).toBe('ended')
+    expect(nextStepOf(snap).id).toBe('approve')                                       // manual mode, proposals waiting
+    expect(nextStepOf({ ...snap, proposals: [], incidents: [] }).id).toBe('report')
+    const out = { ...snap, proposals: [], resources: snap.resources.map((r, i) => (i === 0 ? { ...r, status: 'en_route' as const } : r)) }
+    expect(nextStepOf(out).id).toBe('watch')
+    expect(nextStepOf({ ...snap, proposals: [], resources: snap.resources.map((r) => ({ ...r, status: 'available' as const })) }).id).toBe('idle')
+  })
+
+  it('offers the one button that moves the drill forward', async () => {
+    const { snap } = world()
+    const onGo = vi.fn()
+    render(<NextStep snap={snap} onGo={onGo} />)
+    expect(screen.getByRole('status', { name: 'Next step' }).textContent).toMatch(/waiting for you/)
+    await userEvent.click(screen.getByRole('button', { name: /Review/ }))
+    expect(onGo).toHaveBeenCalledWith('orders')
+  })
+})
+
+describe('HowItWorks and ConfirmDialog', () => {
+  it('walks through four steps and remembers that it was seen', async () => {
+    localStorage.clear()
+    const onClose = vi.fn()
+    render(<HowItWorks onClose={onClose} />)
+    expect(screen.getByRole('dialog', { name: 'How MissionSync works' })).toBeTruthy()
+    expect(screen.getAllByRole('listitem')).toHaveLength(4)
+    await userEvent.click(screen.getByRole('button', { name: /Got it/ }))
+    expect(onClose).toHaveBeenCalled()
+    expect(localStorage.getItem('ms-guide-seen')).toBe('1')
+  })
+
+  it('confirms in-page (no window.confirm), cancels on Escape and returns focus', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    const { unmount } = render(<ConfirmDialog title="End this drill?" body="It freezes." confirmLabel="End drill" danger onConfirm={onConfirm} onCancel={onCancel} />)
+    const dialog = screen.getByRole('dialog', { name: 'End this drill?' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(document.activeElement?.textContent).toBe('Cancel')                       // the safe choice has focus
+    await userEvent.tab()
+    await userEvent.tab()
+    expect(dialog.contains(document.activeElement)).toBe(true)                        // Tab stays inside
+    await userEvent.click(screen.getByRole('button', { name: 'End drill' }))
+    expect(onConfirm).toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalled()
+    unmount()
+    expect(document.activeElement).toBe(opener)
   })
 })
 
@@ -278,38 +370,10 @@ describe('SystemBanners', () => {
     expect(screen.getByText(/Degraded mode/)).toBeTruthy()
     rerender(<SystemBanners snap={s} />)
     expect(screen.getByText(/Demo engine/)).toBeTruthy()
-    expect(screen.getByLabelText('Weather advisories')).toBeTruthy()
-  })
-})
-
-describe('AdminKeyDialog', () => {
-  it('is a modal that takes focus, traps Tab, closes on Escape and returns the key', async () => {
-    const opener = document.createElement('button')
-    document.body.appendChild(opener)
-    opener.focus()
-    const onSubmit = vi.fn()
-    const onCancel = vi.fn()
-    const { unmount } = render(<AdminKeyDialog action="Restart the drill" rejected={false} onSubmit={onSubmit} onCancel={onCancel} />)
-    const dialog = screen.getByRole('dialog', { name: 'Admin key required' })
-    expect(dialog.getAttribute('aria-modal')).toBe('true')
-    const input = screen.getByLabelText('Admin key')
-    expect(document.activeElement).toBe(input)
-    expect((screen.getByRole('button', { name: 'Confirm' }) as HTMLButtonElement).disabled).toBe(true)
-
-    await userEvent.tab({ shift: true })                            // backwards from the first control wraps to the last
-    expect(dialog.contains(document.activeElement)).toBe(true)
-    await userEvent.type(input, ' s3cret ')
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(onSubmit).toHaveBeenCalledWith('s3cret')
-    await userEvent.keyboard('{Escape}')
-    expect(onCancel).toHaveBeenCalled()
-    unmount()
-    expect(document.activeElement).toBe(opener)                     // focus goes back where it came from
-  })
-
-  it('says when a key was refused', () => {
-    render(<AdminKeyDialog action="End the drill" rejected onSubmit={vi.fn()} onCancel={vi.fn()} />)
-    expect(screen.getByRole('alert').textContent).toContain('not accepted')
+    expect(screen.queryByLabelText(/Weather advisories/)).toBeNull()                 // weather lives with the map now
+    document.body.innerHTML = ''
+    render(<WeatherStrip snap={s} />)
+    expect(screen.getByLabelText(/Weather advisories/).textContent).toMatch(/wind/)
   })
 })
 
