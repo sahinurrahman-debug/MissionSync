@@ -1,88 +1,74 @@
-import { useMedia } from '../lib/useMedia'
 import type { ReactNode } from 'react'
-import { Download, Flag, Loader2, Moon, RotateCcw, Sun, Timer, Truck, Zap } from 'lucide-react'
+import { BookOpen, Download, Flag, Loader2, Moon, RotateCcw, Sun, Timer, Truck, Zap } from 'lucide-react'
 import type { Metrics, Snapshot } from '../types'
 import { modeChip } from '../lib/format'
+import DrillMenu, { type MenuItem } from './DrillMenu'
 import { Chip } from './ui'
 
 const STAGE_LABEL: Record<string, string> = {
-  surveillance: 'parsing reports',
-  terrain: 'assessing terrain',
+  surveillance: 'reading reports',
+  terrain: 'checking terrain',
   risk: 'scoring urgency',
   logistics: 'matching units',
   command: 'drafting orders',
 }
 
-/** "RANK ρ 0.88" — micro-label plus a bold monospaced value. */
-function Metric({ label, value, title }: { label: ReactNode; value: string; title?: string }) {
-  return (
-    <span title={title} className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-line bg-hi px-2 tnum">
-      <span className="text-xs font-semibold uppercase tracking-micro text-ink-2">{label}</span>
-      <b className="font-mono text-sm font-bold text-ink">{value}</b>
-    </span>
-  )
+/** 3725 s → "01:02:05" */
+export function clockOf(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
 }
 
-export function TelemetryChips({ m, snap, className = '' }: { m: Metrics; snap: Snapshot; className?: string }) {
+interface Stat { id: string; label: string; value: string; title: string }
+
+/** The six drill numbers, named in plain words (the Greek-letter / jargon names live in the tooltips). */
+export function statsOf(snap: Snapshot): Stat[] {
+  const m: Metrics = snap.metrics
   const free = snap.resources.filter((r) => r.status === 'available').length
+  return [
+    {
+      id: 'accuracy', label: 'Ranking accuracy',
+      value: m.spearman != null ? `${Math.round(Math.max(0, m.spearman) * 100)}%` : '—',
+      title: `How closely our urgency ranking matches the real xBD damage ground truth (Spearman ρ = ${m.spearman != null ? m.spearman.toFixed(2) : 'n/a'} over ${m.evaluated_incidents} scenario incidents). Typed reports never change it.`,
+    },
+    { id: 'covered', label: 'Critical covered', value: `${Math.round(m.coverage * 100)}%`, title: 'Share of P1/P2 incidents that have at least one unit assigned.' },
+    { id: 'free', label: 'Units free', value: `${free}/${snap.resources.length}`, title: 'Units that are available to be sent.' },
+    { id: 'resolved', label: 'Resolved', value: String(m.resolved), title: 'Incidents contained or closed so far.' },
+    { id: 'cycle', label: 'Response time', value: `${m.cycle_ms}ms`, title: 'How long the last full AI pipeline cycle took.' },
+    { id: 'time', label: 'Drill time', value: `T+${clockOf(snap.elapsed_s)}`, title: 'Time since the drill started (stops when it ends).' },
+  ]
+}
+
+function BarCell({ stat }: { stat: Stat }) {
   return (
-    <div className={`flex items-center gap-1.5 ${className}`}>
-      <Metric
-        label={<>Rank <span className="normal-case">ρ</span></>}
-        value={m.spearman != null ? m.spearman.toFixed(2) : '—'}
-        title={`Spearman correlation between our urgency and hidden ground truth over ${m.evaluated_incidents} scenario incidents. ${m.dataset_note}.`}
-      />
-      <Metric label="P1/P2 cover" value={`${Math.round(m.coverage * 100)}%`} title="Share of P1/P2 incidents with a unit assigned" />
-      <Metric label="Units free" value={`${free}/${snap.resources.length}`} />
-      <Metric label="Resolved" value={String(m.resolved)} />
-      <Metric label="Loop" value={`${m.cycle_ms}ms`} title="Last full pipeline cycle" />
+    <div title={stat.title} className="flex min-w-0 flex-col items-center justify-center border-l border-line px-1 py-1 text-center first:border-l-0 2xl:flex-row 2xl:gap-2.5 tnum">
+      <span className="text-xs font-semibold uppercase leading-tight tracking-micro text-ink-2">{stat.label}</span>
+      <b className="whitespace-nowrap font-mono text-sm font-bold text-ink">{stat.value}</b>
     </div>
   )
 }
 
-/** One cell of the telemetry bar: label and value, centred in an equal-width column. */
-function BarCell({ label, value, title }: { label: ReactNode; value: string; title?: string }) {
-  return (
-    <div
-      title={title}
-      className="flex min-w-0 flex-col items-center justify-center gap-0 border-l border-line py-1 first:border-l-0 xl:flex-row xl:gap-2.5 tnum"
-    >
-      <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-micro text-ink-2">{label}</span>
-      <b className="whitespace-nowrap font-mono text-sm font-bold text-ink">{value}</b>
-    </div>
-  )
-}
-
-/** Desktop telemetry bar: six equal columns in one straight line, edge to edge under the header. */
+/** Desktop telemetry bar: six equal columns in one straight line under the header. */
 export function TelemetryBar({ snap }: { snap: Snapshot }) {
-  const m = snap.metrics
-  const free = snap.resources.filter((r) => r.status === 'available').length
   return (
-    <div
-      role="group"
-      aria-label="Drill telemetry"
-      className="hidden shrink-0 grid-cols-6 items-stretch border-b border-line bg-panel px-2 lg:grid"
-    >
-      <BarCell
-        label={<>Rank <span className="normal-case">ρ</span></>}
-        value={m.spearman != null ? m.spearman.toFixed(2) : '—'}
-        title={`Spearman correlation between our urgency and hidden ground truth over ${m.evaluated_incidents} scenario incidents. ${m.dataset_note}.`}
-      />
-      <BarCell label="P1/P2 cover" value={`${Math.round(m.coverage * 100)}%`} title="Share of P1/P2 incidents with a unit assigned" />
-      <BarCell label="Units free" value={`${free}/${snap.resources.length}`} />
-      <BarCell label="Resolved" value={String(m.resolved)} />
-      <BarCell label="Loop" value={`${m.cycle_ms}ms`} title="Last full pipeline cycle" />
-      <BarCell label="Drill time" value={`T+${clockOf(snap.elapsed_s)}`} title="Time since the drill started (stops when it ends)" />
+    <div role="group" aria-label="Drill telemetry" className="hidden shrink-0 grid-cols-6 items-stretch border-b border-line bg-panel px-2 lg:grid">
+      {statsOf(snap).map((s) => <BarCell key={s.id} stat={s} />)}
     </div>
   )
 }
 
-export function ClockChip({ snap, className = '' }: { snap: Snapshot; className?: string }) {
+/** Phone version: the same six numbers as a 2×3 grid (shown at the top of the Units tab). */
+export function StatGrid({ snap }: { snap: Snapshot }) {
   return (
-    <Chip className={`shrink-0 ${className}`} title="Time since the drill started (stops when it ends)">
-      <Timer size={13} aria-hidden />
-      <span className="font-mono tnum">T+{clockOf(snap.elapsed_s)}</span>
-    </Chip>
+    <dl aria-label="Drill telemetry" className="grid grid-cols-2 gap-2">
+      {statsOf(snap).map((s) => (
+        <div key={s.id} title={s.title} className="rounded-lg border border-line bg-panel px-3 py-2">
+          <dt className="text-xs font-semibold uppercase tracking-micro text-ink-2">{s.label}</dt>
+          <dd className="font-mono text-lg font-bold text-ink tnum">{s.value}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
 
@@ -93,11 +79,20 @@ export function EngineChips({ snap, className = '' }: { snap: Snapshot; classNam
   return (
     <div className={`shrink-0 items-center gap-1.5 ${className}`}>
       <Chip tone={mode.tone} title={mode.title}>{mode.label}</Chip>
-      <Chip className="w-[150px] justify-start" title="Active AI pipeline stage">
+      <Chip className="w-[150px] justify-start" title="What the AI pipeline is doing right now">
         {busy ? <Loader2 size={13} className="animate-spin text-accent" aria-hidden /> : <span className="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />}
-        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : `tick ${snap.tick}`}</span>
+        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : 'idle'}</span>
       </Chip>
     </div>
+  )
+}
+
+export function ClockChip({ snap, className = '' }: { snap: Snapshot; className?: string }) {
+  return (
+    <Chip className={`shrink-0 ${className}`} title="Time since the drill started (stops when it ends)">
+      <Timer size={13} aria-hidden />
+      <span className="font-mono tnum">T+{clockOf(snap.elapsed_s)}</span>
+    </Chip>
   )
 }
 
@@ -113,70 +108,50 @@ interface Props {
   autoDispatch: boolean
   onToggleAuto: () => void
   onEndDrill: () => void
-}
-
-/** 3725 s → "01:02:05" */
-export function clockOf(totalSeconds: number): string {
-  const s = Math.max(0, Math.floor(totalSeconds))
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
+  onGuide: () => void
+  /** Optional left-hand slot (e.g. “← My drills”) and right-hand slot (e.g. the account menu). */
+  leading?: ReactNode
+  trailing?: ReactNode
 }
 
 const iconBtn =
-  'inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-hi text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent max-lg:h-11 max-lg:w-11'
+  'inline-flex h-11 w-11 items-center justify-center rounded-md border border-line bg-hi text-ink-2 transition-colors hover:border-accent hover:text-accent'
 
-export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl, autoDispatch, onToggleAuto, onEndDrill }: Props) {
-  const wide = useMedia('(min-width: 640px)')
-  const m = snap.metrics
+export default function HeaderHud({
+  snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl, autoDispatch, onToggleAuto, onEndDrill, onGuide,
+  leading, trailing,
+}: Props) {
   const booted = snap.status === 'live'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
-
   const ended = snap.status === 'ended'
   const status = offline ? { label: 'OFFLINE', tone: 'bad' as const }
     : ended ? { label: 'ENDED', tone: 'neutral' as const }
     : booted ? { label: 'LIVE', tone: 'ok' as const } : { label: 'BOOTING', tone: 'warn' as const }
   const beacon = status.tone === 'ok' ? 'bg-ok' : status.tone === 'bad' ? 'bg-p1' : 'bg-warn'
+  const mode = modeChip(snap.metrics.mode, snap.metrics.model, snap.status !== 'live')
 
-  const actionButtons = (
-    <>
-
-        <button
-          type="button"
-          className={iconBtn}
-          onClick={onToggleAuto}
-          aria-pressed={autoDispatch}
-          disabled={ended || offline}
-          title={autoDispatch ? 'Auto-dispatch (demo) is ON — click to require your approval' : 'Dispatch is manual — click to auto-dispatch (demo)'}
-          aria-label={autoDispatch ? 'Auto-dispatch is on. Switch to manual approval' : 'Dispatch is manual. Switch to auto-dispatch'}
-        >
-          <Zap size={18} aria-hidden />
-        </button>
-        <button type="button" className={iconBtn} onClick={onToggleUnits} aria-pressed={showUnits} title="Toggle unit layer" aria-label="Toggle unit layer">
-          <Truck size={18} aria-hidden />
-        </button>
-        {exportUrl ? (
-          <a className={iconBtn} href={exportUrl} download title="Download the after-action CSV (reports + audit trail)" aria-label="Download after-action CSV">
-            <Download size={18} aria-hidden />
-          </a>
-        ) : (
-          <button type="button" className={iconBtn} disabled title="After-action export needs a connected database" aria-label="After-action export unavailable">
-            <Download size={18} aria-hidden />
-          </button>
-        )}
-        <button type="button" className={iconBtn} onClick={onEndDrill} disabled={ended || offline || !booted} title="End the drill (freezes the picture)" aria-label="End the drill">
-          <Flag size={18} aria-hidden />
-        </button>
-        <button type="button" className={iconBtn} onClick={onReset} disabled={resetting || offline} title="Restart the drill" aria-label="Restart the drill">
-          {resetting ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <RotateCcw size={18} aria-hidden />}
-        </button>
-    </>
-  )
+  const items: MenuItem[] = [
+    {
+      id: 'auto', label: 'Auto-dispatch', icon: <Zap size={18} />, pressed: autoDispatch, disabled: ended || offline, onSelect: onToggleAuto,
+      hint: autoDispatch ? 'ON — recommendations are sent without asking (demo mode).' : 'OFF — you approve every dispatch.',
+    },
+    { id: 'units', label: 'Show units on the map', icon: <Truck size={18} />, pressed: showUnits, onSelect: onToggleUnits },
+    { id: 'guide', label: 'How it works', icon: <BookOpen size={18} />, onSelect: onGuide, hint: 'A 4-step walkthrough.' },
+    {
+      id: 'csv', label: 'Download after-action CSV', icon: <Download size={18} />, href: exportUrl ?? undefined, disabled: !exportUrl,
+      hint: exportUrl ? 'Every report and audit-log line of this drill.' : 'Needs a connected database.',
+    },
+    { id: 'end', label: 'End the drill', icon: <Flag size={18} />, onSelect: onEndDrill, disabled: ended || offline || !booted, hint: 'Freezes the picture for review.' },
+    {
+      id: 'reset', label: 'Restart the drill', icon: resetting ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />,
+      danger: true, onSelect: onReset, disabled: resetting || offline, hint: 'Clears this drill and starts over.',
+    },
+  ]
 
   return (
-    <>
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-panel px-3 lg:px-4">
-      {/* Brand + drill status */}
-      <div className="flex shrink-0 items-center gap-2.5">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 sm:gap-3 lg:px-4">
+      {leading}
+      <div className="flex min-w-0 shrink-0 items-center gap-2.5">
         <h1 className="whitespace-nowrap text-lg font-extrabold tracking-tight text-ink">
           Mission<span className="text-accent">Sync</span>
         </h1>
@@ -189,28 +164,29 @@ export default function HeaderHud({ snap, theme, onToggleTheme, showUnits, onTog
         </Chip>
       </div>
 
-      {/* Engine mode + live pipeline stage */}
       <EngineChips snap={snap} className="hidden lg:flex" />
 
-      {/* Utilities: all of them from sm up; on a phone they move to the strip below so nothing is crushed */}
-      <div className="ml-auto flex items-center gap-1.5">
-        {wide && actionButtons}
-        <button type="button" className={iconBtn} onClick={onToggleTheme} title="Toggle light / dark" aria-label="Toggle color theme">
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleAuto}
+          aria-pressed={autoDispatch}
+          disabled={ended || offline}
+          title={autoDispatch ? 'Auto-dispatch is ON: recommendations are sent without asking. Click to approve each one yourself.' : 'You approve every dispatch. Click to switch to auto-dispatch (demo).'}
+          className="hidden h-11 items-center gap-2 rounded-md border border-line bg-hi px-3 text-base font-semibold text-ink transition-colors hover:border-accent disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent xl:inline-flex"
+        >
+          <Zap size={16} aria-hidden />
+          {autoDispatch ? 'Auto-dispatch' : 'Manual approval'}
+        </button>
+        <DrillMenu
+          items={items}
+          header={<span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${mode.tone === 'ok' ? 'bg-ok' : mode.tone === 'bad' ? 'bg-p1' : 'bg-warn'}`} aria-hidden />{mode.label}</span>}
+        />
+        <button type="button" className={iconBtn} onClick={onToggleTheme} title="Switch between dark and light" aria-label="Toggle color theme">
           {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
         </button>
+        {trailing}
       </div>
     </header>
-
-      <TelemetryBar snap={snap} />
-
-      {/* Telemetry + (on phones) the drill actions, for screens too narrow to show them in the HUD */}
-      <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 lg:hidden" aria-label="Drill telemetry and actions">
-        {!wide && <div className="flex items-center gap-1.5">{actionButtons}</div>}
-        <EngineChips snap={snap} className="flex lg:hidden" />
-        <ClockChip snap={snap} />
-        <TelemetryChips m={m} snap={snap} />
-      </div>
-    </>
-
   )
 }
