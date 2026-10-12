@@ -3,7 +3,8 @@
 
     python scripts/load_test.py [--url http://127.0.0.1:8000] [--clients 50] [--reports 20]
 
-Reports: intake latency (POST /api/report → answer) and push latency (POST -> the next WebSocket
+It signs up a throw-away account, creates one drill, then opens N WebSocket dashboards on it with the session cookie.
+Reports: intake latency (POST /api/drills/:id/report → answer) and push latency (POST -> the next WebSocket
 frame that contains the new incident), p50/p95/max, plus dropped sockets and snapshot size.
 Point it at a local server; it spends LLM quota only if the server has a key (use the rule-based
 mode for a pure-infrastructure number: start the server without GROQ_API_KEY).
@@ -49,7 +50,17 @@ async def main() -> None:
     ap.add_argument("--reports", type=int, default=20)
     ap.add_argument("--gap", type=float, default=2.2, help="seconds between reports (the limiter allows ~1 per 2 s)")
     a = ap.parse_args()
-    ws_url = a.url.replace("http", "ws", 1) + "/ws"
+    http0 = httpx.Client(timeout=60)
+    email = f"load-{uuid.uuid4().hex[:8]}@example.com"
+    r = http0.post(a.url + "/api/auth/signup", json={"email": email, "password": "correct horse 9", "display_name": "Load Test"})
+    r.raise_for_status()
+    cookie = "ms_session=" + http0.cookies.get("ms_session")
+    drill = http0.post(a.url + "/api/drills", json={"name": "Load test"}).json()["drill"]["id"]
+    for _ in range(120):                                               # wait for the drill to boot
+        if http0.get(f"{a.url}/api/drills/{drill}/snapshot").json()["status"] == "live":
+            break
+        time.sleep(0.5)
+    ws_url = a.url.replace("http", "ws", 1) + f"/ws/drills/{drill}"
 
     frames = [0] * a.clients
     bytes_seen = [0] * a.clients
@@ -60,7 +71,7 @@ async def main() -> None:
     async def client(i: int) -> None:
         nonlocal dropped
         try:
-            async with websockets.connect(ws_url, max_size=None, open_timeout=15) as ws:
+            async with websockets.connect(ws_url, max_size=None, open_timeout=15, additional_headers={"Cookie": cookie}) as ws:
                 while not stop.is_set():
                     raw = await asyncio.wait_for(ws.recv(), timeout=60)
                     frames[i] += 1
@@ -86,7 +97,7 @@ async def main() -> None:
     intake: list[float] = []
     push: list[float] = []
     failures = 0
-    async with httpx.AsyncClient(timeout=120) as http:
+    async with httpx.AsyncClient(timeout=120, cookies={"ms_session": cookie.split("=", 1)[1]}) as http:
         for n in range(a.reports):
             marker = uuid.uuid4().hex[:8]
             text = f"{REPORTS[n % len(REPORTS)]} Ref {marker}."
@@ -94,7 +105,7 @@ async def main() -> None:
             waiters[marker] = (time.perf_counter(), ev, push)
             t0 = time.perf_counter()
             try:
-                r = await http.post(a.url + "/api/report", json={"text": text, "source": "radio", "client_nonce": uuid.uuid4().hex})
+                r = await http.post(f"{a.url}/api/drills/{drill}/report", json={"text": text, "source": "radio", "client_nonce": uuid.uuid4().hex})
                 if r.status_code == 429:
                     await asyncio.sleep(float(r.headers.get("Retry-After", 2)))
                     continue
@@ -121,7 +132,8 @@ async def main() -> None:
     if live:
         print(f"frames per client            {statistics.mean(frames[i] for i in live):.1f} avg;  avg snapshot {statistics.mean(bytes_seen[i] / frames[i] for i in live) / 1024:.1f} KiB")
     h = httpx.get(a.url + "/api/health", timeout=10).json()
-    print(f"health: viewers {h.get('viewers')}  peak {h.get('peak_viewers')}  mode {h.get('mode')}")
+    http0.delete(f"{a.url}/api/drills/{drill}")                          # clean up after ourselves
+    print(f"health: live drills {h.get('live_drills')}  mode {h.get('mode')}  database {h.get('database')}")
 
 
 if __name__ == "__main__":
