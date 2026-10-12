@@ -116,28 +116,30 @@ try {
   await waitText(page, /LIVE/, 60000)
   check(/Saturday campus drill/.test(await text(page)), 'after a page refresh you are still signed in and the drill is intact')
 
-  // 8. light theme + end drill
-  await clickText(page, 'button', /^menu$/i)
-  await clickText(page, '[role="menuitem"]', /end the drill/)
-  await clickText(page, 'button', /^end drill$/)
-  await waitText(page, /The drill has ended/)
-  check(true, 'ending the drill freezes it')
-
-  // 9. mobile (same session)
+  // 8. mobile (same session, while the drill is live)
   const phone = await browser.newPage()
   await setup(phone, 375, 812, true)
   await phone.goto(`${BASE}/drills`, { waitUntil: 'networkidle2' })
   await waitText(phone, /My drills/)
   await shot(phone, 'mobile-drills')
   await clickText(phone, 'a', /review|open/)
-  await waitText(phone, /ended|LIVE/, 60000)
+  await waitText(phone, /LIVE/, 60000)
   await sleep(2500)
   const overflow = await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth)
   check(!overflow, 'no horizontal scroll at 375px')
+  const headerFits = await phone.evaluate(() => [...document.querySelectorAll('header button, header a')].every((el) => el.getBoundingClientRect().right <= innerWidth + 1))
+  check(headerFits, 'every header control is on screen at 375px')
   await shot(phone, 'mobile')
   await clickText(phone, 'nav[aria-label="Sections"] button', /orders/i)
   await sleep(700)
   await shot(phone, 'mobile-orders')
+
+  // 9. end the drill
+  await clickText(page, 'button', /^menu$/i)
+  await clickText(page, '[role="menuitem"]', /end the drill/)
+  await clickText(page, 'button', /^end drill$/)
+  await waitText(page, /The drill has ended/)
+  check(true, 'ending the drill freezes it')
 
   // 10. sign out and the guard is back
   await clickText(page, 'a', /back to my drills/)

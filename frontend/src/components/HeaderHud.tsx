@@ -138,6 +138,7 @@ export default function HeaderHud({
       hint: autoDispatch ? 'ON — recommendations are sent without asking (demo mode).' : 'OFF — you approve every dispatch.',
     },
     { id: 'units', label: 'Show units on the map', icon: <Truck size={18} />, pressed: showUnits, onSelect: onToggleUnits },
+    { id: 'theme', label: theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme', icon: theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />, onSelect: onToggleTheme, className: 'sm:hidden' },
     { id: 'guide', label: 'How it works', icon: <BookOpen size={18} />, onSelect: onGuide, hint: 'A 4-step walkthrough.' },
     {
       id: 'csv', label: 'Download after-action CSV', icon: <Download size={18} />, href: exportUrl ?? undefined, disabled: !exportUrl,
@@ -162,7 +163,7 @@ export default function HeaderHud({
             {status.tone === 'ok' && <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${beacon}`} />}
             <span className={`relative inline-flex h-2 w-2 rounded-full ${beacon}`} />
           </span>
-          {status.label}
+          <span className={status.tone === 'ok' ? 'max-sm:sr-only' : ''}>{status.label}</span>
         </Chip>
       </div>
 
@@ -185,7 +186,7 @@ export default function HeaderHud({
           items={items}
           header={<span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${mode.tone === 'ok' ? 'bg-ok' : mode.tone === 'bad' ? 'bg-p1' : 'bg-warn'}`} aria-hidden />{mode.label}</span>}
         />
-        <button type="button" className={iconBtn} onClick={onToggleTheme} title="Switch between dark and light" aria-label="Toggle color theme">
+        <button type="button" className={`${iconBtn} max-sm:hidden`} onClick={onToggleTheme} title="Switch between dark and light" aria-label="Toggle color theme">
           {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
         </button>
         {trailing}

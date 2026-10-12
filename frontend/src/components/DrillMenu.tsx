@@ -12,6 +12,8 @@ export interface MenuItem {
   /** Renders as a switch: the current state is announced and shown. */
   pressed?: boolean
   disabled?: boolean
+  /** Extra classes, e.g. `sm:hidden` for an item that only makes sense on phones. */
+  className?: string
 }
 
 /** Every drill-level action in one labelled menu (replaces a row of cryptic icon buttons). */
@@ -48,8 +50,8 @@ export default function DrillMenu({
     els[next].focus()
   }
 
-  const rowCls = (danger?: boolean) =>
-    `flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base transition-colors hover:bg-hi focus-visible:bg-hi disabled:cursor-not-allowed disabled:opacity-40 ${danger ? 'text-p1' : 'text-ink'}`
+  const rowCls = (danger?: boolean, extra = '') =>
+    `${extra} flex min-h-[48px] w-full items-center gap-3 rounded-md px-3 py-2 text-left text-base transition-colors hover:bg-hi focus-visible:bg-hi disabled:cursor-not-allowed disabled:opacity-40 ${danger ? 'text-p1' : 'text-ink'}`
 
   return (
     <div ref={root} className="relative" onKeyDown={onKey}>
@@ -89,7 +91,7 @@ export default function DrillMenu({
               </>
             )
             return it.href && !it.disabled ? (
-              <a key={it.id} role="menuitem" href={it.href} download className={rowCls(it.danger)} onClick={() => setOpen(false)}>{inner}</a>
+              <a key={it.id} role="menuitem" href={it.href} download className={rowCls(it.danger, it.className)} onClick={() => setOpen(false)}>{inner}</a>
             ) : (
               <button
                 key={it.id}
@@ -97,7 +99,7 @@ export default function DrillMenu({
                 role={it.pressed !== undefined ? 'menuitemcheckbox' : 'menuitem'}
                 aria-checked={it.pressed}
                 disabled={it.disabled}
-                className={rowCls(it.danger)}
+                className={rowCls(it.danger, it.className)}
                 onClick={() => { setOpen(false); it.onSelect?.() }}
               >
                 {inner}
