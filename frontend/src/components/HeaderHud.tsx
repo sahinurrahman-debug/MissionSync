@@ -112,6 +112,8 @@ interface Props {
   /** Optional left-hand slot (e.g. “← My drills”) and right-hand slot (e.g. the account menu). */
   leading?: ReactNode
   trailing?: ReactNode
+  /** The drill's name, shown next to the brand on wider screens. */
+  title?: string
 }
 
 const iconBtn =
@@ -119,7 +121,7 @@ const iconBtn =
 
 export default function HeaderHud({
   snap, theme, onToggleTheme, showUnits, onToggleUnits, onReset, resetting, exportUrl, autoDispatch, onToggleAuto, onEndDrill, onGuide,
-  leading, trailing,
+  leading, trailing, title,
 }: Props) {
   const booted = snap.status === 'live'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
@@ -164,6 +166,7 @@ export default function HeaderHud({
         </Chip>
       </div>
 
+      {title && <span className="hidden min-w-0 max-w-[16rem] truncate text-base font-semibold text-ink-2 md:block" title={title}>{title}</span>}
       <EngineChips snap={snap} className="hidden lg:flex" />
 
       <div className="ml-auto flex items-center gap-2">

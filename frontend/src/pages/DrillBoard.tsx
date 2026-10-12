@@ -47,7 +47,7 @@ export function describeError(e: unknown): string {
 type Confirm = 'end' | 'reset' | null
 
 /** One drill's dashboard: header, guidance, and one section at a time (side rail on desktop, tabs on phones). */
-export default function DrillBoard({ source, leading, trailing }: { source: DataSource; leading?: ReactNode; trailing?: ReactNode }) {
+export default function DrillBoard({ source, title, leading, trailing }: { source: DataSource; title?: string; leading?: ReactNode; trailing?: ReactNode }) {
   const subscribe = useCallback((cb: () => void) => source.subscribe(cb), [source])
   const rawSnap = useSyncExternalStore(subscribe, () => source.getSnapshot())
   const { theme, toggle } = useTheme()
@@ -102,8 +102,7 @@ export default function DrillBoard({ source, leading, trailing }: { source: Data
   const ended = snap.status === 'ended'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
   const p1p2 = snap.incidents.filter((i) => i.risk?.tier === 'P1' || i.risk?.tier === 'P2').length
-  const exportUrl =
-    source.exportUrl && m.drill_id != null && m.database !== 'disabled' && m.database !== 'error' ? source.exportUrl(m.drill_id) : null
+  const exportUrl = source.exportUrl && m.drill_id != null ? source.exportUrl() : null
   const autoDispatch = snap.settings.auto_dispatch
   const inputsLocked = offline || loading || ended
 
@@ -287,6 +286,7 @@ export default function DrillBoard({ source, leading, trailing }: { source: Data
         onToggleAuto={doToggleAuto}
         onEndDrill={() => setConfirm('end')}
         onGuide={() => setGuide(true)}
+        title={title}
         leading={leading}
         trailing={trailing}
       />
