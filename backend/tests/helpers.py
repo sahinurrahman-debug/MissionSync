@@ -42,3 +42,37 @@ def signed_in(client: TestClient, email: str = "ann@example.com", name: str = "A
 def app_client(tmp_path: Path, **over) -> tuple[TestClient, Services]:
     svc = make_services(tmp_path, **over)
     return TestClient(create_app(svc)), svc
+
+
+class Who:
+    """One person's browser, driving a SINGLE shared TestClient (one server, one event loop).
+
+    Each call swaps in that person's session cookie, so two accounts can take turns against the same app.
+    `Who(client, None)` is an anonymous visitor."""
+
+    def __init__(self, client: TestClient, token: str | None = None) -> None:
+        self.client, self.token = client, token
+
+    @classmethod
+    def signup(cls, client: TestClient, email: str, name: str) -> "Who":
+        client.cookies.clear()
+        signed_in(client, email, name)
+        return cls(client, client.cookies.get("ms_session"))
+
+    def _use(self) -> None:
+        self.client.cookies.clear()
+        if self.token:
+            self.client.cookies.set("ms_session", self.token)
+
+    def request(self, method: str, url: str, **kw):
+        self._use()
+        return self.client.request(method, url, **kw)
+
+    def get(self, url, **kw): return self.request("GET", url, **kw)
+    def post(self, url, **kw): return self.request("POST", url, **kw)
+    def patch(self, url, **kw): return self.request("PATCH", url, **kw)
+    def delete(self, url, **kw): return self.request("DELETE", url, **kw)
+
+    def websocket_connect(self, url, **kw):
+        self._use()
+        return self.client.websocket_connect(url, **kw)
