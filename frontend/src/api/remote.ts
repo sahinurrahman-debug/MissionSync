@@ -1,16 +1,18 @@
-// RemoteEngine: the dashboard's window onto the FastAPI backend.
-//   GET  /api/snapshot   first paint
-//   WS   /ws             every pipeline stage, pushed (no polling)
-//   POST /api/report     inject a free-text report
-//   POST /api/reset      start the drill over
-// The socket reconnects with backoff; while it is down the last picture stays on
-// screen under an "offline" banner — the board never blanks.
+// RemoteEngine: the dashboard's window onto ONE of your drills on the FastAPI backend.
+//   GET   /api/drills/:id/snapshot      first paint
+//   WS    /ws/drills/:id                every pipeline stage, pushed (no polling)
+//   POST  /api/drills/:id/report ...    actions (each answers with the new snapshot)
+// The socket reconnects with backoff; while it is down the last picture stays on screen under an
+// "offline" banner — the board never blanks. If the server says the session ended (close 4401) or the
+// drill is gone (4404), `onLost` tells the app to leave this page instead of reconnecting forever.
 import { SAMPLE_REPORTS, type DataSource, type Subscriber } from '../source'
-import { ApiError, type Connection, type InjectResult, type Snapshot } from '../types'
+import { type Connection, type InjectResult, type Snapshot } from '../types'
+import { apiBase, request } from './http'
 import { emptySnapshot, fromBackend } from './mapping'
 
+export { parseError } from './http'
+
 const PING_MS = 25_000
-const ADMIN_KEY_STORAGE = 'ms-admin-key'
 
 /** A unique id per submit: a retried or double-clicked request is processed once by the server. */
 function nonce(): string {
@@ -20,27 +22,10 @@ function nonce(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
   }
 }
-const REQUEST_TIMEOUT_MS = 90_000      // a real LLM pipeline can take a while
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export async function parseError(res: Response): Promise<ApiError> {
-  let body: any = null
-  try {
-    body = await res.json()
-  } catch {
-    /* non-JSON error page */
-  }
-  const err = body?.error
-  const retry = Number(res.headers.get('Retry-After'))
-  return new ApiError(
-    err?.message ?? `The server answered ${res.status}.`,
-    err?.code ?? 'internal_error',
-    res.status,
-    err?.request_id,
-    Number.isFinite(retry) && retry > 0 ? retry : undefined,
-  )
-}
+export type LostReason = 'signed_out' | 'not_found'
 
 export class RemoteEngine implements DataSource {
   readonly kind = 'remote' as const
@@ -53,24 +38,11 @@ export class RemoteEngine implements DataSource {
   private retries = 0
   private stopped = true
   private sampleIndex = 0
-  private adminKey = ''
 
-  /** `baseUrl` '' ⇒ same origin (Vite proxy in dev, a reverse proxy in production). */
-  constructor(private baseUrl: string = '') {
-    try {
-      this.adminKey = sessionStorage.getItem(ADMIN_KEY_STORAGE) ?? ''
-    } catch {
-      /* storage blocked: the key just isn't remembered */
-    }
-  }
+  constructor(private drillId: number, private onLost?: (why: LostReason) => void) {}
 
-  setAdminKey(key: string): void {
-    this.adminKey = key
-    try {
-      sessionStorage.setItem(ADMIN_KEY_STORAGE, key)
-    } catch {
-      /* ignore */
-    }
+  private get base(): string {
+    return `/api/drills/${this.drillId}`
   }
 
   subscribe(fn: Subscriber): () => void {
@@ -84,8 +56,8 @@ export class RemoteEngine implements DataSource {
     return this.snap
   }
 
-  exportUrl(drillId: number): string {
-    return this.url(`/api/drills/${drillId}/export.csv`)
+  exportUrl(): string {
+    return `${apiBase()}${this.base}/export.csv`
   }
 
   nextSampleReport(): string {
@@ -111,10 +83,7 @@ export class RemoteEngine implements DataSource {
   }
 
   async injectReport(text: string): Promise<InjectResult> {
-    const body = await this.request('/api/report', {
-      method: 'POST',
-      body: JSON.stringify({ text, source: 'radio', client_nonce: nonce() }),
-    })
+    const body = await request(`${this.base}/report`, { method: 'POST', json: { text, source: 'radio', client_nonce: nonce() } })
     this.apply(fromBackend(body.snapshot, this.snap.connection))
     const o = body.outcome ?? {}
     return {
@@ -128,70 +97,46 @@ export class RemoteEngine implements DataSource {
   }
 
   /** POST/PATCH an action and apply the snapshot the server answers with. */
-  private async act(path: string, method: 'POST' | 'PATCH', body?: unknown, admin = false): Promise<void> {
-    const res = await this.request(path, {
-      method,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      headers: admin && this.adminKey ? { 'X-Admin-Key': this.adminKey } : undefined,
-    })
+  private async act(path: string, method: 'POST' | 'PATCH', json?: unknown): Promise<void> {
+    const res = await request(`${this.base}${path}`, { method, json })
     if (res?.snapshot) this.apply(fromBackend(res.snapshot, this.snap.connection))
   }
 
-  reset(): Promise<void> { return this.act('/api/reset', 'POST', undefined, true) }
-  endDrill(): Promise<void> { return this.act('/api/drill/end', 'POST', undefined, true) }
-  setAutoDispatch(enabled: boolean): Promise<void> { return this.act('/api/settings', 'POST', { auto_dispatch: enabled }, true) }
-  approve(proposalIds?: string[]): Promise<void> { return this.act('/api/dispatch/approve', 'POST', proposalIds ? { proposal_ids: proposalIds } : {}) }
-  reject(proposalId: string): Promise<void> { return this.act('/api/dispatch/reject', 'POST', { proposal_id: proposalId }) }
+  reset(): Promise<void> { return this.act('/reset', 'POST') }
+  endDrill(): Promise<void> { return this.act('/end', 'POST') }
+  setAutoDispatch(enabled: boolean): Promise<void> { return this.act('/settings', 'POST', { auto_dispatch: enabled }) }
+  approve(proposalIds?: string[]): Promise<void> { return this.act('/dispatch/approve', 'POST', proposalIds ? { proposal_ids: proposalIds } : {}) }
+  reject(proposalId: string): Promise<void> { return this.act('/dispatch/reject', 'POST', { proposal_id: proposalId }) }
   dispatchManual(incidentId: string, resourceId: string): Promise<void> {
-    return this.act('/api/dispatch/manual', 'POST', { incident_id: incidentId, resource_id: resourceId })
+    return this.act('/dispatch/manual', 'POST', { incident_id: incidentId, resource_id: resourceId })
   }
-  recall(unitId: string): Promise<void> { return this.act(`/api/units/${encodeURIComponent(unitId)}/recall`, 'POST') }
+  recall(unitId: string): Promise<void> { return this.act(`/units/${encodeURIComponent(unitId)}/recall`, 'POST') }
   resolveIncident(incidentId: string, status: 'contained' | 'closed'): Promise<void> {
-    return this.act(`/api/incidents/${encodeURIComponent(incidentId)}`, 'PATCH', { status })
+    return this.act(`/incidents/${encodeURIComponent(incidentId)}`, 'PATCH', { status })
   }
 
   // -- plumbing ----------------------------------------------------------------
 
-  private url(path: string): string {
-    return `${this.baseUrl.replace(/\/$/, '')}${path}`
-  }
-
   private wsUrl(): string {
-    if (this.baseUrl) return this.baseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws'
-    return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
-  }
-
-  private async request(path: string, init: RequestInit = {}): Promise<any> {
-    const ctl = new AbortController()
-    const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS)
-    let res: Response
-    try {
-      res = await fetch(this.url(path), {
-        ...init,
-        signal: ctl.signal,
-        headers: { 'Content-Type': 'application/json', ...(init.headers ?? {}) },
-      })
-    } catch (e) {
-      const aborted = e instanceof DOMException && e.name === 'AbortError'
-      throw new ApiError(
-        aborted ? 'The server took too long to answer.' : 'Cannot reach the MissionSync server.',
-        aborted ? 'timeout' : 'network_error',
-        0,
-      )
-    } finally {
-      clearTimeout(timer)
-    }
-    if (!res.ok) throw await parseError(res)
-    return res.json()
+    const base = apiBase()
+    if (base) return `${base.replace(/^http/, 'ws')}/ws/drills/${this.drillId}`
+    return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/drills/${this.drillId}`
   }
 
   private async fetchSnapshot(): Promise<void> {
     try {
-      const raw = await this.request('/api/snapshot')
+      const raw = await request(`${this.base}/snapshot`, { quiet401: true })
       if (this.snap.status !== 'live' || this.snap.tick === 0) this.apply(fromBackend(raw, this.snap.connection))
-    } catch {
-      /* the socket will deliver the first snapshot, or the offline banner will say why */
+    } catch (e: any) {
+      if (e?.status === 401) this.lost('signed_out')
+      else if (e?.status === 404) this.lost('not_found')
+      /* otherwise the socket will deliver the first snapshot, or the offline banner will say why */
     }
+  }
+
+  private lost(why: LostReason): void {
+    this.stop()
+    this.onLost?.(why)
   }
 
   private connect(): void {
@@ -218,13 +163,14 @@ export class RemoteEngine implements DataSource {
         /* ignore malformed frames */
       }
     }
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.ws = null
-      if (!this.stopped) {
-        this.setConnection('offline')
-        this.scheduleReconnect()
-      }
+      if (this.stopped) return
+      if (ev?.code === 4401) return this.lost('signed_out')
+      if (ev?.code === 4404) return this.lost('not_found')
+      this.setConnection('offline')
+      this.scheduleReconnect()
     }
     ws.onerror = () => ws.close()
   }

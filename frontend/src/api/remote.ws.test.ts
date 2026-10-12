@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RemoteEngine } from './remote'
 
@@ -10,7 +11,7 @@ class MockSocket {
   sent: string[] = []
   onopen: (() => void) | null = null
   onmessage: ((ev: { data: string }) => void) | null = null
-  onclose: (() => void) | null = null
+  onclose: ((ev?: { code?: number }) => void) | null = null
   onerror: (() => void) | null = null
   constructor(public url: string) {
     MockSocket.instances.push(this)
@@ -37,12 +38,12 @@ afterEach(() => {
 
 describe('RemoteEngine socket', () => {
   it('goes online on open, applies pushed snapshots, and ignores malformed frames', () => {
-    const e = new RemoteEngine('https://api.example.com')
+    const e = new RemoteEngine(7)
     const seen: number[] = []
     e.subscribe((s) => seen.push(s.tick))
     e.start()
     const ws = MockSocket.instances[0]
-    expect(ws.url).toBe('wss://api.example.com/ws')                  // http(s) → ws(s) for a separate API origin
+    expect(ws.url).toBe('ws://localhost:3000/ws/drills/7')            // same origin as the page, one socket per drill
     ws.open()
     expect(e.getSnapshot().connection).toBe('online')
     ws.push({ type: 'snapshot', data: snap(5) })
@@ -54,7 +55,7 @@ describe('RemoteEngine socket', () => {
   })
 
   it('reports offline when the socket drops, and reconnects with exponential backoff', () => {
-    const e = new RemoteEngine('http://localhost:9')
+    const e = new RemoteEngine(7)
     e.start()
     MockSocket.instances[0].open()
     MockSocket.instances[0].close()
@@ -78,7 +79,7 @@ describe('RemoteEngine socket', () => {
   })
 
   it('caps the backoff at 10 s', () => {
-    const e = new RemoteEngine('http://localhost:9')
+    const e = new RemoteEngine(7)
     e.start()
     for (let i = 0; i < 8; i++) {
       MockSocket.instances[MockSocket.instances.length - 1].close()
@@ -92,7 +93,7 @@ describe('RemoteEngine socket', () => {
   })
 
   it('sends a keep-alive ping only while open, and stop() ends everything', () => {
-    const e = new RemoteEngine('http://localhost:9')
+    const e = new RemoteEngine(7)
     e.start()
     const ws = MockSocket.instances[0]
     ws.open()
@@ -106,7 +107,7 @@ describe('RemoteEngine socket', () => {
 
   it('does not fall over when the socket constructor throws (blocked / bad URL)', () => {
     vi.stubGlobal('WebSocket', class { constructor() { throw new Error('blocked') } })
-    const e = new RemoteEngine('http://localhost:9')
+    const e = new RemoteEngine(7)
     expect(() => e.start()).not.toThrow()
     e.stop()
   })
@@ -116,11 +117,11 @@ describe('RemoteEngine actions', () => {
   function engine(respond: (url: string, init: RequestInit) => Response | Promise<Response>) {
     const f = vi.fn(async (url: string, init: RequestInit = {}) => (init.method ? respond(url, init) : json(snap(1))))
     vi.stubGlobal('fetch', f)
-    const e = new RemoteEngine('https://api.example.com')
+    const e = new RemoteEngine(7)
     return { e, calls: () => f.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method) as [string, RequestInit][] }
   }
 
-  it('hits the right endpoint with the right body and applies the returned snapshot', async () => {
+  it('hits the right drill-scoped endpoint with the right body and applies the returned snapshot', async () => {
     const { e, calls } = engine(() => json({ snapshot: snap(42) }))
     await e.approve(['p1', 'p2'])
     await e.approve()
@@ -128,44 +129,37 @@ describe('RemoteEngine actions', () => {
     await e.dispatchManual('inc_1', 'res_1')
     await e.recall('res 1')
     await e.resolveIncident('inc_1', 'contained')
-    const seen = calls().map(([u, i]) => [i.method, u.replace('https://api.example.com', ''), i.body])
+    await e.setAutoDispatch(true)
+    await e.endDrill()
+    await e.reset()
+    const seen = calls().map(([u, i]) => [i.method, u, i.body])
     expect(seen).toEqual([
-      ['POST', '/api/dispatch/approve', JSON.stringify({ proposal_ids: ['p1', 'p2'] })],
-      ['POST', '/api/dispatch/approve', '{}'],
-      ['POST', '/api/dispatch/reject', JSON.stringify({ proposal_id: 'p3' })],
-      ['POST', '/api/dispatch/manual', JSON.stringify({ incident_id: 'inc_1', resource_id: 'res_1' })],
-      ['POST', '/api/units/res%201/recall', undefined],
-      ['PATCH', '/api/incidents/inc_1', JSON.stringify({ status: 'contained' })],
+      ['POST', '/api/drills/7/dispatch/approve', JSON.stringify({ proposal_ids: ['p1', 'p2'] })],
+      ['POST', '/api/drills/7/dispatch/approve', '{}'],
+      ['POST', '/api/drills/7/dispatch/reject', JSON.stringify({ proposal_id: 'p3' })],
+      ['POST', '/api/drills/7/dispatch/manual', JSON.stringify({ incident_id: 'inc_1', resource_id: 'res_1' })],
+      ['POST', '/api/drills/7/units/res%201/recall', undefined],
+      ['PATCH', '/api/drills/7/incidents/inc_1', JSON.stringify({ status: 'contained' })],
+      ['POST', '/api/drills/7/settings', JSON.stringify({ auto_dispatch: true })],
+      ['POST', '/api/drills/7/end', undefined],
+      ['POST', '/api/drills/7/reset', undefined],
     ])
     expect(e.getSnapshot().tick).toBe(42)
   })
 
-  it('sends the admin key only on the privileged calls', async () => {
+  it('always sends the session cookie and never an admin key (the account is the authorisation)', async () => {
     const { e, calls } = engine(() => json({ snapshot: snap(2) }))
-    e.setAdminKey('k-123')
     await e.reset()
-    await e.endDrill()
-    await e.setAutoDispatch(true)
-    await e.approve()
-    const headers = calls().map(([u, i]) => [u.replace(/^.*\/api/, ''), (i.headers as Record<string, string>)['X-Admin-Key']])
-    expect(headers).toEqual([['/reset', 'k-123'], ['/drill/end', 'k-123'], ['/settings', 'k-123'], ['/dispatch/approve', undefined]])
-    expect(JSON.parse(calls()[2][1].body as string)).toEqual({ auto_dispatch: true })
-  })
-
-  it('remembers the admin key for the tab session', async () => {
-    const store: Record<string, string> = {}
-    vi.stubGlobal('sessionStorage', { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v } })
-    new RemoteEngine('').setAdminKey('abc')
-    expect(store['ms-admin-key']).toBe('abc')
-    const { e, calls } = engine(() => json({ snapshot: snap(3) }))   // a fresh engine (page reload) picks it up
-    await e.reset()
-    expect((calls()[0][1].headers as Record<string, string>)['X-Admin-Key']).toBe('abc')
+    for (const [, init] of calls()) {
+      expect(init.credentials).toBe('include')
+      expect(JSON.stringify(init.headers ?? {})).not.toMatch(/admin/i)
+    }
   })
 
   it('surfaces 401 / 409 as typed errors the UI can act on', async () => {
     const { e } = engine((url) => url.endsWith('/reset')
-      ? json({ error: { code: 'unauthorized', message: 'Admin key required.', request_id: 'r1' } }, 401)
-      : json({ error: { code: 'conflict', message: 'Unit is busy.' } }, 409))
+      ? json({ error: 'Please sign in to continue.', code: 'unauthorized', request_id: 'r1' }, 401)
+      : json({ error: 'Unit is busy.', code: 'conflict' }, 409))
     await expect(e.reset()).rejects.toMatchObject({ code: 'unauthorized', status: 401, requestId: 'r1' })
     await expect(e.recall('res_1')).rejects.toMatchObject({ code: 'conflict', status: 409, message: 'Unit is busy.' })
   })
@@ -178,5 +172,49 @@ describe('RemoteEngine actions', () => {
     expect(bodies[0].client_nonce).toBeTruthy()
     expect(bodies[0].client_nonce).not.toBe(bodies[1].client_nonce)
     expect(r.provisional).toBe(true)
+  })
+
+  it('exposes the CSV of its own drill', () => {
+    expect(new RemoteEngine(7).exportUrl()).toBe('/api/drills/7/export.csv')
+  })
+})
+
+describe('RemoteEngine access loss', () => {
+  it('stops reconnecting and tells the app when the server closes the socket with 4401 (signed out) or 4404 (not yours)', () => {
+    for (const [code, why] of [[4401, 'signed_out'], [4404, 'not_found']] as const) {
+      MockSocket.instances = []
+      const lost = vi.fn()
+      const e = new RemoteEngine(7, lost)
+      e.start()
+      const ws = MockSocket.instances[0]
+      ws.onclose?.({ code } as any)
+      expect(lost).toHaveBeenCalledWith(why)
+      vi.advanceTimersByTime(60_000)
+      expect(MockSocket.instances).toHaveLength(1)                    // no reconnect storm against a door that is closed
+    }
+  })
+
+  it('treats an ordinary drop as offline and keeps trying', () => {
+    const lost = vi.fn()
+    const e = new RemoteEngine(7, lost)
+    e.start()
+    MockSocket.instances[0].onclose?.({ code: 1006 } as any)
+    expect(lost).not.toHaveBeenCalled()
+    expect(e.getSnapshot().connection).toBe('offline')
+    vi.advanceTimersByTime(1000)
+    expect(MockSocket.instances).toHaveLength(2)
+    e.stop()
+  })
+
+  it('leaves when the first snapshot request says 401 or 404', async () => {
+    vi.useRealTimers()
+    for (const [status, why] of [[401, 'signed_out'], [404, 'not_found']] as const) {
+      vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'nope', code: 'x' }, status)))
+      const lost = vi.fn()
+      const e = new RemoteEngine(7, lost)
+      e.start()
+      await vi.waitFor(() => expect(lost).toHaveBeenCalledWith(why))
+      e.stop()
+    }
   })
 })

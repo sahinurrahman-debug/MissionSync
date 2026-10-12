@@ -26,10 +26,8 @@ export interface DataSource {
   /** Demo setting: commit recommendations immediately instead of waiting for a person. */
   setAutoDispatch(enabled: boolean): Promise<void>
   endDrill(): Promise<void>
-  /** Remember the admin key for protected actions (remote backends only). */
-  setAdminKey?(key: string): void
-  /** URL of the after-action CSV for a stored drill (backends with a database only). */
-  exportUrl?(drillId: number): string
+  /** URL of this drill's after-action CSV (drills stored on the server only). */
+  exportUrl?(): string
 }
 
 /** Reports a net-control lead might actually type — used by the intake's sample picker. */

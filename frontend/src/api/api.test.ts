@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../types'
 import { emptySnapshot, fromBackend, mapMetrics } from './mapping'
@@ -60,16 +61,17 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 afterEach(() => vi.unstubAllGlobals())
 
-describe('RemoteEngine', () => {
-  it('posts the report and returns what the pipeline did', async () => {
+describe('RemoteEngine (one drill)', () => {
+  it('posts the report to the drill and returns what the pipeline did', async () => {
     let seen: any
     mockFetch((url, init) => {
-      seen = { url, body: JSON.parse(String(init?.body)) }
+      seen = { url, body: JSON.parse(String(init?.body)), credentials: init?.credentials }
       return json({ status: 'processed', outcome: { kind: 'created', title: 'Fire at Downtown', tier: 'P2', urgency: 61.5, message: '' }, snapshot: backendSnapshot() })
     })
-    const e = new RemoteEngine('http://api.test/')
+    const e = new RemoteEngine(12)
     const r = await e.injectReport('fire at downtown')
-    expect(seen.url).toBe('http://api.test/api/report')
+    expect(seen.url).toBe('/api/drills/12/report')
+    expect(seen.credentials).toBe('include')                                  // the session cookie rides along
     expect(seen.body).toMatchObject({ text: 'fire at downtown', source: 'radio' })
     expect(typeof seen.body.client_nonce).toBe('string')
     expect(seen.body.client_nonce.length).toBeGreaterThan(8)                 // idempotency key on every submit
@@ -78,28 +80,38 @@ describe('RemoteEngine', () => {
     expect(e.getSnapshot().metrics.injections).toBe(2)
   })
 
-  it('surfaces the standard error envelope', async () => {
-    mockFetch(() => json({ error: { code: 'validation_error', message: 'Invalid text.', details: [], request_id: 'req_ab12' } }, 400))
-    const err = await new RemoteEngine().injectReport('x').catch((e) => e)
+  it('surfaces the standard error shape: a plain string plus a code', async () => {
+    mockFetch(() => json({ error: 'Invalid text.', code: 'validation_error', details: [{ field: 'text', issue: 'Too short.' }], request_id: 'req_ab12' }, 400))
+    const err = await new RemoteEngine(1).injectReport('x').catch((e) => e)
     expect(err).toBeInstanceOf(ApiError)
-    expect(err).toMatchObject({ code: 'validation_error', status: 400, requestId: 'req_ab12', message: 'Invalid text.' })
+    expect(err).toMatchObject({ code: 'validation_error', status: 400, requestId: 'req_ab12', message: 'Invalid text.', fields: { text: 'Too short.' } })
   })
 
   it('carries the retry hint on a rate limit', async () => {
-    mockFetch(() => json({ error: { code: 'rate_limited', message: 'Slow down', request_id: 'req_1' } }, 429, { 'Retry-After': '3' }))
-    const err = await new RemoteEngine().injectReport('x').catch((e) => e)
+    mockFetch(() => json({ error: 'Slow down', code: 'rate_limited', request_id: 'req_1' }, 429, { 'Retry-After': '3' }))
+    const err = await new RemoteEngine(1).injectReport('x').catch((e) => e)
     expect(err).toMatchObject({ code: 'rate_limited', retryAfterS: 3 })
   })
 
   it('reports an unreachable server as a network error, not a crash', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
-    const err = await new RemoteEngine().injectReport('x').catch((e) => e)
+    const err = await new RemoteEngine(1).injectReport('x').catch((e) => e)
     expect(err).toMatchObject({ code: 'network_error', status: 0 })
+    expect(err.message).toMatch(/Cannot reach/)
   })
 
   it('survives a non-JSON error page', async () => {
     mockFetch(() => new Response('<html>Bad gateway</html>', { status: 502 }))
-    const err = await new RemoteEngine().reset().catch((e) => e)
+    const err = await new RemoteEngine(1).reset().catch((e) => e)
     expect(err).toMatchObject({ code: 'internal_error', status: 502 })
+  })
+
+  it('tells the app when the session is gone (a 401 anywhere)', async () => {
+    mockFetch(() => json({ error: 'Please sign in to continue.', code: 'unauthorized', request_id: 'r' }, 401))
+    const lost = vi.fn()
+    window.addEventListener('ms:session-lost', lost)
+    await new RemoteEngine(1).approve().catch(() => undefined)
+    window.removeEventListener('ms:session-lost', lost)
+    expect(lost).toHaveBeenCalledTimes(1)
   })
 })

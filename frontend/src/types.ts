@@ -238,6 +238,8 @@ export class ApiError extends Error {
     public status: number,
     public requestId?: string,
     public retryAfterS?: number,
+    /** Per-field messages from server-side validation, e.g. { email: 'Enter a valid email address.' }. */
+    public fields: Record<string, string> = {},
   ) {
     super(message)
   }
