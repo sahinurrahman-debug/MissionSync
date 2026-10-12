@@ -1,8 +1,54 @@
 # Architecture — MissionSync
 
-*Planned system architecture · Journey to Mastery — Level 1 (Ronin)*
+*System architecture · written at Level 1 (Ronin), updated at Level 3 (Samurai) — the first section is what is built today; §1–4 are the original plan with notes on what changed*
 
 > Principle: **agents propose, deterministic code decides.** LLM components parse and draft; scoring, tiering, ranking, and assignment caps are plain code so identical inputs produce identical rankings. A judge (or net control) can audit any ranking.
+
+---
+
+## 0. As built at Level 3 (Samurai)
+
+```
+ Browser (React + Vite, Leaflet map)
+   │  one origin — same host serves the page, the API and the WebSocket
+   ▼
+ FastAPI service  (Docker, Render)  ──────────────►  Neon PostgreSQL
+   ├─ /                       the built dashboard (SPA fallback)              users · sessions · drills
+   ├─ /api/auth/*             sign up / in / out, session cookie (httpOnly)     audit_events · reports · kv
+   ├─ /api/drills[/{id}]      CRUD of YOUR drills                               (Alembic migrations)
+   ├─ /api/drills/{id}/...    run a drill: report, approve, reject, dispatch…
+   ├─ /ws/drills/{id}         live snapshots of that one drill
+   └─ DrillManager ── one Orchestrator + WebSocket hub PER OPEN DRILL
+                          └─ 5 agents (Groq LLM, rule-based fallbacks) ──► Groq API
+```
+
+**Data flow in three sentences.** The browser loads the app, asks `/api/auth/me` who it is (the session cookie is verified against the `sessions` table on every request), and lists the signed-in user's drills. Opening a drill makes the `DrillManager` restore that drill's saved world state from the database (or boot a fresh scenario), start its agent loop, and attach a WebSocket hub; every action a person takes (a report, an approval) goes over REST, is checked against the owner in SQL, mutates only that drill's orchestrator, and the resulting snapshot is pushed to that drill's viewers. State is saved back to the `drills` row after each cycle, so a restart or a sleeping free-tier instance resumes where it left off, and idle drills are saved and unloaded to keep memory small.
+
+**Why one origin?** The session cookie is `httpOnly` + `SameSite=Lax`. Two different `*.onrender.com` hosts count as *cross-site*, and browsers (private windows especially) block third-party cookies, so a split static-site + API deployment would silently fail to sign you in. Serving the compiled dashboard from the API removes CORS, cookie tricks and a second deploy.
+
+### Data model as built
+
+```
+users 1──* sessions        sessions.id = SHA-256(cookie token)  (a stolen DB cannot be replayed as logins)
+users 1──* drills          drills.owner_id → users.id  ON DELETE CASCADE   ← every drill query filters on it
+drills 1──* audit_events   the pipeline trail of one drill      (ON DELETE CASCADE)
+drills 1──* reports        every submitted field report         (ON DELETE CASCADE)
+drills.state               JSON world state (incidents, units, proposals…) used to resume a drill
+kv                         shared, non-personal LLM score cache keyed by report content
+```
+
+### Deviations from the Level 1 plan (and why)
+
+| Level 1 plan | Built | Why |
+|---|---|---|
+| Firebase Authentication | Email + password with argon2id hashes and server-side sessions | One less external service and account to configure; the session logic is small, testable and fully server-side. |
+| Orgs, members, roles (`owner/admin/net_control/responder/viewer`) | Each account owns private drills | The Samurai rubric needs per-user isolation and CRUD; org roles are a Shogun concern. |
+| `DrillSession` per org | `drills` per user | Same idea, one level simpler. |
+| Static site + API as two Render services | One Docker service | Cookie sessions need a single origin (see above). |
+| Render Postgres | Neon PostgreSQL via `DATABASE_URL` | Free tier that does not expire; the code is unchanged because it is plain Postgres. |
+| `POST /api/drills/{id}/reports` + JWT | Same route shape, session cookie instead of a JWT | Matches the plan; the cookie replaces the token. |
+
+*Sections 1–4 below are the original Level 1 design, kept for the record.*
 
 ---
 

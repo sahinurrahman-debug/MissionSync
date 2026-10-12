@@ -27,5 +27,11 @@ export default defineConfig({
     },
   },
   // Engine/mapping tests run in node; component tests opt in to jsdom with a `@vitest-environment jsdom` docblock.
-  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'], setupFiles: ['src/test-setup.ts'] },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test-setup.ts'],
+    testTimeout: 20000,                  // route-level code splitting makes the first render of a page async
+    coverage: { provider: 'v8', include: ['src/**/*.{ts,tsx}'], exclude: ['src/**/*.test.*', 'src/test-*', 'src/main.tsx', 'src/vite-env.d.ts'], reporter: ['text-summary', 'text'] },
+  },
 })

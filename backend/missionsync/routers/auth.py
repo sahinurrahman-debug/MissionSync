@@ -78,3 +78,12 @@ async def logout(request: Request, svc: Services = Depends(get_services)) -> Res
 @router.get("/me")
 async def me(user: User = Depends(current_user)) -> dict:
     return {"user": user.public()}
+
+
+@router.get("/session")
+async def session(request: Request, svc: Services = Depends(get_services)) -> dict:
+    """Like /me, but a visitor is a normal answer ({"user": null}), not an error — so the page can ask on load
+    without a failed request showing up in the browser console."""
+    token = request.cookies.get(SESSION_COOKIE, "")
+    user = await asyncio.to_thread(svc.sessions.resolve, token) if token else None
+    return {"user": user.public() if user else None}

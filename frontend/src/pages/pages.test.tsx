@@ -65,7 +65,7 @@ describe('protected routes', () => {
     localStorage.setItem('user', JSON.stringify({ email: 'forged@example.com' }))        // a forged client-side "login" does nothing
     visit('/drills')
     expect(await screen.findByLabelText('Email')).toBeTruthy()
-    expect(api.calls[0]).toMatchObject({ method: 'GET', path: '/api/auth/me' })
+    expect(api.calls[0]).toMatchObject({ method: 'GET', path: '/api/auth/session' })
   })
 
   it('an expired session (401 anywhere) returns you to sign-in', async () => {

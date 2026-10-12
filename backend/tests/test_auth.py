@@ -39,6 +39,16 @@ def test_signup_signs_you_in_and_the_session_persists_across_requests(api) -> No
     assert c.get("/api/auth/me").status_code == 200
 
 
+def test_session_probe_answers_200_for_visitors_and_members_alike(api) -> None:
+    c, _ = api
+    assert c.get("/api/auth/session").json() == {"user": None}                       # not an error: nothing noisy in the console
+    err(c.get("/api/auth/me"), 401, "unauthorized")                                    # the strict endpoint still refuses
+    signed_in(c)
+    assert c.get("/api/auth/session").json()["user"]["email"] == "ann@example.com"
+    c.cookies.set("ms_session", "forged-token")
+    assert c.get("/api/auth/session").json() == {"user": None}
+
+
 def test_the_session_cookie_is_httponly_samesite_and_opaque(api) -> None:
     c, svc = api
     cookie = c.post("/api/auth/signup", json=signup_body()).headers["set-cookie"].lower()

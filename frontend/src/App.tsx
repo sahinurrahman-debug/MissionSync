@@ -1,12 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import AuthPage from './pages/AuthPage'
-import DemoPage from './pages/DemoPage'
-import DrillPage from './pages/DrillPage'
-import DrillsPage from './pages/DrillsPage'
 import MessagePage from './pages/MessagePage'
+
+// The dashboard (map, animation library, agents) is the heavy part: the sign-in page must not pay for it.
+const DemoPage = lazy(() => import('./pages/DemoPage'))
+const DrillPage = lazy(() => import('./pages/DrillPage'))
+const DrillsPage = lazy(() => import('./pages/DrillsPage'))
 
 function Splash({ text }: { text: string }) {
   return (
@@ -39,6 +41,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Suspense fallback={<Splash text="Loading…" />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<AuthPage mode="signin" />} />
@@ -48,6 +51,7 @@ export default function App() {
           <Route path="/drills/:id" element={<RequireAuth><DrillPage /></RequireAuth>} />
           <Route path="*" element={<MessagePage title="Page not found" body="That address does not lead anywhere." action={{ to: '/', label: 'Go to the start' }} />} />
         </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   )

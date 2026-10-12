@@ -46,6 +46,7 @@ export class FakeApi {
     this.calls.push({ method, path: url, body })
     const key = `${method} ${url.replace(/\/\d+/g, '/:id')}`
 
+    if (key === 'GET /api/auth/session') return json({ user: this.signedIn })
     if (key === 'GET /api/auth/me') return this.signedIn ? json({ user: this.signedIn }) : fail(401, 'unauthorized', 'Please sign in to continue.')
     if (key === 'POST /api/auth/login') {
       const acc = this.accounts.get(String(body.email).trim().toLowerCase())

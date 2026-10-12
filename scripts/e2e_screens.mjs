@@ -104,6 +104,13 @@ try {
   await sleep(500)
   await shot(page, 'view-report')
 
+  // light theme, for the README
+  await clickText(page, 'nav[aria-label="Sections"] button', /^situation/i)
+  await clickText(page, 'button', /toggle color theme/)
+  await sleep(1200)
+  await shot(page, 'desktop-light')
+  await clickText(page, 'button', /toggle color theme/)
+
   // 7. refresh keeps the session and the drill (server-side state)
   await page.reload({ waitUntil: 'networkidle2' })
   await waitText(page, /LIVE/, 60000)

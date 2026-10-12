@@ -53,7 +53,7 @@ describe('Board navigation (desktop layout)', () => {
 
   it('shows one section per panel and switches by click and by the 1-4 keys', async () => {
     render(<App />)
-    await screen.findByRole('navigation', { name: 'Sections' })
+    await screen.findByRole('navigation', { name: 'Sections' }, { timeout: 10000 })
     // Situation (default): map + ranked feed, but not the intake or fleet panels.
     expect(await screen.findByRole('region', { name: /Ranked incident feed|incident feed/i })).toBeTruthy()
     expect(screen.queryByLabelText('Field report')).toBeNull()
