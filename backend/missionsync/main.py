@@ -42,7 +42,10 @@ UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def create_app(services: Optional[Services] = None) -> FastAPI:
-    origins = [o.strip() for o in os.getenv("CORS_ORIGINS", DEV_ORIGINS).split(",") if o.strip()]
+    production = os.getenv("APP_ENV", "development").strip().lower() == "production"
+    # Dev servers (Vite) are trusted only outside production; in production the page and API share one origin
+    # and anything else must be listed explicitly in CORS_ORIGINS.
+    origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "" if production else DEV_ORIGINS).split(",") if o.strip()]
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI):

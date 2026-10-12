@@ -21,6 +21,8 @@
 
 ## Milestone 2 — "Real drills, real people" → added at **Samurai** (full-stack)
 
+> **Status (Level 3):** delivered with deviations — accounts use email/password with server-side sessions (not Firebase), each account owns private drills (no orgs/roles yet), the pipeline runs server-side with WebSocket push, human-commit controls and the xBD ground-truth scoring harness are in. Not yet: orgs and roles, the two friendly-org dogfood drills, the p95 < 3 s budget measured under real load. See [ARCHITECTURE.md §0](./ARCHITECTURE.md).
+
 **What gets added once there's a database and auth:**
 
 - **Firebase auth + Postgres persistence:** accounts, orgs (CERT club / radio team), per-org roles (owner/admin/net_control/responder/viewer), and drill sessions. A drill's incidents, reports, units, and assignments survive reloads, servers, and weeks — after-action review becomes possible because the data is real.
