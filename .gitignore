@@ -54,3 +54,7 @@ Desktop.ini
 .vscode/
 *.swp
 *~
+
+.coverage
+coverage/
+htmlcov/

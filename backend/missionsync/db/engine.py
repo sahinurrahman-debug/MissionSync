@@ -29,7 +29,7 @@ def make_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
     else:
-        kwargs.update(pool_size=3, max_overflow=2, pool_recycle=1800, connect_args={"connect_timeout": 10})
+        kwargs.update(pool_size=3, max_overflow=2, pool_recycle=1800, connect_args={"connect_timeout": 10, "prepare_threshold": None})   # None: also safe behind a pooler (PgBouncer)
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
         @event.listens_for(engine, "connect")
