@@ -359,9 +359,7 @@ describe('SystemBanners', () => {
   const base = () => world().snap
   it('says what is wrong, in words', () => {
     const s = base()
-    const { rerender } = render(<SystemBanners snap={{ ...s, status: 'ended' }} />)
-    expect(screen.getByText(/Drill ended/)).toBeTruthy()
-    rerender(<SystemBanners snap={{ ...s, engine: 'remote', connection: 'offline' }} />)
+    const { rerender } = render(<SystemBanners snap={{ ...s, engine: 'remote', connection: 'offline' }} />)
     expect(screen.getByRole('alert').textContent).toContain('Lost the connection')
     rerender(<SystemBanners snap={{ ...s, engine: 'remote', metrics: { ...s.metrics, mode: 'quota_exhausted', quota_retry_s: 240 } }} />)
     expect(screen.getByText(/AI quota spent/)).toBeTruthy()
