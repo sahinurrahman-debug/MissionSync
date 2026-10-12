@@ -46,13 +46,17 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.services = services or build_services()
+        if not hasattr(app.state, "services"):
+            app.state.services = build_services()
         app.state.services.manager.start()
         yield
         await app.state.services.manager.shutdown()
 
     app = FastAPI(title="MissionSync", version="4.0", lifespan=lifespan,
                   description="Real-time emergency-drill dashboard: accounts, private drills, AI agents that propose and humans that approve.")
+
+    if services is not None:
+        app.state.services = services
 
     app.add_middleware(
         CORSMiddleware, allow_origins=origins, allow_credentials=True,

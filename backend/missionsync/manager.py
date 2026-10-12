@@ -46,7 +46,8 @@ class DrillManager:
     # -- lifecycle ------------------------------------------------------------------------
 
     def start(self) -> None:
-        self._reaper = asyncio.create_task(self._reap_forever())
+        if self._reaper is None or self._reaper.done():
+            self._reaper = asyncio.create_task(self._reap_forever())
 
     async def shutdown(self) -> None:
         if self._reaper:
