@@ -112,10 +112,12 @@ class DrillManager:
         logger.info("drill %s unloaded (%s running)", drill_id, len(self._runtimes))
 
     async def _reap_forever(self) -> None:
+        passes = 0
         while True:
             await asyncio.sleep(30)
+            passes += 1
             try:
-                if self.sessions is not None:
+                if self.sessions is not None and passes % 20 == 0:      # every ~10 minutes: lets a serverless database sleep
                     await asyncio.to_thread(self.sessions.purge_expired)
                 for rt in list(self._runtimes.values()):
                     if rt.hub.viewers == 0 and rt.idle_s > self.settings.idle_unload_s:

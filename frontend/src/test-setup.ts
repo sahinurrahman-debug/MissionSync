@@ -29,3 +29,9 @@ afterEach(async () => {
   const { cleanup } = await import('@testing-library/react')
   cleanup()
 })
+
+// Pages are code-split, so the first render of a route is asynchronous; under a busy CI runner that can take longer than
+// Testing Library's 1 s default. A generous ceiling costs nothing when things are fast.
+if (typeof document !== 'undefined') {
+  void import('@testing-library/dom').then(({ configure }) => configure({ asyncUtilTimeout: 10000 }))
+}

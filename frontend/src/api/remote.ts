@@ -126,7 +126,8 @@ export class RemoteEngine implements DataSource {
   private async fetchSnapshot(): Promise<void> {
     try {
       const raw = await request(`${this.base}/snapshot`, { quiet401: true })
-      this.apply(fromBackend(raw, this.snap.connection))
+      const incoming = fromBackend(raw, this.snap.connection)
+      if (this.snap.tick === 0 || incoming.tick >= this.snap.tick) this.apply(incoming)       // never go backwards
     } catch (e: any) {
       if (e?.status === 401) this.lost('signed_out')
       else if (e?.status === 404) this.lost('not_found')

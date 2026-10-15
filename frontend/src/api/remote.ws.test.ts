@@ -179,6 +179,34 @@ describe('RemoteEngine actions', () => {
   })
 })
 
+describe('RemoteEngine snapshot ordering', () => {
+  it('a slow first-paint REST snapshot never overwrites a newer one already pushed over the socket', async () => {
+    let release: (r: Response) => void = () => undefined
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((res) => { release = res })))
+    const e = new RemoteEngine(7)
+    e.start()
+    MockSocket.instances[0].open()
+    MockSocket.instances[0].push({ type: 'snapshot', data: snap(9) })
+    expect(e.getSnapshot().tick).toBe(9)
+    release(json(snap(3)))                                                      // the stale answer arrives last
+    await vi.advanceTimersByTimeAsync(10)
+    expect(e.getSnapshot().tick).toBe(9)
+    e.stop()
+  })
+
+  it('but a newer REST snapshot is applied (e.g. after the socket was down)', async () => {
+    let release: (r: Response) => void = () => undefined
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((res) => { release = res })))
+    const e = new RemoteEngine(7)
+    e.start()
+    MockSocket.instances[0].push({ type: 'snapshot', data: snap(2) })
+    release(json(snap(6)))
+    await vi.advanceTimersByTimeAsync(10)
+    expect(e.getSnapshot().tick).toBe(6)
+    e.stop()
+  })
+})
+
 describe('RemoteEngine access loss', () => {
   it('stops reconnecting and tells the app when the server closes the socket with 4401 (signed out) or 4404 (not yours)', () => {
     for (const [code, why] of [[4401, 'signed_out'], [4404, 'not_found']] as const) {

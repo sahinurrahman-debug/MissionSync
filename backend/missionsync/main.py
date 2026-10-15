@@ -40,6 +40,20 @@ if os.getenv("SENTRY_DSN"):                     # optional error tracking; no de
 DEV_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
+# The dashboard may only run its own scripts; tiles and images may come from any https host (map tiles).
+APP_CSP = ("default-src 'self'; "
+           "img-src 'self' data: https:; "
+           "style-src 'self' 'unsafe-inline'; "
+           "font-src 'self' data:; "
+           "connect-src 'self' ws: wss:; "
+           "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+DOCS_CSP = ("default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com https://cdn.redoc.ly; "
+            "font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; "
+            "connect-src 'self'; frame-ancestors 'none'")
+
 
 def create_app(services: Optional[Services] = None) -> FastAPI:
     production = os.getenv("APP_ENV", "development").strip().lower() == "production"
@@ -88,12 +102,10 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
-        csp = ("default-src 'self'; "
-               "img-src 'self' data: https:; "
-               "style-src 'self' 'unsafe-inline'; "
-               "font-src 'self' data:; "
-               "connect-src 'self' ws: wss:; "
-               "frame-ancestors 'none'")
+        if request.url.path in ("/docs", "/redoc"):
+            csp = DOCS_CSP                       # Swagger UI / ReDoc ship from a CDN and bootstrap with an inline script
+        else:
+            csp = APP_CSP
         response.headers.setdefault("Content-Security-Policy", csp)
         if production:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
