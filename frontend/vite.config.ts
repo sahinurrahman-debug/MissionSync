@@ -32,6 +32,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test-setup.ts'],
     testTimeout: 20000,                  // route-level code splitting makes the first render of a page async
-    coverage: { provider: 'v8', include: ['src/**/*.{ts,tsx}'], exclude: ['src/**/*.test.*', 'src/test-*', 'src/main.tsx', 'src/vite-env.d.ts'], reporter: ['text-summary', 'text'] },
+    coverage: { provider: 'v8', include: ['src/**/*.{ts,tsx}'], exclude: ['src/**/*.test.*', 'src/test-*', 'src/main.tsx', 'src/vite-env.d.ts'], reporter: ['text-summary', 'text'], thresholds: { lines: 85, statements: 85, branches: 70, functions: 75 } },
   },
 })

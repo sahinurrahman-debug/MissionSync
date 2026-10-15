@@ -18,6 +18,8 @@ RUN pip install -r requirements.txt
 COPY backend/ ./
 COPY --from=web /web/dist ./static
 ENV STATIC_DIR=/app/static APP_ENV=production LOG_FORMAT=json
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser && chown -R appuser:appgroup /app
+USER appuser
 EXPOSE 10000
-# Behind Render's proxy: trust X-Forwarded-* so every visitor gets their own rate-limit bucket and https is seen.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 CMD sh -c "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT:-10000}/api/health').read()\""
 CMD ["sh", "-c", "uvicorn missionsync.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips='*'"]

@@ -26,7 +26,7 @@ jobs:
           DATABASE_URL=sqlite:///ci-check.db alembic upgrade head
           DATABASE_URL=sqlite:///ci-check.db alembic downgrade 0001
           DATABASE_URL=sqlite:///ci-check.db alembic upgrade head
-      - run: python -m pytest -q --cov=missionsync --cov-report=term-missing:skip-covered   # LLM calls are faked; no secrets needed
+      - run: python -m pytest -q --cov=missionsync --cov-fail-under=85 --cov-report=term-missing:skip-covered   # LLM calls are faked; no secrets needed
 
   frontend:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run coverage
       - run: npm run audit:contrast      # WCAG AA on every token pair, both themes
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high

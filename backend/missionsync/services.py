@@ -41,9 +41,10 @@ def build_services(settings: Optional[Settings] = None, engine: Optional[Engine]
     engine = engine or make_engine(settings.database_url)
     migrate(engine)
     store = Store(engine)
+    sessions = SessionRepo(engine, settings.session_days)
     return Services(
         settings=settings, engine=engine, store=store,
-        users=UserRepo(engine), sessions=SessionRepo(engine, settings.session_days),
+        users=UserRepo(engine), sessions=sessions,
         drills=DrillRepo(engine, settings.max_drills_per_user),
-        manager=DrillManager(store, settings),
+        manager=DrillManager(store, settings, sessions=sessions),
     )

@@ -86,6 +86,17 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        csp = ("default-src 'self'; "
+               "img-src 'self' data: https:; "
+               "style-src 'self' 'unsafe-inline'; "
+               "font-src 'self' data:; "
+               "connect-src 'self' ws: wss:; "
+               "frame-ancestors 'none'")
+        response.headers.setdefault("Content-Security-Policy", csp)
+        if production:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         if request.url.path.startswith("/api/") and request.url.path != "/api/health":
             logger.info("request", extra={
                 "method": request.method, "path": request.url.path, "status": response.status_code,

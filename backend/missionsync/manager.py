@@ -9,7 +9,7 @@ import contextlib
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from .config import Settings
 from .hub import Hub
@@ -36,9 +36,10 @@ class DrillRuntime:
 
 
 class DrillManager:
-    def __init__(self, store: Store, settings: Settings) -> None:
+    def __init__(self, store: Store, settings: Settings, sessions: Optional[Any] = None) -> None:
         self.store = store
         self.settings = settings
+        self.sessions = sessions
         self._runtimes: dict[int, DrillRuntime] = {}
         self._loading: dict[int, asyncio.Lock] = {}
         self._reaper: Optional[asyncio.Task] = None
@@ -76,6 +77,7 @@ class DrillManager:
                 if rt is None:
                     await self._make_room()
                     rt = self._spawn(drill_id)
+            self._loading.pop(drill_id, None)
         rt.touch()
         return rt
 
@@ -113,6 +115,8 @@ class DrillManager:
         while True:
             await asyncio.sleep(30)
             try:
+                if self.sessions is not None:
+                    await asyncio.to_thread(self.sessions.purge_expired)
                 for rt in list(self._runtimes.values()):
                     if rt.hub.viewers == 0 and rt.idle_s > self.settings.idle_unload_s:
                         await self.unload(rt.drill_id)
