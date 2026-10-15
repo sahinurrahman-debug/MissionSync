@@ -21,6 +21,7 @@ class IdleSocket {                         // the live socket is covered by api/
 beforeEach(() => {
   vi.stubGlobal('WebSocket', IdleSocket)
   localStorage.clear()
+  sessionStorage.clear()
   localStorage.setItem('ms-guide-seen', '1')
   api = new FakeApi().install()
   vi.spyOn(window, 'alert').mockImplementation(() => undefined)
@@ -99,6 +100,8 @@ describe('protected routes', () => {
     expect(api.signedIn?.is_guest).toBe(true)
     expect(await screen.findByText('Temporary demo account.')).toBeTruthy()           // says plainly that it is temporary
     expect(screen.getByRole('link', { name: 'Create an account' }).getAttribute('href')).toBe('/signup')
+    await userEvent.click(screen.getByRole('button', { name: 'Hide this notice' }))      // dismissible, so it never costs a phone screen its room
+    expect(screen.queryByText('Temporary demo account.')).toBeNull()
   })
 
   it('the demo explains a busy server and offers to try again or sign up', async () => {
