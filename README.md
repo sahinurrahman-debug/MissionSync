@@ -181,11 +181,11 @@ No secret is committed; `.env` is git-ignored and `.env.example` lists every nam
 | `backend/tests/test_auth.py` | validation per field, hashed passwords, cookie flags, revoked/expired/forged sessions, login rate limit, origin guard | 22 |
 | `backend/tests/test_drills_crud.py`, `test_play_api.py` | CRUD with server-side validation and limits, cascade delete, restart recovery, the whole report → approve flow | 22 |
 | `backend/tests/test_migrations.py` | schema from scratch, idempotent, adopts the old database, downgrade/upgrade | 6 |
-| remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), simulator, data, static serving | 102 |
+| remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), simulator, data, static serving | 103 |
 | `frontend/src/**/*.test.*` | guards, inline validation, optimistic create/rename/delete with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 147 |
 | `scripts/e2e_screens.mjs` | the real app in a headless browser: sign up → drill → approve → refresh → end → sign out, at 1366 px and 375 px | 13 checks |
 
-**188 backend tests (93 % line coverage) and 147 frontend tests (90 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
+**189 backend tests (93 % line coverage) and 147 frontend tests (90 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
 
 ```bash
 cd backend  && .venv/Scripts/python -m pytest --cov=missionsync      # install requirements-dev.txt first

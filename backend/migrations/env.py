@@ -7,11 +7,16 @@ Two ways to run it:
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import pool
 
-from missionsync.db.engine import make_engine
+# Works however alembic is started (CLI, python -m alembic, or from the app): make `missionsync` importable.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from missionsync.db.engine import make_engine  # noqa: E402
 from missionsync.db.schema import metadata
 
 config = context.config

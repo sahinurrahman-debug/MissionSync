@@ -73,3 +73,29 @@ def test_the_latest_migration_can_be_rolled_back_and_reapplied(engine) -> None:
     assert "owner_id" not in {c["name"] for c in inspect(engine).get_columns("drills")}
     migrate(engine)
     assert "users" in inspect(engine).get_table_names()
+
+
+def test_the_alembic_command_line_works_the_way_ci_and_deploy_scripts_run_it(tmp_path) -> None:
+    """`alembic upgrade head` is a separate program: it does not get the app's import path. This runs it in isolated
+    mode (no current-directory or PYTHONPATH help) — the exact failure CI hit before env.py set up its own path."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    backend = Path(__file__).resolve().parents[1]
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'cli.db'}"}
+    env.pop("PYTHONPATH", None)
+
+    def alembic(*args: str) -> str:
+        cmd = [sys.executable, "-I", "-c", "import sys; from alembic.config import main; main(argv=sys.argv[1:])", "-c", str(backend / "alembic.ini"), *args]
+        done = subprocess.run(cmd, cwd=backend, env=env, capture_output=True, text=True, timeout=120)
+        assert done.returncode == 0, f"alembic {' '.join(args)} failed:\n{done.stderr[-600:]}"
+        return done.stdout
+
+    alembic("upgrade", "head")
+    alembic("downgrade", "0001")
+    alembic("upgrade", "head")
+    assert "0002 (head)" in alembic("current")
+    engine = make_engine(env["DATABASE_URL"])
+    assert TABLES <= set(inspect(engine).get_table_names())
