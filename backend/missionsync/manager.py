@@ -40,6 +40,8 @@ class DrillManager:
         self.store = store
         self.settings = settings
         self.sessions = sessions
+        #: Optional async callable run about every ten minutes (expired sessions, expired guest accounts).
+        self.housekeeping: Optional[Any] = None
         self._runtimes: dict[int, DrillRuntime] = {}
         self._loading: dict[int, asyncio.Lock] = {}
         self._reaper: Optional[asyncio.Task] = None
@@ -117,8 +119,11 @@ class DrillManager:
             await asyncio.sleep(30)
             passes += 1
             try:
-                if self.sessions is not None and passes % 20 == 0:      # every ~10 minutes: lets a serverless database sleep
-                    await asyncio.to_thread(self.sessions.purge_expired)
+                if passes % 20 == 0:                                    # every ~10 minutes: lets a serverless database sleep
+                    if self.housekeeping is not None:
+                        await self.housekeeping()
+                    elif self.sessions is not None:
+                        await asyncio.to_thread(self.sessions.purge_expired)
                 for rt in list(self._runtimes.values()):
                     if rt.hub.viewers == 0 and rt.idle_s > self.settings.idle_unload_s:
                         await self.unload(rt.drill_id)

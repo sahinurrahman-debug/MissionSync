@@ -15,7 +15,8 @@ PASSWORD = "correct horse 9"
 
 
 def settings(**over) -> Settings:
-    base = dict(database_url="sqlite://", env="test", session_days=14, max_drills_per_user=10, max_live_drills=6, idle_unload_s=600, allow_signup=True)
+    base = dict(database_url="sqlite://", env="test", session_days=14, max_drills_per_user=10, max_live_drills=6, idle_unload_s=600, allow_signup=True,
+                allow_demo=True, guest_hours=24, max_guests=150, guest_max_drills=2)
     base.update(over)
     return Settings(**base)
 

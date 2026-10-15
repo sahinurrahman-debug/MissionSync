@@ -8,8 +8,10 @@ creating it; these definitions are what the application queries against.
 from __future__ import annotations
 
 from sqlalchemy import (
-    Column, DateTime, Float, ForeignKey, Index, Integer, MetaData, String, Table, Text,
+    Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, MetaData, String, Table, Text,
 )
+
+from sqlalchemy.sql import expression
 
 NAMING = {
     "ix": "ix_%(column_0_label)s",
@@ -26,6 +28,7 @@ users = Table(
     Column("display_name", String(80), nullable=False),
     Column("password_hash", String(255), nullable=False),               # argon2id — never the password
     Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("is_guest", Boolean, nullable=False, server_default=expression.false()),                  # temporary demo account
 )
 
 sessions = Table(

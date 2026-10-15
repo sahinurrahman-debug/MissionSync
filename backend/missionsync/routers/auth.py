@@ -3,14 +3,15 @@ random token in an httpOnly cookie that JavaScript cannot read."""
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, Response
 
 from ..auth import SESSION_COOKIE, hash_password, needs_rehash, password_problem, verify_password
 from ..deps import client_ip, current_user, enforce, get_services
 from ..errors import ApiError
-from ..repos import EmailTaken, User, normalize_email
+from ..repos import EmailTaken, LimitReached, User, normalize_email
 from ..schemas import LoginBody, SignupBody
 from ..services import Services
 
@@ -45,6 +46,39 @@ async def signup(body: SignupBody, request: Request, response: Response, svc: Se
         raise ApiError(409, "conflict", msg, [{"field": "email", "issue": msg}]) from None
     await asyncio.to_thread(_start_session, response, svc, request, user)
     return {"user": user.public()}
+
+
+GUEST_DOMAIN = "guest.missionsync.invalid"          # .invalid can never receive mail or collide with a real address
+
+
+@router.post("/demo", status_code=201)
+async def demo(request: Request, response: Response, svc: Services = Depends(get_services)) -> dict:
+    """One click, no form: a temporary guest account that owns one ready-to-open drill (the real xBD scenario with
+    the real AI agents). Nobody can sign in to it again — the password is random and never shown — so it lives for
+    `guest_hours` (the session lasts as long) and is then deleted with its data."""
+    if not svc.settings.allow_demo:
+        raise ApiError(403, "forbidden", "The one-click demo is switched off on this server. Please create an account.")
+    enforce(svc.signup_limiter, client_ip(request), "Too many demos started from this connection — wait a moment, or create an account.")
+    if await asyncio.to_thread(svc.users.count_guests) >= svc.settings.max_guests:
+        raise ApiError(503, "degraded", "The demo is busy right now. Please try again in a few minutes, or create a free account.")
+    lifetime = timedelta(hours=svc.settings.guest_hours)
+    password_hash = await asyncio.to_thread(hash_password, secrets.token_urlsafe(24))
+    user = await asyncio.to_thread(svc.users.create, f"guest-{secrets.token_hex(6)}@{GUEST_DOMAIN}", "Demo guest", password_hash, True)
+    drill = await asyncio.to_thread(
+        svc.drills.create, user.id, "Demo drill",
+        f"Real xBD damage scenarios with the AI agents. This temporary account is deleted after {svc.settings.guest_hours} hours.",
+        svc.settings.guest_max_drills,
+    )
+    token, expires = await asyncio.to_thread(svc.sessions.create, user.id, request.headers.get("user-agent", ""), lifetime)
+    response.set_cookie(
+        SESSION_COOKIE, token, expires=expires, max_age=int(lifetime.total_seconds()),
+        httponly=True, secure=svc.settings.secure_cookies, samesite="lax", path="/",
+    )
+    try:
+        await svc.manager.get(drill.id)                  # start booting it now so it is ready when the page opens
+    except Exception:                                    # a busy server must not fail the sign-up; opening the drill retries
+        pass
+    return {"user": user.public(), "drill": drill.public(), "expires_in_hours": svc.settings.guest_hours}
 
 
 @router.post("/login")

@@ -50,7 +50,7 @@ def test_migrating_twice_is_harmless(engine) -> None:
     migrate(engine)
     migrate(engine)
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0002"
+        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0003"
 
 
 def test_a_pre_accounts_database_is_adopted_and_keeps_its_rows(engine) -> None:
@@ -96,6 +96,16 @@ def test_the_alembic_command_line_works_the_way_ci_and_deploy_scripts_run_it(tmp
     alembic("upgrade", "head")
     alembic("downgrade", "0001")
     alembic("upgrade", "head")
-    assert "0002 (head)" in alembic("current")
+    assert "0003 (head)" in alembic("current")
     engine = make_engine(env["DATABASE_URL"])
     assert TABLES <= set(inspect(engine).get_table_names())
+
+
+def test_guest_flag_migration_defaults_existing_users_to_real_accounts(engine) -> None:
+    migrate(engine, "0002")
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO users (email, display_name, password_hash, created_at) VALUES ('old@b.co', 'Old', 'h', '2026-01-01')"))
+    migrate(engine)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT is_guest FROM users WHERE email = 'old@b.co'")).scalar_one() in (0, False)
+    assert "is_guest" in {c["name"] for c in inspect(engine).get_columns("users")}

@@ -25,6 +25,14 @@ class Settings:
     #: Seconds a drill with no viewers stays in memory before it is saved and unloaded.
     idle_unload_s: int
     allow_signup: bool
+    #: One-click demo: a temporary guest account with its own drill (real xBD scenario, real AI agents).
+    allow_demo: bool
+    #: Hours a guest account lives before it and its drills are deleted.
+    guest_hours: int
+    #: Guest accounts that may exist at once (a free-tier guard against someone scripting the button).
+    max_guests: int
+    #: Drills a guest may keep.
+    guest_max_drills: int
 
     @property
     def production(self) -> bool:
@@ -44,4 +52,8 @@ def load_settings() -> Settings:
         max_live_drills=int(os.getenv("MAX_LIVE_DRILLS", "6")),
         idle_unload_s=int(os.getenv("IDLE_UNLOAD_S", "600")),
         allow_signup=_flag("ALLOW_SIGNUP", True),
+        allow_demo=_flag("ALLOW_DEMO", True),
+        guest_hours=int(os.getenv("GUEST_HOURS", "24")),
+        max_guests=int(os.getenv("MAX_GUESTS", "150")),
+        guest_max_drills=int(os.getenv("GUEST_MAX_DRILLS", "2")),
     )

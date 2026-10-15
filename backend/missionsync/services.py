@@ -1,7 +1,9 @@
 """Wires the application together: engine → migrations → repositories → drill manager. Built once per app."""
 from __future__ import annotations
 
+import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -42,9 +44,25 @@ def build_services(settings: Optional[Settings] = None, engine: Optional[Engine]
     migrate(engine)
     store = Store(engine)
     sessions = SessionRepo(engine, settings.session_days)
-    return Services(
+    svc = Services(
         settings=settings, engine=engine, store=store,
         users=UserRepo(engine), sessions=sessions,
         drills=DrillRepo(engine, settings.max_drills_per_user),
         manager=DrillManager(store, settings, sessions=sessions),
     )
+    svc.manager.housekeeping = lambda: housekeeping(svc)
+    return svc
+
+
+async def housekeeping(svc: Services) -> dict:
+    """Delete expired sessions and expired guest accounts (with their drills, stopping any that are still running)."""
+    purged = await asyncio.to_thread(svc.sessions.purge_expired)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=svc.settings.guest_hours)
+    guests = await asyncio.to_thread(svc.users.expired_guests, cutoff)
+    for user_id, drill_ids in guests:
+        for did in drill_ids:
+            await svc.manager.unload(did, save=False)
+        await asyncio.to_thread(svc.users.delete_with_data, user_id)
+    if guests:
+        logger.info("removed %s expired guest account(s)", len(guests))
+    return {"sessions": purged, "guests": len(guests)}

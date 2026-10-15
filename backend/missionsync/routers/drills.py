@@ -18,16 +18,17 @@ router = APIRouter(prefix="/api/drills", tags=["drills"])
 @router.get("")
 async def list_drills(user: User = Depends(current_user), svc: Services = Depends(get_services)) -> dict:
     rows = await asyncio.to_thread(svc.drills.list, user.id)
-    return {"drills": [d.public() for d in rows], "limit": svc.settings.max_drills_per_user}
+    return {"drills": [d.public() for d in rows], "limit": svc.settings.guest_max_drills if user.is_guest else svc.settings.max_drills_per_user}
 
 
 @router.post("", status_code=201)
 async def create_drill(body: DrillCreate, user: User = Depends(current_user), svc: Services = Depends(get_services)) -> dict:
     enforce(svc.ops_limiter, f"user:{user.id}")
     try:
-        drill = await asyncio.to_thread(svc.drills.create, user.id, body.name, body.notes)
+        limit = svc.settings.guest_max_drills if user.is_guest else svc.settings.max_drills_per_user
+        drill = await asyncio.to_thread(svc.drills.create, user.id, body.name, body.notes, limit)
     except LimitReached:
-        msg = f"You can keep up to {svc.settings.max_drills_per_user} drills. Delete one to make room."
+        msg = f"{'A demo account' if user.is_guest else 'You'} can keep up to {limit} drills. Delete one to make room."
         raise ApiError(409, "conflict", msg) from None
     return {"drill": drill.public()}
 

@@ -46,9 +46,11 @@ class User:
     email: str
     display_name: str
     created_at: datetime
+    is_guest: bool = False
 
     def public(self) -> dict[str, Any]:
-        return {"id": self.id, "email": self.email, "display_name": self.display_name, "created_at": self.created_at.isoformat()}
+        return {"id": self.id, "email": self.email, "display_name": self.display_name,
+                "created_at": self.created_at.isoformat(), "is_guest": self.is_guest}
 
 
 @dataclass(frozen=True)
@@ -74,7 +76,8 @@ class DrillRecord:
 
 
 def _user(row: Any) -> User:
-    return User(id=row["id"], email=row["email"], display_name=row["display_name"], created_at=_aware(row["created_at"]))  # type: ignore[arg-type]
+    return User(id=row["id"], email=row["email"], display_name=row["display_name"], created_at=_aware(row["created_at"]),  # type: ignore[arg-type]
+                is_guest=bool(row["is_guest"]))
 
 
 def _drill(row: Any, events: int = 0, n_reports: int = 0) -> DrillRecord:
@@ -89,11 +92,12 @@ class UserRepo:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    def create(self, email: str, display_name: str, password_hash: str) -> User:
+    def create(self, email: str, display_name: str, password_hash: str, is_guest: bool = False) -> User:
         try:
             with self.engine.begin() as conn:
                 res = conn.execute(users.insert().values(
-                    email=normalize_email(email), display_name=display_name.strip(), password_hash=password_hash, created_at=_now()))
+                    email=normalize_email(email), display_name=display_name.strip(), password_hash=password_hash,
+                    created_at=_now(), is_guest=is_guest))
                 uid = int(res.inserted_primary_key[0])
                 row = conn.execute(select(users).where(users.c.id == uid)).mappings().one()
             return _user(row)
@@ -109,6 +113,31 @@ class UserRepo:
         with self.engine.connect() as conn:
             row = conn.execute(select(users).where(users.c.id == user_id)).mappings().first()
         return _user(row) if row else None
+
+    def count_guests(self) -> int:
+        with self.engine.connect() as conn:
+            return conn.execute(select(func.count()).select_from(users).where(users.c.is_guest.is_(True))).scalar_one()
+
+    def expired_guests(self, older_than: datetime) -> list[tuple[int, list[int]]]:
+        """Guest accounts created before `older_than`, each with the ids of the drills they own."""
+        with self.engine.connect() as conn:
+            ids = conn.execute(select(users.c.id).where(users.c.is_guest.is_(True), users.c.created_at < older_than)).scalars().all()
+            out = []
+            for uid in ids:
+                owned = conn.execute(select(drills.c.id).where(drills.c.owner_id == uid)).scalars().all()
+                out.append((uid, list(owned)))
+        return out
+
+    def delete_with_data(self, user_id: int) -> None:
+        """Remove a user and everything they own (sessions and drills go by cascade; history rows explicitly)."""
+        with self.engine.begin() as conn:
+            owned = conn.execute(select(drills.c.id).where(drills.c.owner_id == user_id)).scalars().all()
+            for did in owned:
+                conn.execute(delete(audit_events).where(audit_events.c.drill_id == did))
+                conn.execute(delete(reports).where(reports.c.drill_id == did))
+            conn.execute(delete(drills).where(drills.c.owner_id == user_id))
+            conn.execute(delete(sessions).where(sessions.c.user_id == user_id))
+            conn.execute(delete(users).where(users.c.id == user_id))
 
     def set_password_hash(self, user_id: int, password_hash: str) -> None:
         with self.engine.begin() as conn:
@@ -129,10 +158,10 @@ class SessionRepo:
     def _key(token: str) -> str:
         return hashlib.sha256(token.encode()).hexdigest()
 
-    def create(self, user_id: int, user_agent: str = "") -> tuple[str, datetime]:
+    def create(self, user_id: int, user_agent: str = "", lifetime: Optional[timedelta] = None) -> tuple[str, datetime]:
         token = secrets.token_urlsafe(32)
         now = _now()
-        expires = now + self.lifetime
+        expires = now + (lifetime or self.lifetime)
         with self.engine.begin() as conn:
             conn.execute(sessions.insert().values(
                 id=self._key(token), user_id=user_id, created_at=now, expires_at=expires, last_seen_at=now, user_agent=user_agent[:200]))
@@ -172,10 +201,10 @@ class DrillRepo:
 
     # -- create / read ----------------------------------------------------------------
 
-    def create(self, owner_id: int, name: str, notes: str = "") -> DrillRecord:
+    def create(self, owner_id: int, name: str, notes: str = "", limit: Optional[int] = None) -> DrillRecord:
         with self.engine.begin() as conn:
             count = conn.execute(select(func.count()).select_from(drills).where(drills.c.owner_id == owner_id)).scalar_one()
-            if count >= self.max_per_user:
+            if count >= (limit or self.max_per_user):
                 raise LimitReached()
             now = _now()
             res = conn.execute(drills.insert().values(
