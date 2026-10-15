@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { fetchMe, signIn as apiSignIn, signOut as apiSignOut, signUp as apiSignUp, type User } from '../api/auth'
+import { fetchMe, signIn as apiSignIn, signOut as apiSignOut, signUp as apiSignUp, startDemo as apiStartDemo, type User } from '../api/auth'
 import { SESSION_LOST_EVENT } from '../api/http'
 
 /** `loading` while we ask the server who we are; `user` is null for a visitor. Only the server decides. */
@@ -9,6 +9,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, displayName: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Create a temporary guest account with its own drill; resolves with the drill to open. */
+  startDemo: () => Promise<number>
 }
 
 const Ctx = createContext<AuthState | null>(null)
@@ -36,6 +38,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => setUser(await apiSignIn({ email, password })), [])
   const signUp = useCallback(async (email: string, password: string, display_name: string) => setUser(await apiSignUp({ email, password, display_name })), [])
+  const startDemo = useCallback(async () => {
+    const r = await apiStartDemo()
+    setUser(r.user)
+    return r.drillId
+  }, [])
   const signOut = useCallback(async () => {
     try {
       await apiSignOut()
@@ -44,8 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ loading, user, signIn, signUp, signOut }), [loading, user, signIn, signUp, signOut])
+  const value = useMemo(() => ({ loading, user, signIn, signUp, signOut, startDemo }), [loading, user, signIn, signUp, signOut, startDemo])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+/** The signed-in user (or null) — safe to call where there may be no provider, e.g. in a component test. */
+export function useCurrentUser(): User | null {
+  return useContext(Ctx)?.user ?? null
 }
 
 export function useAuth(): AuthState {

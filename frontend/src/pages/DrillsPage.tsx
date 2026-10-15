@@ -164,8 +164,7 @@ export default function DrillsPage() {
             </div>
           ) : count === 0 ? (
             <div className="rounded-lg border border-dashed border-line bg-panel">
-              <EmptyRadar title="No drills yet." hint="Name your first drill above and press New drill. Not ready? Try the no-account demo." />
-              <p className="pb-4 text-center"><Link to="/demo" className="text-base font-semibold text-accent underline underline-offset-4">Open the demo</Link></p>
+              <EmptyRadar title="No drills yet." hint="Name your first drill above and press New drill." />
             </div>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

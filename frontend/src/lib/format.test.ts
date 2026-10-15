@@ -32,7 +32,6 @@ describe('engine mode chip', () => {
     expect(modeChip('fallback', null, false)).toMatchObject({ label: 'RULES · LLM off', tone: 'warn' })
     expect(modeChip('fallback', null, true).label).toBe('STARTING')
     expect(modeChip('quota_exhausted', null, false)).toMatchObject({ label: 'AI QUOTA HIT', tone: 'bad' })
-    expect(modeChip('demo', null, false)).toMatchObject({ label: 'DEMO ENGINE', tone: 'info' })
   })
 })
 

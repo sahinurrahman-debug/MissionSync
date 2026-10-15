@@ -1,5 +1,4 @@
-// Geospatial helpers — ports of the Level-1 prototype's math so the browser
-// engine ranks and routes exactly like the backend did.
+// Geospatial helpers used to show ETAs and distances (the server computes the authoritative ones).
 
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371.0

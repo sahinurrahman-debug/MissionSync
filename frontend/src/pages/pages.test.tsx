@@ -89,9 +89,40 @@ describe('protected routes', () => {
   it('has a catch-all page, and the demo needs no account', async () => {
     visit('/nope/nowhere')
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy()
-    document.body.innerHTML = ''
+  })
+
+  it('the demo needs no form: one click makes a temporary guest with its own drill and opens it', async () => {
     visit('/demo')
-    expect(await screen.findByText('Demo (not saved)')).toBeTruthy()
+    await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
+    expect(api.calls.some((c) => c.path === '/api/auth/demo' && c.method === 'POST')).toBe(true)
+    expect(api.drills.map((d) => d.name)).toEqual(['Demo drill'])
+    expect(api.signedIn?.is_guest).toBe(true)
+    expect(await screen.findByText('Temporary demo account.')).toBeTruthy()           // says plainly that it is temporary
+    expect(screen.getByRole('link', { name: 'Create an account' }).getAttribute('href')).toBe('/signup')
+  })
+
+  it('the demo explains a busy server and offers to try again or sign up', async () => {
+    api.demoFails = true
+    visit('/demo')
+    expect(await screen.findByText(/The demo is busy right now/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Create an account' })).toBeTruthy()
+    api.demoFails = false
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
+  })
+
+  it('someone who is already signed in is not given a second, guest account', async () => {
+    api.signIn()
+    visit('/demo')
+    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
+    expect(api.calls.some((c) => c.path === '/api/auth/demo')).toBe(false)
+  })
+
+  it('the sign-in page advertises the demo in plain words', async () => {
+    visit('/login')
+    const link = await screen.findByRole('link', { name: 'Try the demo' })
+    expect(link.getAttribute('href')).toBe('/demo')
+    expect(document.body.textContent).toMatch(/real data and the AI agents/)
   })
 })
 

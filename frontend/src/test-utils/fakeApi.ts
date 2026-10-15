@@ -8,7 +8,8 @@ const json = (body: unknown, status = 200) => new Response(status === 204 ? null
 const fail = (status: number, code: string, error: string, details: unknown[] = []) => json({ error, code, details, request_id: 'req_test' }, status)
 
 export class FakeApi {
-  signedIn: { id: number; email: string; display_name: string; created_at: string } | null = null
+  signedIn: { id: number; email: string; display_name: string; created_at: string; is_guest?: boolean } | null = null
+  demoFails = false
   accounts = new Map<string, { password: string; name: string }>()
   drills: FakeDrill[] = []
   nextId = 1
@@ -65,6 +66,13 @@ export class FakeApi {
       this.addAccount(body.email, body.password, body.display_name)
       this.signIn(body.email, body.display_name)
       return json({ user: this.signedIn }, 201)
+    }
+    if (key === 'POST /api/auth/demo') {
+      if (this.demoFails) return fail(503, 'degraded', 'The demo is busy right now. Please try again in a few minutes, or create a free account.')
+      const d = this.make('Demo drill', 'Real xBD damage scenarios with the AI agents. This temporary account is deleted after 24 hours.')
+      this.drills.push(d)
+      this.signedIn = { id: 99, email: 'guest-ab12cd@guest.missionsync.invalid', display_name: 'Demo guest', created_at: new Date().toISOString(), is_guest: true }
+      return json({ user: this.signedIn, drill: d, expires_in_hours: 24 }, 201)
     }
     if (key === 'POST /api/auth/logout') {
       this.signedIn = null

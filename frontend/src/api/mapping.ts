@@ -78,7 +78,7 @@ export function fromBackend(raw: Raw, connection: Connection = 'online'): Snapsh
   }
 }
 
-export function emptySnapshot(connection: Connection, engine: 'remote' | 'local'): Snapshot {
+export function emptySnapshot(connection: Connection, engine: 'remote'): Snapshot {
   return {
     status: 'booting',
     connection,

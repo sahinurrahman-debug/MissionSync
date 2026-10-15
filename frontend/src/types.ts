@@ -1,9 +1,6 @@
 // MissionSync shared types.
-// The dashboard renders one `Snapshot` shape no matter where it comes from:
-//   - RemoteEngine: the FastAPI backend (agents on Groq, real xBD data), mapped
-//     from its WorldSnapshot in api/mapping.ts
-//   - LocalEngine:  the in-browser demo engine (rule-based twins), used only when
-//     no backend is configured or reachable — and always labelled as such.
+// The dashboard renders one `Snapshot` shape: the FastAPI backend's WorldSnapshot (agents on Groq, real xBD data),
+// mapped in api/mapping.ts.
 
 export type IncidentType =
   | 'fire'
@@ -166,7 +163,7 @@ export interface EventLine {
 }
 
 /** How the agents are running: real LLM, rule-based twins, out of quota, or the browser demo. */
-export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted' | 'demo'
+export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted'
 
 export interface Metrics {
   cycle_ms: number
@@ -199,12 +196,12 @@ export interface Metrics {
 export type PipelineStage = 'idle' | 'surveillance' | 'terrain' | 'risk' | 'logistics' | 'command'
 export type PipelineOrigin = 'boot' | 'sim' | 'inject' | 'reset' | 'refine' | 'restore'
 
-export type Connection = 'connecting' | 'online' | 'offline' | 'demo'
+export type Connection = 'connecting' | 'online' | 'offline'
 
 export interface Snapshot {
   status: 'booting' | 'live' | 'ended'
   connection: Connection
-  engine: 'remote' | 'local'
+  engine: 'remote'
   tick: number
   sim_time: string
   incidents: Incident[]

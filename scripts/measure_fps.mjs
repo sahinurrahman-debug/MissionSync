@@ -1,19 +1,21 @@
 // Measures real frame pacing while the dashboard is being used (section switches, scrolling the
 // feed, approving every dispatch, selecting incidents) in headless Edge/Chrome.
 //
-//   cd frontend && npm run build && npx vite preview --port 4173 &      # and the backend, or ?engine=local
-//   node scripts/measure_fps.mjs [url]                                   # needs puppeteer-core (npm i -D puppeteer-core)
+//   (backend running and serving the built dashboard)  cd frontend && npm run build
+//   node scripts/measure_fps.mjs [base-url]       # needs puppeteer-core (npm i -D puppeteer-core); signs in through /demo
 //
 // Reports average fps, the 95th/99th-percentile frame time and the share of frames slower than
 // 16.7 ms (60 fps) and 33 ms (30 fps). Headless runs use software rasterisation, so a real GPU is faster.
 import puppeteer from 'puppeteer-core'
 
-const URL = process.argv[2] ?? 'http://localhost:4173/?view=situation&engine=local'
+const BASE = process.argv[2] ?? 'http://127.0.0.1:8000'
 const EXE = process.env.CHROME_PATH ?? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 
 const browser = await puppeteer.launch({ executablePath: EXE, headless: 'new', args: ['--no-sandbox', '--window-size=1366,768'], defaultViewport: { width: 1366, height: 768 } })
 const page = await browser.newPage()
-await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 })
+await page.evaluateOnNewDocument(() => { try { localStorage.setItem('ms-guide-seen', '1') } catch { /* ignore */ } })
+await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle2', timeout: 60000 })     // one click: a temporary guest with its own drill
+await page.waitForFunction(() => /waiting for you/.test(document.body.innerText), { timeout: 90000, polling: 200 })
 await new Promise((r) => setTimeout(r, 2500))
 
 await page.evaluate(() => {

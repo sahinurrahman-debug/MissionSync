@@ -45,7 +45,7 @@ Numbers use tabular figures (`.tnum`) so columns don't shimmer as values change.
 | Incident card | selectable (`aria-pressed`), expands to a 4-factor auditable breakdown (`<dl>`) and net-control actions |
 | Recommendation card | proposal (Approve / Reject) or dispatched (unit, role, ETA) |
 | Pipeline stepper | five agents; the active stage glows, `aria-current="step"` |
-| System banners | offline, quota spent, degraded, ended, demo engine — each says what is wrong and what happens next |
+| System banners | offline, quota spent, degraded — each says what is wrong and what happens next |
 | Dialogs | confirm / first-run guide: focus trap, Escape, focus returns to the opener |
 | Menu | every drill action in one labelled, arrow-key navigable menu (replaces a row of icon buttons) |
 | Next-step bar | one sentence derived from the drill state and the single button that moves it forward |

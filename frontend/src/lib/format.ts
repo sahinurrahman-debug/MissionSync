@@ -84,8 +84,6 @@ export function modeChip(mode: EngineMode, model: string | null, booting: boolea
       return { label: `AI · ${(model ?? 'LLM').replace(/^openai\//, '')}`, tone: 'ok', title: 'All five agents are running on the LLM.' }
     case 'quota_exhausted':
       return { label: 'AI QUOTA HIT', tone: 'bad', title: 'The Groq daily token quota is spent; rule-based agents are covering.' }
-    case 'demo':
-      return { label: 'DEMO ENGINE', tone: 'info', title: 'Running in the browser with rule-based agents — no backend connected.' }
     default:
       return {
         label: booting ? 'STARTING' : 'RULES · LLM off',

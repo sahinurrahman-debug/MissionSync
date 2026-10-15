@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
-import App from '../App'
+import { MemoryRouter } from 'react-router-dom'
+import DrillBoard from '../pages/DrillBoard'
+import { FakeSource } from '../test-utils/world'
 import SideNav, { VIEWS } from './SideNav'
 
 describe('SideNav', () => {
@@ -33,27 +35,28 @@ describe('SideNav', () => {
   })
 })
 
-/** The whole board on a desktop-sized viewport, driven by the in-browser demo engine. */
+/** The whole board on a desktop-sized viewport, fed by an in-memory source that behaves like the server. */
 describe('Board navigation (desktop layout)', () => {
+  const board = (source = new FakeSource()) => render(<MemoryRouter><DrillBoard source={source} title="Test drill" /></MemoryRouter>)
+
   beforeEach(() => {
-    window.history.pushState({}, '', '/?engine=local')
     try {
       localStorage.clear()
       localStorage.setItem('ms-guide-seen', '1')          // the first-run walkthrough has its own tests
     } catch {
       /* ignore */
     }
+    window.history.pushState({}, '', '/')
     window.matchMedia = ((query: string) => ({
       matches: /min-width:\s*1024px/.test(query),
       media: query, onchange: null,
       addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
     })) as unknown as typeof window.matchMedia
   })
-  afterEach(() => window.history.pushState({}, '', '/'))
 
   it('shows one section per panel and switches by click and by the 1-4 keys', async () => {
-    render(<App />)
-    await screen.findByRole('navigation', { name: 'Sections' }, { timeout: 10000 })
+    board()
+    await screen.findByRole('navigation', { name: 'Sections' })
     // Situation (default): map + ranked feed, but not the intake or fleet panels.
     expect(await screen.findByRole('region', { name: /Ranked incident feed|incident feed/i })).toBeTruthy()
     expect(screen.queryByLabelText('Field report')).toBeNull()
@@ -75,7 +78,7 @@ describe('Board navigation (desktop layout)', () => {
   })
 
   it('does not hijack number keys while typing a report, and remembers the section', async () => {
-    render(<App />)
+    board()
     await userEvent.click(await screen.findByRole('button', { name: /^Report/ }))
     const box = await screen.findByLabelText('Field report')
     await userEvent.type(box, 'unit 2 on scene 4')
@@ -84,12 +87,39 @@ describe('Board navigation (desktop layout)', () => {
     expect(localStorage.getItem('ms-view')).toBe('report')
   })
 
-  it('an approval made in Orders shows up as busy units in Fleet', async () => {
-    render(<App />)
+  it('an approval made in Orders shows up as busy units in Fleet, and the next-step bar follows', async () => {
+    const source = new FakeSource()
+    board(source)
+    expect(await screen.findByText(/dispatches are waiting for you/)).toBeTruthy()
     await userEvent.click(await screen.findByRole('button', { name: /^Orders/ }))
     await userEvent.click(await screen.findByRole('button', { name: /Approve all/ }))
+    expect(source.calls).toContain('approve:all')
+    expect(await screen.findByText(/responding/)).toBeTruthy()
     await userEvent.keyboard('4')
     const fleet = await screen.findByRole('region', { name: 'Resource fleet' })
     expect(within(fleet).getAllByText(/EN ROUTE|ON SCENE/i).length).toBeGreaterThan(0)
+  })
+
+  it('rolls an approval back when the server refuses it (optimistic UI)', async () => {
+    const source = new FakeSource()
+    source.approve = async () => { throw new Error('boom') }
+    board(source)
+    const before = source.getSnapshot().proposals.length
+    await userEvent.click(await screen.findByRole('button', { name: /^Orders/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Approve all/ }))
+    expect(await screen.findByText(/did not work|Try again/)).toBeTruthy()           // a friendly message, not the raw error
+    expect(screen.queryByText(/boom/)).toBeNull()
+    expect(await screen.findByRole('button', { name: new RegExp(`Approve all \\(${before}\\)`) })).toBeTruthy()   // the proposals came back
+  })
+
+  it('asks before ending the drill, then freezes it', async () => {
+    const source = new FakeSource()
+    board(source)
+    await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /End the drill/ }))
+    expect(source.calls).not.toContain('end')                                         // nothing happens until confirmed
+    await userEvent.click(screen.getByRole('button', { name: 'End drill' }))
+    expect(await screen.findByText(/The drill has ended/)).toBeTruthy()
+    expect(source.calls).toContain('end')
   })
 })

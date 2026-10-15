@@ -4,7 +4,7 @@ import type { InjectResult, Snapshot } from './types'
 export type Subscriber = (snap: Snapshot) => void
 
 export interface DataSource {
-  readonly kind: 'remote' | 'local'
+  readonly kind: 'remote'
   subscribe(fn: Subscriber): () => void
   getSnapshot(): Snapshot
   start(): void

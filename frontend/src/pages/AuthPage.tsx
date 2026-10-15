@@ -83,7 +83,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             ))}
           </ul>
           <p className="mt-6 text-base text-ink-2">
-            Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the demo</Link> — nothing is saved and no account is needed.
+            Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
           </p>
         </section>
 

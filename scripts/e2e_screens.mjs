@@ -55,6 +55,17 @@ try {
   check(page.url().endsWith('/login'), 'visitor on /drills is redirected to /login')
   await shot(page, 'login')
 
+  // 1b. the one-click demo: no form, a temporary private drill with the real scenario and agents
+  const demo = await browser.newPage()
+  await setup(demo, 1366, 800)
+  await demo.goto(`${BASE}/demo`, { waitUntil: 'networkidle2' })
+  await waitText(demo, /Temporary demo account/, 90000)
+  check(/\/drills\/\d+$/.test(demo.url()), 'the demo button lands in the visitor\'s own drill (no form)')
+  await waitText(demo, /LIVE/, 90000)
+  await waitText(demo, /waiting for you/, 90000)
+  check(true, 'the demo drill boots with the real scenario and proposals waiting for approval')
+  await demo.close()
+
   // 2. validation is inline
   await page.goto(`${BASE}/signup`, { waitUntil: 'networkidle2' })
   await clickText(page, 'button', /create account/)

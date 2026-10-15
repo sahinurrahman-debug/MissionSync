@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { Hexagon, LocateFixed, Route } from 'lucide-react'
 import type { Incident, Resource, Tier } from '../types'
 import { STATUS_HEX, STATUS_LABEL, TIER_HEX, TIER_LABEL } from '../lib/format'
-import { SECTORS } from '../engine/scenario'
+import { SECTORS } from '../lib/sectors'
 import { MapSkeleton } from './Skeletons'
 
 const CENTER: [number, number] = [34.0555, -118.24]

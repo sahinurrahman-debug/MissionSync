@@ -1,4 +1,4 @@
-import { CloudOff, Info, RadioTower, TriangleAlert, Wind } from 'lucide-react'
+import { CloudOff, RadioTower, TriangleAlert, Wind } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Snapshot } from '../types'
 
@@ -25,11 +25,6 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
       {offline && (
         <Banner tone="bad" icon={<CloudOff size={16} className="text-p1" />}>
           Lost the connection to the MissionSync server — showing the last known picture and reconnecting…
-        </Banner>
-      )}
-      {snap.engine === 'local' && (
-        <Banner tone="info" icon={<Info size={16} className="text-accent" />}>
-          <b>Demo engine:</b> the drill runs in your browser with rule-based agents.<span className="hidden sm:inline"> Start the backend for live AI agents and real xBD data (see the README).</span>
         </Banner>
       )}
       {m.mode === 'quota_exhausted' && (

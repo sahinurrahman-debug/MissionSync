@@ -10,6 +10,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import EventLog from '../components/EventLog'
 import FleetAndLog from '../components/FleetAndLog'
 import HeaderHud, { StatGrid, TelemetryBar } from '../components/HeaderHud'
+import GuestBanner from '../components/GuestBanner'
 import HowItWorks, { guideSeen } from '../components/HowItWorks'
 import IncidentFeed from '../components/IncidentFeed'
 import MobileTabs, { type MobileTab } from '../components/MobileTabs'
@@ -292,6 +293,7 @@ export default function DrillBoard({ source, title, leading, trailing }: { sourc
       />
       <TelemetryBar snap={snap} />
       <NextStep snap={snap} onGo={goTo} />
+      <GuestBanner />
       <SystemBanners snap={snap} />
 
       {desktop ? (

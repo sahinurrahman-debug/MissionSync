@@ -1,6 +1,6 @@
 import { request } from './http'
 
-export interface User { id: number; email: string; display_name: string; created_at: string }
+export interface User { id: number; email: string; display_name: string; created_at: string; is_guest?: boolean }
 
 /** The signed-in user, or null for a visitor (a normal state — the probe answers 200, so nothing is logged as an error). */
 export async function fetchMe(): Promise<User | null> {
@@ -13,6 +13,12 @@ export async function signUp(input: { email: string; password: string; display_n
 
 export async function signIn(input: { email: string; password: string }): Promise<User> {
   return (await request<{ user: User }>('/api/auth/login', { method: 'POST', json: input, quiet401: true })).user
+}
+
+/** One click: the server creates a temporary guest account that owns a ready drill (real data, real agents). */
+export async function startDemo(): Promise<{ user: User; drillId: number; hours: number }> {
+  const r = await request<{ user: User; drill: { id: number }; expires_in_hours: number }>('/api/auth/demo', { method: 'POST', quiet401: true })
+  return { user: r.user, drillId: r.drill.id, hours: r.expires_in_hours }
 }
 
 export async function signOut(): Promise<void> {

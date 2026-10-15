@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { LocalEngine } from '../engine/local'
+import { world } from '../test-utils/world'
 import { ApiError, type Snapshot } from '../types'
 import ActionToast from './ActionToast'
 import ConfirmDialog from './ConfirmDialog'
@@ -16,14 +16,6 @@ import IncidentCard from './IncidentCard'
 import Recommendations from './Recommendations'
 import ReportIntake from './ReportIntake'
 import SystemBanners, { WeatherStrip } from './SystemBanners'
-
-/** A real snapshot from the demo engine (manual dispatch: proposals waiting for a human). */
-function world(autoDispatch = false): { engine: LocalEngine; snap: Snapshot } {
-  const engine = new LocalEngine({ paceMs: 0, autoDispatch })
-  engine.start()
-  engine.stop()
-  return { engine, snap: engine.getSnapshot() }
-}
 
 describe('Recommendations — the approval surface', () => {
   it('tells the operator nothing moves until they approve, and offers Approve all', async () => {
@@ -80,7 +72,7 @@ describe('IncidentCard — net control actions', () => {
     const props = {
       incident, rank: 1, selected, onSelect: vi.fn(), now: Date.parse(incident.reported_at) + 125_000,
       units: snap.resources.filter((r) => r.assigned_incident === incident.id),
-      availableUnits: snap.resources.filter((r) => r.status === 'available'),
+      availableUnits: world(false).snap.resources.filter((r) => r.status === 'available'),   // a fresh fleet: every unit free to be sent
       actions: { onRecall: vi.fn(), onResolve: vi.fn(), onDispatch: vi.fn() },
     }
     render(<ul><IncidentCard {...props} /></ul>)
@@ -117,7 +109,7 @@ describe('IncidentCard — net control actions', () => {
     const select = screen.getByLabelText(new RegExp(`Send a unit to`)) as HTMLSelectElement
     const offered = [...select.options].map((o) => o.value).filter(Boolean)
     expect(offered.length).toBeGreaterThan(0)
-    const byId = new Map(snap.resources.map((r) => [r.id, r]))
+    const byId = new Map(props.availableUnits.map((r) => [r.id, r]))
     for (const id of offered) expect(byId.get(id)!.status).toBe('available')
     await userEvent.selectOptions(select, offered[0])
     await userEvent.click(screen.getByRole('button', { name: 'Dispatch' }))
@@ -366,8 +358,8 @@ describe('SystemBanners', () => {
     expect(document.body.textContent).toContain('AI resumes in about 4 min')
     rerender(<SystemBanners snap={{ ...s, engine: 'remote', metrics: { ...s.metrics, mode: 'fallback' } }} />)
     expect(screen.getByText(/Degraded mode/)).toBeTruthy()
-    rerender(<SystemBanners snap={s} />)
-    expect(screen.getByText(/Demo engine/)).toBeTruthy()
+    rerender(<SystemBanners snap={{ ...s, engine: 'remote' }} />)
+    expect(screen.queryByText(/Demo engine/)).toBeNull()                               // there is no demo engine any more
     expect(screen.queryByLabelText(/Weather advisories/)).toBeNull()                 // weather lives with the map now
     document.body.innerHTML = ''
     render(<WeatherStrip snap={s} />)

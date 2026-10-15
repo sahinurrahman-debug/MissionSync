@@ -4,7 +4,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import axe from 'axe-core'
-import { LocalEngine } from '../engine/local'
+import { snapshotOf } from '../test-utils/world'
 import FleetAndLog from './FleetAndLog'
 import HeaderHud from './HeaderHud'
 import IncidentCard from './IncidentCard'
@@ -20,12 +20,7 @@ async function violations(container: Element) {
   return res.violations.map((v) => `${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)
 }
 
-function world(auto = false) {
-  const e = new LocalEngine({ paceMs: 0, autoDispatch: auto })
-  e.start()
-  e.stop()
-  return e.getSnapshot()
-}
+const world = snapshotOf
 
 describe('axe-core: no detectable a11y violations', () => {
   it('report intake', async () => {

@@ -5,8 +5,9 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import AuthPage from './pages/AuthPage'
 import MessagePage from './pages/MessagePage'
 
-// The dashboard (map, animation library, agents) is the heavy part: the sign-in page must not pay for it.
-const DemoPage = lazy(() => import('./pages/DemoPage'))
+import DemoStart from './pages/DemoStart'
+
+// The dashboard (map, animation library) is the heavy part: the sign-in page must not pay for it.
 const DrillPage = lazy(() => import('./pages/DrillPage'))
 const DrillsPage = lazy(() => import('./pages/DrillsPage'))
 
@@ -34,10 +35,6 @@ function Home() {
 }
 
 export default function App() {
-  // ?engine=local was the old way to ask for the demo
-  if (new URLSearchParams(window.location.search).get('engine') === 'local' && window.location.pathname === '/') {
-    window.history.replaceState(null, '', '/demo' + window.location.search.replace(/[?&]engine=local/, ''))
-  }
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -46,7 +43,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<AuthPage mode="signin" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
-          <Route path="/demo" element={<DemoPage />} />
+          <Route path="/demo" element={<DemoStart />} />
           <Route path="/drills" element={<RequireAuth><DrillsPage /></RequireAuth>} />
           <Route path="/drills/:id" element={<RequireAuth><DrillPage /></RequireAuth>} />
           <Route path="*" element={<MessagePage title="Page not found" body="That address does not lead anywhere." action={{ to: '/', label: 'Go to the start' }} />} />
