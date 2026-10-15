@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../types'
+import PageShell from '../components/PageShell'
 import { useTheme } from '../lib/useTheme'
 
 /** /demo — one click: the server creates a temporary guest account that owns a ready drill (the real xBD scenario
@@ -29,8 +30,8 @@ export default function DemoStart() {
   }, [loading, user, attempt, startDemo, navigate])
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg p-4 text-ink">
-      <main id="main" className="w-full max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-panel">
+    <PageShell center>
+      <main id="main" className="m-4 w-full max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-panel">
         {error ? (
           <>
             <h1 className="text-xl font-bold">The demo could not start</h1>
@@ -48,6 +49,6 @@ export default function DemoStart() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   )
 }

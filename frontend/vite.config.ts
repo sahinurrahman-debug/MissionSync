@@ -22,6 +22,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/docs': { target: BACKEND, changeOrigin: true },
+      '/redoc': { target: BACKEND, changeOrigin: true },
+      '/openapi.json': { target: BACKEND, changeOrigin: true },
       '/api': { target: BACKEND, changeOrigin: true },
       '/ws': { target: BACKEND.replace(/^http/, 'ws'), ws: true, changeOrigin: true },
     },

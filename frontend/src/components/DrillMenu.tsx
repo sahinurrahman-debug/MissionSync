@@ -18,8 +18,15 @@ export interface MenuItem {
 
 /** Every drill-level action in one labelled menu (replaces a row of cryptic icon buttons). */
 export default function DrillMenu({
-  items, header, label = 'Menu', icon, menuLabel = 'Drill menu', align = 'right',
-}: { items: MenuItem[]; header?: ReactNode; label?: string; icon?: ReactNode; menuLabel?: string; align?: 'left' | 'right' }) {
+  items, header, label = 'Menu', icon, menuLabel = 'Drill menu', align = 'right', placement = 'below', triggerClassName, triggerTitle,
+}: {
+  items: MenuItem[]; header?: ReactNode; label?: string; icon?: ReactNode; menuLabel?: string; align?: 'left' | 'right'
+  /** `rail`: the menu opens to the right of the trigger, growing upwards (for a trigger at the bottom of the side rail). */
+  placement?: 'below' | 'rail'
+  /** Replaces the default boxed button style (the trigger then shows `icon` above `label`, always visible). */
+  triggerClassName?: string
+  triggerTitle?: string
+}) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -62,17 +69,18 @@ export default function DrillMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md border border-line bg-hi px-3 text-base font-semibold text-ink transition-colors hover:border-accent aria-expanded:border-accent"
+        title={triggerTitle}
+        className={triggerClassName ?? "inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md border border-line bg-hi px-3 text-base font-semibold text-ink transition-colors hover:border-accent aria-expanded:border-accent"}
       >
         {icon ?? <Menu size={18} aria-hidden />}
-        <span className="max-sm:sr-only">{label}</span>
+        <span className={triggerClassName ? "max-w-full truncate" : "max-sm:sr-only"}>{label}</span>
       </button>
       {open && (
         <div
           id={menuId}
           role="menu"
           aria-label={menuLabel}
-          className={`fixed inset-x-2 top-14 z-[1800] max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-lg border border-line bg-panel p-1.5 shadow-panel sm:absolute sm:inset-x-auto ${align === 'right' ? 'sm:right-0' : 'sm:left-0'} sm:top-full sm:mt-1.5 sm:w-80`}
+          className={`fixed inset-x-2 top-14 z-[1800] max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-lg border border-line bg-panel p-1.5 shadow-panel sm:absolute sm:inset-x-auto sm:w-80 ${placement === 'rail' ? 'sm:bottom-0 sm:left-full sm:top-auto sm:ml-2' : `${align === 'right' ? 'sm:right-0' : 'sm:left-0'} sm:top-full sm:mt-1.5`}`}
         >
           {header && <div className="border-b border-line px-3 pb-2 pt-1.5 text-sm text-ink-2">{header}</div>}
           {items.map((it) => {

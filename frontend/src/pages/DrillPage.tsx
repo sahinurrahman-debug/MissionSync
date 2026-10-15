@@ -61,7 +61,7 @@ export default function DrillPage() {
   }
   return (
     <ErrorBoundary label="MissionSync" scope="app">
-      <DrillBoard source={source} title={drill.name} leading={backLink} trailing={<AccountMenu />} />
+      <DrillBoard source={source} title={drill.name} leading={backLink} account={<AccountMenu />} railAccount={<AccountMenu variant="rail" />} />
     </ErrorBoundary>
   )
 }

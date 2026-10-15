@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Crosshair, Radio, Target, Truck, type LucideIcon } from 'lucide-react'
 
 export type View = 'situation' | 'orders' | 'report' | 'fleet'
@@ -10,7 +11,7 @@ export const VIEWS: Array<{ id: View; label: string; hint: string; Icon: LucideI
 ]
 
 /** Desktop navigation rail: one section per panel, the same mental model as the phone's bottom tabs. */
-export default function SideNav({ view, onChange, badge }: { view: View; onChange: (v: View) => void; badge: Partial<Record<View, number>> }) {
+export default function SideNav({ view, onChange, badge, footer }: { view: View; onChange: (v: View) => void; badge: Partial<Record<View, number>>; footer?: ReactNode }) {
   return (
     <nav aria-label="Sections" className="flex w-[96px] shrink-0 flex-col gap-1 border-r border-line bg-panel px-2 py-3">
       {VIEWS.map(({ id, label, hint, Icon }, i) => {
@@ -40,6 +41,7 @@ export default function SideNav({ view, onChange, badge }: { view: View; onChang
           </button>
         )
       })}
+      {footer && <div className="mt-auto border-t border-line pt-2">{footer}</div>}
     </nav>
   )
 }

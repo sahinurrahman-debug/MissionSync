@@ -11,6 +11,7 @@ import HowItWorks from './HowItWorks'
 import NextStep, { nextStepOf } from './NextStep'
 import ErrorBoundary from './ErrorBoundary'
 import FleetAndLog from './FleetAndLog'
+import Footer from './Footer'
 import HeaderHud, { StatGrid, TelemetryBar, clockOf, statsOf } from './HeaderHud'
 import IncidentCard from './IncidentCard'
 import Recommendations from './Recommendations'
@@ -410,5 +411,30 @@ describe('ActionToast and ErrorBoundary', () => {
     expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     spy.mockRestore()
+  })
+})
+
+describe('Footer', () => {
+  it('the full footer names the project, links the docs and credits the data, with safe external links', () => {
+    render(<Footer />)
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByText(/A private, AI-assisted practice board/)).toBeTruthy()
+    expect(within(footer).getByRole('link', { name: 'API documentation' }).getAttribute('href')).toBe('/docs')
+    const source = within(footer).getByRole('link', { name: 'Source code on GitHub' })
+    expect(source.getAttribute('href')).toMatch(/^https:\/\/github\.com\/.+\/MissionSync$/)
+    for (const a of within(footer).getAllByRole('link')) {
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noopener')                       // an opened page can never script this one
+    }
+    expect(within(footer).getByText(/xBD damage data/)).toBeTruthy()
+    expect(within(footer).getByText(new RegExp(`© ${new Date().getFullYear()} MissionSync`))).toBeTruthy()
+    expect(within(footer).getByText(/not for real emergencies/)).toBeTruthy()
+  })
+
+  it('the compact footer is a single strip for the dashboard', () => {
+    render(<Footer variant="compact" />)
+    const footer = screen.getByRole('contentinfo')
+    expect(footer.className).toContain('lg:flex')                              // desktop only: phones keep their bottom tab bar
+    expect(within(footer).getAllByRole('link').map((a) => a.textContent)).toEqual(['API docs', 'How it works', 'Source on GitHub', 'Data credits'])
   })
 })

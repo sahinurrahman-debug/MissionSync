@@ -5,6 +5,9 @@ import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
 import { MemoryRouter } from 'react-router-dom'
 import DrillBoard from '../pages/DrillBoard'
+import { AuthProvider } from '../auth/AuthContext'
+import AccountMenu from './AccountMenu'
+import { FakeApi } from '../test-utils/fakeApi'
 import { FakeSource } from '../test-utils/world'
 import SideNav, { VIEWS } from './SideNav'
 
@@ -110,6 +113,43 @@ describe('Board navigation (desktop layout)', () => {
     expect(await screen.findByText(/did not work|Try again/)).toBeTruthy()           // a friendly message, not the raw error
     expect(screen.queryByText(/boom/)).toBeNull()
     expect(await screen.findByRole('button', { name: new RegExp(`Approve all \\(${before}\\)`) })).toBeTruthy()   // the proposals came back
+  })
+
+
+  it('pins the account to the very bottom of the side rail, and keeps it out of the header on desktop', async () => {
+    const api = new FakeApi().install()
+    api.signIn('bea@example.com', 'Bea Tester')
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <DrillBoard source={new FakeSource()} title="Test drill" account={<AccountMenu />} railAccount={<AccountMenu variant="rail" />} />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    const rail = await screen.findByRole('navigation', { name: 'Sections' })
+    const account = await within(rail).findByRole('button', { name: /Bea/ })
+    expect(rail.lastElementChild?.contains(account)).toBe(true)                        // the extreme bottom of the rail
+    expect(account.getAttribute('title')).toContain('bea@example.com')                  // full name and email on hover
+    expect(screen.getAllByRole('button', { name: /Bea/ })).toHaveLength(1)             // not duplicated in the header
+    await userEvent.click(account)
+    expect(screen.getByRole('menu', { name: 'Account menu' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: /Sign out/ })).toBeTruthy()
+    expect(screen.getByText('bea@example.com')).toBeTruthy()
+  })
+
+  it('on a phone the account is in the header instead (there is no rail)', async () => {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+    const api = new FakeApi().install()
+    api.signIn('bea@example.com', 'Bea Tester')
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <DrillBoard source={new FakeSource()} title="Test drill" account={<AccountMenu />} railAccount={<AccountMenu variant="rail" />} />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByRole('button', { name: /Bea/ })).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Sections' })?.textContent).not.toContain('Bea')   // only the tab bar, no rail
   })
 
   it('asks before ending the drill, then freezes it', async () => {

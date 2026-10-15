@@ -129,6 +129,30 @@ describe('protected routes', () => {
   })
 })
 
+describe('site footer', () => {
+  it('every full page ends with the footer: sign-in, My drills, not-found', async () => {
+    visit('/login')
+    expect(await screen.findByRole('contentinfo')).toBeTruthy()
+    document.body.innerHTML = ''
+    api.signIn()
+    visit('/drills')
+    await screen.findByRole('heading', { name: 'My drills' })
+    expect(screen.getByRole('contentinfo').textContent).toContain('MissionSync')
+    document.body.innerHTML = ''
+    visit('/nowhere')
+    expect((await screen.findByRole('contentinfo')).textContent).toContain('not for real emergencies')
+  })
+
+  it('pages own their vertical scrolling and never scroll sideways', async () => {
+    visit('/login')
+    await screen.findByRole('contentinfo')
+    const shell = document.querySelector('main')!.closest('div.overflow-y-auto')!
+    expect(shell.className).toContain('overflow-x-hidden')
+    expect(shell.className).toContain('h-dvh')
+    expect(shell.firstElementChild!.className).not.toContain('min-h-0')                // content must never shrink under the footer
+  })
+})
+
 describe('sign in and sign up forms', () => {
   it('shows validation inline — never an alert popup — and does not call the server', async () => {
     visit('/signup')

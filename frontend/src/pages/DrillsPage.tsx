@@ -6,6 +6,7 @@ import AccountMenu from '../components/AccountMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyRadar from '../components/EmptyRadar'
 import FormField from '../components/FormField'
+import PageShell from '../components/PageShell'
 import { useDrills, messageOf, type Item } from '../hooks/useDrills'
 import { useTheme } from '../lib/useTheme'
 import { ApiError } from '../types'
@@ -126,8 +127,8 @@ export default function DrillsPage() {
 
   const count = items?.length ?? 0
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <header className="flex h-14 items-center gap-3 border-b border-line bg-panel px-3 lg:px-4">
+    <PageShell>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-panel px-3 lg:px-4">
         <h1 className="text-lg font-extrabold tracking-tight">Mission<span className="text-accent">Sync</span></h1>
         <div className="ml-auto flex items-center gap-2">
           <AccountMenu />
@@ -137,7 +138,7 @@ export default function DrillsPage() {
         </div>
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-5xl px-4 py-6">
+      <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         <h2 className="text-2xl font-extrabold">My drills</h2>
         <p className="mt-1 text-base text-ink-2">Each drill is a private practice exercise. Create one, open it, type radio reports and approve the dispatches the AI suggests.</p>
 
@@ -185,6 +186,6 @@ export default function DrillsPage() {
           onCancel={() => setToDelete(null)}
         />
       )}
-    </div>
+    </PageShell>
   )
 }

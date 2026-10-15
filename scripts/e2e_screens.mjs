@@ -39,6 +39,25 @@ const clickText = (page, selector, re) => page.evaluate((sel, s) => {
   el.click()
 }, selector, re.source)
 
+/** No sideways scrolling anywhere: not on the document, and no element that would grow a horizontal scrollbar
+ *  (or a vertical panel whose content is wider than the panel). */
+async function noSideways(page, label) {
+  const bad = await page.evaluate(() => {
+    const out = []
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`document ${document.documentElement.scrollWidth}>${innerWidth}`)
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el)
+      if (cs.display === 'none' || el.closest('.leaflet-container') || !el.clientWidth) continue
+      const wider = el.scrollWidth > el.clientWidth + 1
+      if (wider && (cs.overflowX === 'auto' || cs.overflowX === 'scroll')) out.push(`${el.tagName}.${String(el.className).slice(0, 40)} scrolls sideways`)
+      else if (wider && /overflow-y-auto/.test(String(el.className))) out.push(`${el.tagName}.${String(el.className).slice(0, 40)} clips wider content`)
+    }
+    return out.slice(0, 4)
+  })
+  check(bad.length === 0, `no sideways scrolling — ${label}${bad.length ? ': ' + bad.join(' | ') : ''}`)
+}
+const hasFooter = (page) => page.evaluate(() => !!document.querySelector('footer') && /not for real emergencies|MIT licence/.test(document.querySelector('footer').innerText))
+
 async function setup(page, w, h, mobile = false) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile })
   await page.evaluateOnNewDocument((theme) => {
@@ -54,6 +73,8 @@ try {
   await page.goto(`${BASE}/drills`, { waitUntil: 'networkidle2' })
   check(page.url().endsWith('/login'), 'visitor on /drills is redirected to /login')
   await shot(page, 'login')
+  check(await hasFooter(page), 'the sign-in page has the footer')
+  await noSideways(page, 'sign-in page, desktop')
 
   // 1b. the one-click demo: no form, a temporary private drill with the real scenario and agents
   const incognito = await browser.createBrowserContext()                     // its own cookie jar: the guest must not leak into the main run
@@ -80,6 +101,8 @@ try {
   await waitText(page, /No drills yet/)
   check(/No drills yet/.test(await text(page)), 'new account lands on My drills with a designed empty state')
   await shot(page, 'drills-empty')
+  check(await hasFooter(page), 'My drills has the footer')
+  await noSideways(page, 'My drills, desktop')
 
   // 4. create a drill (optimistic card), then open it
   await page.type('input[placeholder^="e.g."]', 'Saturday campus drill')
@@ -94,6 +117,15 @@ try {
   check(/Saturday campus drill/.test(await text(page)), 'the header shows the drill name')
   await sleep(25000)                                                                  // let the LLM refine the first scores
   await shot(page, 'desktop')
+  const railLast = await page.evaluate(() => document.querySelector('nav[aria-label="Sections"]').lastElementChild.innerText)
+  check(/E2E/.test(railLast), 'the account name sits at the very bottom of the side rail')
+  check(await page.evaluate(() => { const f = document.querySelector('footer'); return !!f && getComputedStyle(f).display !== 'none' }), 'the dashboard has its compact footer')
+  for (const v of ['situation', 'orders', 'report', 'fleet']) {
+    await clickText(page, 'nav[aria-label="Sections"] button', new RegExp('^' + v, 'i'))
+    await sleep(700)
+    await noSideways(page, `dashboard ${v}, desktop`)
+  }
+  await clickText(page, 'nav[aria-label="Sections"] button', /^situation/i)
 
   // 5. orders → approve all → fleet
   await clickText(page, 'nav[aria-label="Sections"] button', /^orders/i)
@@ -134,6 +166,9 @@ try {
   await phone.goto(`${BASE}/drills`, { waitUntil: 'networkidle2' })
   await waitText(phone, /My drills/)
   await shot(phone, 'mobile-drills')
+  check(await hasFooter(phone), 'the footer shows on a phone too')
+  check(await phone.evaluate(() => { const m = document.querySelector('main').getBoundingClientRect(); const f = document.querySelector('footer').getBoundingClientRect(); return m.bottom <= f.top + 1 }), 'the footer never covers page content')
+  await noSideways(phone, 'My drills, 375 px')
   await clickText(phone, 'a', /review|open/)
   await waitText(phone, /LIVE/, 60000)
   await sleep(2500)
@@ -142,6 +177,12 @@ try {
   const headerFits = await phone.evaluate(() => [...document.querySelectorAll('header button, header a')].every((el) => el.getBoundingClientRect().right <= innerWidth + 1))
   check(headerFits, 'every header control is on screen at 375px')
   await shot(phone, 'mobile')
+  for (const tab of ['map', 'incidents', 'orders', 'report', 'units']) {
+    await clickText(phone, 'nav[aria-label="Sections"] button', new RegExp(tab, 'i'))
+    await sleep(600)
+    await noSideways(phone, `dashboard ${tab} tab, 375 px`)
+  }
+  await clickText(phone, 'nav[aria-label="Sections"] button', /incidents/i)
   await clickText(phone, 'nav[aria-label="Sections"] button', /orders/i)
   await sleep(700)
   await shot(phone, 'mobile-orders')

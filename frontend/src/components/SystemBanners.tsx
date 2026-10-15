@@ -47,9 +47,9 @@ export function WeatherStrip({ snap }: { snap: Snapshot }) {
   const alerts = snap.weather.filter((w) => w.alert)
   if (alerts.length === 0) return null
   return (
-    <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto" role="status" aria-label="Weather advisories (simulated)">
+    <div className="flex shrink-0 flex-wrap gap-2" role="status" aria-label="Weather advisories (simulated)">
       {alerts.map((w) => (
-        <span key={w.zone} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2 py-0.5 text-sm text-warn">
+        <span key={w.zone} className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2 py-0.5 text-sm text-warn">
           <Wind size={14} aria-hidden />
           <b className="font-semibold">{w.zone}</b>
           <span className="text-ink-2">

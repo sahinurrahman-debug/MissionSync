@@ -10,6 +10,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import EventLog from '../components/EventLog'
 import FleetAndLog from '../components/FleetAndLog'
 import HeaderHud, { StatGrid, TelemetryBar } from '../components/HeaderHud'
+import Footer from '../components/Footer'
 import GuestBanner from '../components/GuestBanner'
 import HowItWorks, { guideSeen } from '../components/HowItWorks'
 import IncidentFeed from '../components/IncidentFeed'
@@ -48,7 +49,8 @@ export function describeError(e: unknown): string {
 type Confirm = 'end' | 'reset' | null
 
 /** One drill's dashboard: header, guidance, and one section at a time (side rail on desktop, tabs on phones). */
-export default function DrillBoard({ source, title, leading, trailing }: { source: DataSource; title?: string; leading?: ReactNode; trailing?: ReactNode }) {
+/** `account` is shown in the header on phones and tablets and pinned to the bottom of the side rail on desktop (`railAccount`). */
+export default function DrillBoard({ source, title, leading, account, railAccount }: { source: DataSource; title?: string; leading?: ReactNode; account?: ReactNode; railAccount?: ReactNode }) {
   const subscribe = useCallback((cb: () => void) => source.subscribe(cb), [source])
   const rawSnap = useSyncExternalStore(subscribe, () => source.getSnapshot())
   const { theme, toggle } = useTheme()
@@ -289,7 +291,7 @@ export default function DrillBoard({ source, title, leading, trailing }: { sourc
         onGuide={() => setGuide(true)}
         title={title}
         leading={leading}
-        trailing={trailing}
+        trailing={desktop ? null : account}
       />
       <TelemetryBar snap={snap} />
       <NextStep snap={snap} onGo={goTo} />
@@ -298,7 +300,7 @@ export default function DrillBoard({ source, title, leading, trailing }: { sourc
 
       {desktop ? (
         <div className="flex min-h-0 flex-1">
-          <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length }} />
+          <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length }} footer={railAccount} />
           <main id="main" className="min-h-0 min-w-0 flex-1 p-2">
             {view === 'situation' && (
               <div className="flex h-full min-h-0 flex-col gap-2">
@@ -349,6 +351,8 @@ export default function DrillBoard({ source, title, leading, trailing }: { sourc
           <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2, orders: snap.proposals.length }} />
         </>
       )}
+
+      <Footer variant="compact" />
 
       <ActionToast toast={toast} onDismiss={() => setToast(null)} />
       {guide && <HowItWorks onClose={() => setGuide(false)} />}

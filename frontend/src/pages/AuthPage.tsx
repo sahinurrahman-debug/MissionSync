@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Loader2, Radio, ShieldCheck, Users } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import FormField from '../components/FormField'
+import PageShell from '../components/PageShell'
 import { ApiError } from '../types'
 import { useTheme } from '../lib/useTheme'
 
@@ -69,8 +70,8 @@ export default function AuthPage({ mode }: { mode: Mode }) {
 
   const signup = mode === 'signup'
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <main id="main" className="mx-auto grid min-h-dvh w-full max-w-5xl items-center gap-8 px-4 py-8 md:grid-cols-[1fr_minmax(0,26rem)]">
+    <PageShell>
+      <main id="main" className="mx-auto grid w-full flex-1 max-w-5xl items-center gap-8 px-4 py-8 md:grid-cols-[1fr_minmax(0,26rem)]">
         <section className="max-md:order-2">
           <h1 className="text-3xl font-extrabold tracking-tight">Mission<span className="text-accent">Sync</span></h1>
           <p className="mt-2 max-w-md text-xl font-semibold leading-snug text-ink">A calm, ranked picture for emergency-response drills.</p>
@@ -131,6 +132,6 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           </form>
         </section>
       </main>
-    </div>
+    </PageShell>
   )
 }
