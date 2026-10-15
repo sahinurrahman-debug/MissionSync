@@ -21,6 +21,8 @@ This project was built with an AI coding assistant (Claude Code), and the point 
 
 **Sessions, not tokens in JavaScript.** `routers/auth.py` creates a random 256-bit token, stores only its SHA-256 in `sessions`, and sets it as an `HttpOnly` cookie, so a script injected into the page (XSS) cannot read it and a database leak cannot be replayed. Logging out deletes the row, which really ends the session. *What would a JWT in `localStorage` have changed?* It cannot be revoked and any XSS can steal it.
 
+**The one-click demo.** `POST /api/auth/demo` (`routers/auth.py`) creates an ordinary user flagged `is_guest` with a random password nobody ever sees, one drill, and a session as short-lived as the account. There is no special demo code path afterwards — a guest is isolated by the same `owner_id` rule as anyone — which is why the demo uses the real data and agents. `housekeeping()` in `services.py` deletes expired guests and stops their running drills.
+
 **Passwords.** `auth/passwords.py` uses argon2id: slow and memory-hungry on purpose. Login always performs a hash (even for unknown emails) so response time does not reveal which emails have accounts.
 
 **Why the whole thing is one origin.** See `docs/ARCHITECTURE.md §0`. Cookies, CORS and WebSockets all get simpler when the page and the API share a host.

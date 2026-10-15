@@ -56,7 +56,8 @@ try {
   await shot(page, 'login')
 
   // 1b. the one-click demo: no form, a temporary private drill with the real scenario and agents
-  const demo = await browser.newPage()
+  const incognito = await browser.createBrowserContext()                     // its own cookie jar: the guest must not leak into the main run
+  const demo = await incognito.newPage()
   await setup(demo, 1366, 800)
   await demo.goto(`${BASE}/demo`, { waitUntil: 'networkidle2' })
   await waitText(demo, /Temporary demo account/, 90000)
@@ -64,7 +65,7 @@ try {
   await waitText(demo, /LIVE/, 90000)
   await waitText(demo, /waiting for you/, 90000)
   check(true, 'the demo drill boots with the real scenario and proposals waiting for approval')
-  await demo.close()
+  await incognito.close()
 
   // 2. validation is inline
   await page.goto(`${BASE}/signup`, { waitUntil: 'networkidle2' })

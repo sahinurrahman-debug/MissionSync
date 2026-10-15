@@ -23,13 +23,13 @@
 
 During a drill, the net-control lead of a campus CERT or amateur-radio team writes every radio call on paper and decides in their head which incident matters most and which team to send. MissionSync replaces the paper log: you create a private **drill**, type what field teams report, and the app turns each report into an incident, merges duplicates, scores it from 0 to 100 (P1 critical … P4 advisory) with an auditable breakdown, and proposes which unit to send with its ETA. AI agents only *propose* — nothing moves until you press **Approve**. Your drills, reports and audit trail are saved to your account and are invisible to everyone else.
 
-Not ready to sign up? **[Try the demo](https://missionsync.onrender.com/demo)** — the same dashboard running in your browser, nothing saved.
+Not ready to sign up? **[Try the demo](https://missionsync.onrender.com/demo)** — one click, no form: you get a temporary private account with its own drill running the real xBD scenario and the AI agents. It is deleted after 24 hours (or [create a free account](https://missionsync.onrender.com/signup) to keep your work).
 
 ---
 
 ## Features
 
-- **Accounts** — sign up, sign in and out with email and password; the session survives refreshes and is verified by the server on every request.
+- **Accounts and a one-click demo** — sign up, sign in and out with email and password (the session survives refreshes and is verified by the server on every request), or press *Try the demo* for a temporary guest account with its own drill.
 - **Private drills (full CRUD)** — create, rename, open and delete your own drills; an account sees only its own.
 - **Report intake** — free text becomes a structured, mapped incident in about 100 ms (rule-based), then the LLM refines the score in the background.
 - **Ranked incidents with an auditable score** — severity, population, spread and time-criticality, each shown; the map and feed re-rank live.
@@ -86,7 +86,7 @@ The browser asks `/api/auth/session` who it is (the session cookie is checked ag
 ## Database Schema
 
 ```sql
-users        (id, email UNIQUE, display_name, password_hash,        created_at)            -- argon2id hash, never the password
+users        (id, email UNIQUE, display_name, password_hash, is_guest, created_at)       -- argon2id hash, never the password; is_guest = temporary demo account
 sessions     (id = sha256(cookie token), user_id → users ON DELETE CASCADE, created_at, expires_at, last_seen_at, user_agent)
 drills       (id, owner_id → users ON DELETE CASCADE, name, notes, status, dataset,
               state JSON, state_updated_at, created_at, updated_at)                       -- state = the world, to resume a drill
@@ -95,7 +95,7 @@ reports      (id, drill_id → drills ON DELETE CASCADE, text, source, kind, inc
 kv           (key, value, updated_at)                                                     -- shared LLM score cache, no personal data
 ```
 
-Migrations live in [`backend/migrations/`](./backend/migrations) (`0001` baseline, `0002` accounts & ownership) and run automatically on start; `alembic upgrade head` builds the schema from nothing.
+Migrations live in [`backend/migrations/`](./backend/migrations) (`0001` baseline, `0002` accounts & ownership, `0003` guest accounts) and run automatically on start; `alembic upgrade head` builds the schema from nothing.
 
 ---
 
@@ -105,6 +105,7 @@ Migrations live in [`backend/migrations/`](./backend/migrations) (`0001` baselin
 |---|---|---|---|
 | POST | `/api/auth/signup` | – | Create an account and sign in (`201`) |
 | POST | `/api/auth/login` | – | Sign in (`200`); rate-limited |
+| POST | `/api/auth/demo` | – | One-click guest account with a ready drill (`201`); rate-limited, capped, auto-deleted |
 | POST | `/api/auth/logout` | – | Revoke the session (`204`) |
 | GET | `/api/auth/session` · `/api/auth/me` | – · session | Current user (`null` for visitors) · strict `401` version |
 | GET / POST | `/api/drills` | session | List your drills · create one (`201`, max 10) |
@@ -157,6 +158,7 @@ Full list with comments: [`backend/.env.example`](./backend/.env.example), [`fro
 | `APP_ENV` | `production` turns on Secure cookies and refuses SQLite | set to `production` when deployed |
 | `GROQ_API_KEY` | Enables the LLM agents (free tier: ~200k tokens/day/model, shared per organisation) | <https://console.groq.com/keys> |
 | `MAX_DRILLS_PER_USER`, `MAX_LIVE_DRILLS` | Fair-use limits for a small instance | defaults 10 / 6 |
+| `ALLOW_DEMO`, `GUEST_HOURS`, `MAX_GUESTS`, `GUEST_MAX_DRILLS` | The one-click demo: on/off, how long a guest lives, how many may exist, drills per guest | defaults true / 24 / 150 / 2 |
 | `ALLOW_SIGNUP` | Close sign-ups on a shared server | default `true` |
 | `CORS_ORIGINS` | Only if the dashboard is hosted on a different origin | – |
 
@@ -178,14 +180,14 @@ No secret is committed; `.env` is git-ignored and `.env.example` lists every nam
 | Suite | What it proves | Size |
 |---|---|---|
 | `backend/tests/test_isolation.py` | two accounts × every drill route (another user → `404`, anonymous → `401`), WebSocket refusals, listings | 36 |
-| `backend/tests/test_auth.py` | validation per field, hashed passwords, cookie flags, revoked/expired/forged sessions, login rate limit, origin guard | 22 |
+| `backend/tests/test_auth.py`, `test_guest_demo.py` | validation per field, hashed passwords, cookie flags, revoked/expired/forged sessions, login rate limit, origin guard; guest demo: own drill, no re-login, limits, expiry clean-up | 30 |
 | `backend/tests/test_drills_crud.py`, `test_play_api.py` | CRUD with server-side validation and limits, cascade delete, restart recovery, the whole report → approve flow | 22 |
-| `backend/tests/test_migrations.py` | schema from scratch, idempotent, adopts the old database, downgrade/upgrade | 6 |
-| remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), simulator, data, static serving | 103 |
-| `frontend/src/**/*.test.*` | guards, inline validation, optimistic create/rename/delete with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 147 |
-| `scripts/e2e_screens.mjs` | the real app in a headless browser: sign up → drill → approve → refresh → end → sign out, at 1366 px and 375 px | 13 checks |
+| `backend/tests/test_migrations.py` | schema from scratch, idempotent, adopts the old database, downgrade/upgrade, the real `alembic` CLI | 8 |
+| remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), frontend-fixture drift, simulator, data, static serving | 104 |
+| `frontend/src/**/*.test.*` | guards, inline validation, the one-click demo, optimistic create/rename/delete and approve with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 108 |
+| `scripts/e2e_screens.mjs` | the real app in a headless browser: one-click demo, sign up → drill → approve → refresh → end → sign out, at 1366 px and 375 px | 15 checks |
 
-**189 backend tests (93 % line coverage) and 147 frontend tests (90 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
+**200 backend tests (93 % line coverage) and 108 frontend tests (88 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
 
 ```bash
 cd backend  && .venv/Scripts/python -m pytest --cov=missionsync      # install requirements-dev.txt first

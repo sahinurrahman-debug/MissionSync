@@ -28,6 +28,8 @@ services:
         value: "10"
       - key: MAX_LIVE_DRILLS    # drills simulated at once on this small instance
         value: "4"
+      - key: MAX_GUESTS         # temporary demo accounts that may exist at once (each lives GUEST_HOURS=24)
+        value: "60"
       - key: LOG_FORMAT
         value: json
       - key: SENTRY_DSN         # optional error tracking (pip install sentry-sdk to activate)
