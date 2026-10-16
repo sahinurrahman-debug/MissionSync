@@ -1,17 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../types'
 import PageShell from '../components/PageShell'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTheme } from '../lib/useTheme'
 
 /** /demo — one click: the server creates a temporary guest account that owns a ready drill (the real xBD scenario
  *  with the real AI agents) and we open it. Already signed in? Just go to your drills; no second account is made. */
 export default function DemoStart() {
   useTheme()
+  useDocumentTitle('Try the Demo')
   const { user, loading, startDemo } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Arriving from a click inside the app starts at once; arriving by address (a shared link, a crawler, a link preview)
+  // asks first, so merely loading the URL never creates an account.
+  const [confirmed, setConfirmed] = useState((location.state as { start?: boolean } | null)?.start === true)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const started = useRef(-1)
@@ -21,18 +27,28 @@ export default function DemoStart() {
   useEffect(() => {
     if (loading) return
     if (user && started.current < 0) { navigate('/drills', { replace: true }); return }     // arrived already signed in
+    if (!confirmed) return
     if (started.current === attempt) return                       // React StrictMode runs effects twice in development
     started.current = attempt
     // `mounted`, not a per-effect flag: signing in changes `user`, which re-runs this effect before the answer is used
     startDemo()
       .then((drillId) => mounted.current && navigate(`/drills/${drillId}`, { replace: true }))
       .catch((e) => mounted.current && setError(e instanceof ApiError ? e.message : 'Could not start the demo. Please try again.'))
-  }, [loading, user, attempt, startDemo, navigate])
+  }, [loading, user, attempt, confirmed, startDemo, navigate])
 
   return (
     <PageShell center>
       <main id="main" className="m-4 w-full max-w-md rounded-xl border border-line bg-panel p-6 text-center shadow-panel">
-        {error ? (
+        {!confirmed && !error ? (
+          <>
+            <h1 className="text-xl font-bold">Try MissionSync</h1>
+            <p className="mt-2 text-base text-ink-2">You get a temporary private drill with real damage data and the AI agents. No form to fill in; it is deleted after 24 hours.</p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <button type="button" onClick={() => setConfirmed(true)} className="h-12 rounded-md bg-accent px-5 text-base font-bold text-bg hover:brightness-110">Start the Demo</button>
+              <Link to="/signup" className="inline-flex h-12 items-center justify-center rounded-md border border-line bg-hi px-5 text-base font-semibold hover:border-accent">Create an Account</Link>
+            </div>
+          </>
+        ) : error ? (
           <>
             <h1 className="text-xl font-bold">The Demo Could Not Start</h1>
             <p role="alert" className="mt-2 text-base text-ink-2">{error}</p>

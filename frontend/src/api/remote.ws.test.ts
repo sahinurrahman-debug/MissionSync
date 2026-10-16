@@ -222,6 +222,19 @@ describe('RemoteEngine access loss', () => {
     }
   })
 
+  it('tells a full server (close 1013) apart from a lost connection', () => {
+    const e = new RemoteEngine(7)
+    e.start()
+    MockSocket.instances[0].onclose?.({ code: 1013 } as any)
+    expect(e.getSnapshot().connection).toBe('offline')
+    expect(e.getSnapshot().offline_reason).toBe('busy')
+    vi.advanceTimersByTime(1000)
+    MockSocket.instances[1].open()                                    // back: the reason is cleared with the offline state
+    expect(e.getSnapshot().connection).toBe('online')
+    expect(e.getSnapshot().offline_reason).toBeUndefined()
+    e.stop()
+  })
+
   it('treats an ordinary drop as offline and keeps trying', () => {
     const lost = vi.fn()
     const e = new RemoteEngine(7, lost)

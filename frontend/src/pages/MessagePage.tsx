@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom'
 import { SearchX } from 'lucide-react'
 import PageShell from '../components/PageShell'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTheme } from '../lib/useTheme'
 
 /** A friendly full-page message (not found, could not load) with one clear way forward. */
 export default function MessagePage({ title, body, action }: { title: string; body: string; action: { to: string; label: string; reload?: boolean } }) {
   useTheme()
+  useDocumentTitle(title)
   return (
     <PageShell center>
       <main id="main" className="m-4 w-full max-w-md rounded-xl border border-line bg-panel p-6 text-center shadow-panel">

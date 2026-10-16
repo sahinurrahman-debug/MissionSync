@@ -21,16 +21,23 @@ function Splash({ text }: { text: string }) {
 
 /** Protected route: visitors without a session are sent to sign-in and brought back afterwards. */
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, unreachable } = useAuth()
   const location = useLocation()
   if (loading) return <Splash text="Checking your session…" />
+  if (unreachable) return <Unreachable />
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   return <>{children}</>
 }
 
+/** The server did not answer (it may be waking up): say so and offer another try — never pretend the person signed out. */
+function Unreachable() {
+  return <MessagePage title="Cannot Reach MissionSync" body="The server did not answer. It may be waking up — wait a few seconds and try again. You are still signed in." action={{ to: '/', label: 'Try Again', reload: true }} />
+}
+
 function Home() {
-  const { user, loading } = useAuth()
+  const { user, loading, unreachable } = useAuth()
   if (loading) return <Splash text="Loading MissionSync…" />
+  if (unreachable) return <Unreachable />
   return <Navigate to={user ? '/drills' : '/login'} replace />
 }
 

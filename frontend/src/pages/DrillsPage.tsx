@@ -8,6 +8,7 @@ import EmptyRadar from '../components/EmptyRadar'
 import FormField from '../components/FormField'
 import PageShell from '../components/PageShell'
 import { useDrills, messageOf, type Item } from '../hooks/useDrills'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTheme } from '../lib/useTheme'
 import { ApiError } from '../types'
 
@@ -82,6 +83,7 @@ function DrillCard({ d, onRename, onDelete }: { d: Item; onRename: (id: number, 
 }
 
 export default function DrillsPage() {
+  useDocumentTitle('My Drills')
   const { theme, toggle } = useTheme()
   const { items, limit, loadError, reload, create, rename, remove } = useDrills()
   const [name, setName] = useState('')

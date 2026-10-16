@@ -24,20 +24,13 @@ export async function parseError(res: Response): Promise<ApiError> {
 /** Fired when the server says the session is gone (a 401 anywhere), so the app can send you back to sign-in. */
 export const SESSION_LOST_EVENT = 'ms:session-lost'
 
-let base = ''
-/** Point the client at another origin (only needed when the dashboard is hosted apart from the API). */
-export function setApiBase(url: string): void {
-  base = url.replace(/\/$/, '')
-}
-export const apiBase = (): string => base
-
-export async function request<T = any>(path: string, init: RequestInit & { json?: unknown; quiet401?: boolean } = {}): Promise<T> {
-  const { json, quiet401, headers, ...rest } = init
+export async function request<T = any>(path: string, init: RequestInit & { json?: unknown; quiet401?: boolean; timeoutMs?: number } = {}): Promise<T> {
+  const { json, quiet401, timeoutMs, headers, ...rest } = init
   const ctl = new AbortController()
-  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS)
+  const timer = setTimeout(() => ctl.abort(), timeoutMs ?? REQUEST_TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(`${base}${path}`, {
+    res = await fetch(path, {
       ...rest,
       credentials: 'include',
       body: json === undefined ? rest.body : JSON.stringify(json),

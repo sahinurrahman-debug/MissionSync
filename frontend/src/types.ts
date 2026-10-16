@@ -162,7 +162,7 @@ export interface EventLine {
   msg: string
 }
 
-/** How the agents are running: real LLM, rule-based twins, out of quota, or the browser demo. */
+/** How the agents are running: real LLM, rule-based twins, or out of quota. */
 export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted'
 
 export interface Metrics {
@@ -201,6 +201,8 @@ export type Connection = 'connecting' | 'online' | 'offline'
 export interface Snapshot {
   status: 'booting' | 'live' | 'ended'
   connection: Connection
+  /** When offline: `busy` means the server answered but is full (try again shortly), unset means the connection was lost. */
+  offline_reason?: 'busy'
   engine: 'remote'
   tick: number
   sim_time: string

@@ -16,6 +16,7 @@ export function useTheme() {
   })
   useEffect(() => {
     document.documentElement.dataset.theme = theme
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0E1113' : '#ECF0F1')   // the phone's browser bar follows the theme
     try {
       localStorage.setItem('ms-theme', theme)
     } catch {

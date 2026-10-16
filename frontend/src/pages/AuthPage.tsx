@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import FormField from '../components/FormField'
 import PageShell from '../components/PageShell'
 import { ApiError } from '../types'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTheme } from '../lib/useTheme'
 
 type Mode = 'signin' | 'signup'
@@ -33,6 +34,7 @@ const POINTS = [
 
 export default function AuthPage({ mode }: { mode: Mode }) {
   useTheme()
+  useDocumentTitle(mode === 'signup' ? 'Create Account' : 'Sign In')
   const { user, loading, signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -86,7 +88,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             ))}
           </ul>
           <p className="rounded-xl border border-dashed border-line p-4 text-base text-ink-2 sm:col-span-3 md:col-span-1 lg:col-span-3">
-            Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the Demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
+            Just looking? <Link to="/demo" state={{ start: true }} className="font-semibold text-accent underline underline-offset-4">Try the Demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
           </p>
         </section>
 

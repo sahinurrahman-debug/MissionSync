@@ -366,6 +366,27 @@ describe('SystemBanners', () => {
   })
 })
 
+describe('SystemBanners — busy server and dismissible notices', () => {
+  it('names a full server differently from a lost connection', () => {
+    const s = world().snap
+    const { rerender } = render(<SystemBanners snap={{ ...s, engine: 'remote', connection: 'offline' }} />)
+    expect(screen.getByRole('alert').textContent).toContain('Lost the connection')
+    rerender(<SystemBanners snap={{ ...s, engine: 'remote', connection: 'offline', offline_reason: 'busy' }} />)
+    expect(screen.getByRole('alert').textContent).toContain('busy running other drills')
+  })
+
+  it('a warning can be hidden, and returns when the situation changes', async () => {
+    const s = world().snap
+    const quota = { ...s, engine: 'remote' as const, metrics: { ...s.metrics, mode: 'quota_exhausted' as const, quota_retry_s: 120 } }
+    const { rerender } = render(<SystemBanners snap={quota} />)
+    expect(screen.getByText(/AI quota spent/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Hide This Notice' }))
+    expect(screen.queryByText(/AI quota spent/)).toBeNull()
+    rerender(<SystemBanners snap={{ ...quota, metrics: { ...quota.metrics, mode: 'fallback' }, status: 'live' }} />)
+    expect(screen.getByText(/Degraded mode/)).toBeTruthy()
+  })
+})
+
 describe('WeatherPanel', () => {
   it('lists every zone, warnings first, with wind, rain and temperature', () => {
     const s = world().snap

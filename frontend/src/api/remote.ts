@@ -7,7 +7,7 @@
 // drill is gone (4404), `onLost` tells the app to leave this page instead of reconnecting forever.
 import { SAMPLE_REPORTS, type DataSource, type Subscriber } from '../source'
 import { type Connection, type InjectResult, type Snapshot } from '../types'
-import { apiBase, request } from './http'
+import { request } from './http'
 import { emptySnapshot, fromBackend } from './mapping'
 
 export { parseError } from './http'
@@ -57,7 +57,7 @@ export class RemoteEngine implements DataSource {
   }
 
   exportUrl(): string {
-    return `${apiBase()}${this.base}/export.csv`
+    return `${this.base}/export.csv`
   }
 
   nextSampleReport(): string {
@@ -118,8 +118,6 @@ export class RemoteEngine implements DataSource {
   // -- plumbing ----------------------------------------------------------------
 
   private wsUrl(): string {
-    const base = apiBase()
-    if (base) return `${base.replace(/^http/, 'ws')}/ws/drills/${this.drillId}`
     return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/drills/${this.drillId}`
   }
 
@@ -131,6 +129,7 @@ export class RemoteEngine implements DataSource {
     } catch (e: any) {
       if (e?.status === 401) this.lost('signed_out')
       else if (e?.status === 404) this.lost('not_found')
+      else if (e?.status === 503) this.setConnection('offline', 'busy')            // the server is full of other drills
       /* otherwise the socket will deliver the first snapshot, or the offline banner will say why */
     }
   }
@@ -170,7 +169,7 @@ export class RemoteEngine implements DataSource {
       if (this.stopped) return
       if (ev?.code === 4401) return this.lost('signed_out')
       if (ev?.code === 4404) return this.lost('not_found')
-      this.setConnection('offline')
+      this.setConnection('offline', ev?.code === 1013 ? 'busy' : undefined)
       this.scheduleReconnect()
     }
     ws.onerror = () => ws.close()
@@ -186,8 +185,8 @@ export class RemoteEngine implements DataSource {
     }, delay)
   }
 
-  private setConnection(connection: Connection): void {
-    this.apply({ ...this.snap, connection })
+  private setConnection(connection: Connection, reason?: 'busy'): void {
+    this.apply({ ...this.snap, connection, offline_reason: connection === 'offline' ? reason : undefined })
   }
 
   private apply(next: Snapshot): void {

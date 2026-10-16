@@ -26,7 +26,7 @@ export default function SideNav({ view, onChange, badge, footer }: { view: View;
             aria-current={active ? 'page' : undefined}
             aria-keyshortcuts={String(i + 1)}
             title={`${hint} (${i + 1})`}
-            className={`relative flex h-[72px] flex-col items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-colors ${
+            className={`relative flex h-[72px] [@media(max-height:760px)]:h-14 flex-col items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-colors ${
               active ? 'border-accent/50 bg-accent/10 text-accent' : 'border-transparent text-ink-2 hover:bg-hi hover:text-ink'
             }`}
           >

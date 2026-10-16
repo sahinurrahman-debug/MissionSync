@@ -5,6 +5,7 @@ import { getDrill, type DrillSummary } from '../api/drills'
 import { RemoteEngine, type LostReason } from '../api/remote'
 import AccountMenu from '../components/AccountMenu'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { ApiError } from '../types'
 import DrillBoard from './DrillBoard'
 import MessagePage from './MessagePage'
@@ -22,6 +23,7 @@ export default function DrillPage() {
   const navigate = useNavigate()
   const [drill, setDrill] = useState<DrillSummary | null>(null)
   const [problem, setProblem] = useState<'missing' | 'failed' | null>(null)
+  useDocumentTitle(drill?.name ?? 'Drill')
 
   useEffect(() => {
     let live = true

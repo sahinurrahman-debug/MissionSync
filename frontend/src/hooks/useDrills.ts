@@ -15,6 +15,8 @@ export function useDrills() {
   const [limit, setLimit] = useState(10)
   const [loadError, setLoadError] = useState('')
   const tempId = useRef(0)
+  const latest = useRef<Item[] | null>(null)          // the newest list, so two quick actions never roll back to an old copy
+  latest.current = items
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -48,20 +50,20 @@ export function useDrills() {
   }, [])
 
   const rename = useCallback(async (id: number, name: string): Promise<void> => {
-    const before = items?.find((d) => d.id === id)
+    const before = latest.current?.find((d) => d.id === id)
     setItems((cur) => (cur ?? []).map((d) => (d.id === id ? { ...d, name: name.trim(), pending: true } : d)))
     try {
       const real = await updateDrill(id, { name })
       setItems((cur) => (cur ?? []).map((d) => (d.id === id ? real : d)))
     } catch (e) {
-      if (before) setItems((cur) => (cur ?? []).map((d) => (d.id === id ? before : d)))
+      if (before) setItems((cur) => (cur ?? []).map((d) => (d.id === id ? { ...d, name: before.name, pending: false } : d)))   // only the name goes back
       throw e
     }
-  }, [items])
+  }, [])
 
   const remove = useCallback(async (id: number): Promise<void> => {
-    const index = (items ?? []).findIndex((d) => d.id === id)
-    const before = items?.[index]
+    const index = (latest.current ?? []).findIndex((d) => d.id === id)
+    const before = latest.current?.[index]
     setItems((cur) => (cur ?? []).filter((d) => d.id !== id))
     try {
       await deleteDrill(id)
@@ -69,7 +71,7 @@ export function useDrills() {
       if (before) setItems((cur) => { const next = [...(cur ?? [])]; next.splice(Math.min(index, next.length), 0, before); return next })
       throw e
     }
-  }, [items])
+  }, [])
 
   return { items, limit, loadError, reload: load, create, rename, remove }
 }

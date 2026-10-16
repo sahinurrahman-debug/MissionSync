@@ -34,8 +34,8 @@ export default function GuestBanner() {
         <b>Temporary Demo Account.</b>
         <span className="max-sm:sr-only"> It and its drills are deleted after 24 hours.</span>
       </span>
-      <Link to="/signup" className="inline-flex h-11 shrink-0 items-center rounded-md border border-accent/60 px-3 text-base font-bold text-accent hover:bg-accent/10 sm:h-9">Create an Account</Link>
-      <button type="button" onClick={close} aria-label="Hide This Notice" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-2 hover:text-ink sm:h-9 sm:w-9">
+      <Link to="/signup" className="inline-flex h-11 shrink-0 items-center rounded-md border border-accent/60 px-3 text-base font-bold text-accent hover:bg-accent/10 sm:h-10">Create an Account</Link>
+      <button type="button" onClick={close} aria-label="Hide This Notice" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-2 hover:text-ink sm:h-10 sm:w-10">
         <X size={18} aria-hidden />
       </button>
     </div>

@@ -142,7 +142,7 @@ describe('Board navigation (desktop layout)', () => {
     expect(screen.getAllByRole('button', { name: /Bea/ })).toHaveLength(1)             // not duplicated in the header
     await userEvent.click(account)
     expect(screen.getByRole('menu', { name: 'Account menu' })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: /Sign Out/ })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Sign Out' })).toBeTruthy()
     expect(screen.getByText('bea@example.com')).toBeTruthy()
   })
 

@@ -92,8 +92,26 @@ describe('protected routes', () => {
     expect(await screen.findByRole('heading', { name: 'Page Not Found' })).toBeTruthy()
   })
 
+  it('opening the demo address alone creates nothing; one click on the button makes the guest', async () => {
+    visit('/demo')
+    expect(await screen.findByRole('heading', { name: 'Try MissionSync' })).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 300))
+    expect(api.calls.some((c) => c.path === '/api/auth/demo')).toBe(false)           // a crawler or link preview cannot spend a demo place
+    await userEvent.click(screen.getByRole('button', { name: 'Start the Demo' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
+    expect(api.calls.filter((c) => c.path === '/api/auth/demo')).toHaveLength(1)
+  })
+
+  it('the demo link on the sign-in page starts at once — that click already said yes', async () => {
+    visit('/login')
+    await userEvent.click(await screen.findByRole('link', { name: 'Try the Demo' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
+    expect(api.signedIn?.is_guest).toBe(true)
+  })
+
   it('the demo needs no form: one click makes a temporary guest with its own drill and opens it', async () => {
     visit('/demo')
+    await userEvent.click(await screen.findByRole('button', { name: 'Start the Demo' }))
     await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
     expect(api.calls.some((c) => c.path === '/api/auth/demo' && c.method === 'POST')).toBe(true)
     expect(api.drills.map((d) => d.name)).toEqual(['Demo Drill'])
@@ -107,6 +125,7 @@ describe('protected routes', () => {
   it('the demo explains a busy server and offers to try again or sign up', async () => {
     api.demoFails = true
     visit('/demo')
+    await userEvent.click(await screen.findByRole('button', { name: 'Start the Demo' }))
     expect(await screen.findByText(/The demo is busy right now/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Create an Account' })).toBeTruthy()
     api.demoFails = false
@@ -318,12 +337,91 @@ describe('My Drills — create, read, update, delete with optimistic UI', () => 
   it('signing out clears the session and protects the page again', async () => {
     visit('/drills')
     await userEvent.click(await screen.findByRole('button', { name: /Ann/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /Sign Out/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign Out' }))
     expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
     expect(api.signedIn).toBeNull()
     window.history.pushState({}, '', '/drills')
     document.body.innerHTML = ''
     render(<App />)
     expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
+  })
+})
+
+describe('a server that is slow to answer is not the same as being signed out', () => {
+  it('retries the session check and then says it cannot reach the server — you stay signed in', async () => {
+    api.signIn()
+    api.sessionDown = 'network'
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      visit('/drills')
+      expect(await screen.findByText('Checking your session…')).toBeTruthy()
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(await screen.findByRole('heading', { name: 'Cannot Reach MissionSync' })).toBeTruthy()
+      expect(window.location.pathname).toBe('/drills')                                  // not bounced to /login
+      expect(api.calls.filter((c) => c.path === '/api/auth/session')).toHaveLength(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers by itself when the server answers on a retry', async () => {
+    api.signIn()
+    api.sessionDown = 'down'
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      visit('/drills')
+      await vi.advanceTimersByTimeAsync(500)
+      api.sessionDown = false                                                           // the server finished waking up
+      await vi.advanceTimersByTimeAsync(1500)
+      expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('every page names itself, and the account menu owns the account', () => {
+  it('sets the tab title per page', async () => {
+    visit('/login')
+    await screen.findByRole('button', { name: 'Sign In' })
+    expect(document.title).toBe('Sign In — MissionSync')
+  })
+
+  it('signs out everywhere', async () => {
+    api.addAccount('ann@example.com', 'correct horse 9')
+    api.signIn()
+    visit('/drills')
+    await userEvent.click(await screen.findByRole('button', { name: /Ann/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Sign Out Everywhere/ }))
+    await waitFor(() => expect(api.calls.some((c) => c.path === '/api/auth/logout-all')).toBe(true))
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
+  })
+
+  it('deleting the account asks for the password, says so inline when it is wrong, then removes everything', async () => {
+    api.addAccount('ann@example.com', 'correct horse 9')
+    api.signIn()
+    api.seed('Mine')
+    visit('/drills')
+    await userEvent.click(await screen.findByRole('button', { name: /Ann/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Delete Account/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Your Account?' })
+    await userEvent.type(within(dialog).getByLabelText('Password'), 'wrong password 1')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete Account' }))
+    expect(await within(dialog).findByText('That password is not right.')).toBeTruthy()
+    expect(api.accounts.has('ann@example.com')).toBe(true)
+    const field = within(dialog).getByLabelText('Password') as HTMLInputElement
+    await userEvent.clear(field)
+    await userEvent.type(field, 'correct horse 9')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete Account' }))
+    await waitFor(() => expect(api.accounts.has('ann@example.com')).toBe(false))
+    expect(api.drills).toHaveLength(0)
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
+  })
+
+  it('a demo account is not offered "sign out everywhere" or "delete" — it has no password to confirm with', async () => {
+    visit('/demo')
+    await userEvent.click(await screen.findByRole('button', { name: 'Start the Demo' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
+    expect(screen.queryByRole('menuitem', { name: /Delete Account/ })).toBeNull()
   })
 })

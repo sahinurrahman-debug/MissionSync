@@ -45,6 +45,7 @@ function BarCell({ stat }: { stat: Stat }) {
     <div title={stat.title} className="flex min-w-0 flex-col justify-center rounded-lg border border-line bg-panel px-3 py-1 shadow-panel tnum">
       <span className="truncate text-xs font-semibold uppercase leading-tight tracking-micro text-ink-2">{stat.label}</span>
       <b className="whitespace-nowrap font-mono text-lg font-bold leading-tight text-ink">{stat.value}</b>
+      <span className="sr-only">{stat.title}</span>
     </div>
   )
 }

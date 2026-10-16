@@ -62,7 +62,7 @@ export default function NextStep({ snap, onGo }: { snap: Snapshot; onGo: (t: Tar
         <button
           type="button"
           onClick={() => onGo(step.action!.target)}
-          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md bg-accent px-3 text-base font-bold text-bg hover:brightness-110 sm:h-9"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md bg-accent px-3 text-base font-bold text-bg hover:brightness-110 sm:h-10"
         >
           {step.action.label} <ArrowRight size={16} aria-hidden />
         </button>

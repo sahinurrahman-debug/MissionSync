@@ -4,7 +4,7 @@ export interface User { id: number; email: string; display_name: string; created
 
 /** The signed-in user, or null for a visitor (a normal state — the probe answers 200, so nothing is logged as an error). */
 export async function fetchMe(): Promise<User | null> {
-  return (await request<{ user: User | null }>('/api/auth/session', { quiet401: true })).user
+  return (await request<{ user: User | null }>('/api/auth/session', { quiet401: true, timeoutMs: 12_000 })).user
 }
 
 export async function signUp(input: { email: string; password: string; display_name: string }): Promise<User> {
@@ -23,4 +23,14 @@ export async function startDemo(): Promise<{ user: User; drillId: number; hours:
 
 export async function signOut(): Promise<void> {
   await request('/api/auth/logout', { method: 'POST', quiet401: true })
+}
+
+/** Sign this account out on every device. */
+export async function signOutEverywhere(): Promise<void> {
+  await request('/api/auth/logout-all', { method: 'POST', quiet401: true })
+}
+
+/** Delete the account and all its drills for good. The password is asked again so a stolen session cannot do it. */
+export async function deleteAccount(password: string): Promise<void> {
+  await request('/api/auth/me', { method: 'DELETE', json: { password }, quiet401: true })
 }

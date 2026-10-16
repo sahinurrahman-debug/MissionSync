@@ -10,6 +10,8 @@ const fail = (status: number, code: string, error: string, details: unknown[] = 
 export class FakeApi {
   signedIn: { id: number; email: string; display_name: string; created_at: string; is_guest?: boolean } | null = null
   demoFails = false
+  /** Make the session check fail: `network` = the server cannot be reached, `down` = it answers 503. */
+  sessionDown: false | 'network' | 'down' = false
   accounts = new Map<string, { password: string; name: string }>()
   drills: FakeDrill[] = []
   nextId = 1
@@ -47,7 +49,11 @@ export class FakeApi {
     this.calls.push({ method, path: url, body })
     const key = `${method} ${url.replace(/\/\d+/g, '/:id')}`
 
-    if (key === 'GET /api/auth/session') return json({ user: this.signedIn })
+    if (key === 'GET /api/auth/session') {
+      if (this.sessionDown === 'network') throw new TypeError('Failed to fetch')
+      if (this.sessionDown === 'down') return fail(503, 'degraded', 'The server is waking up.')
+      return json({ user: this.signedIn })
+    }
     if (key === 'GET /api/auth/me') return this.signedIn ? json({ user: this.signedIn }) : fail(401, 'unauthorized', 'Please sign in to continue.')
     if (key === 'POST /api/auth/login') {
       const acc = this.accounts.get(String(body.email).trim().toLowerCase())
@@ -74,7 +80,18 @@ export class FakeApi {
       this.signedIn = { id: 99, email: 'guest-ab12cd@guest.missionsync.invalid', display_name: 'Demo guest', created_at: new Date().toISOString(), is_guest: true }
       return json({ user: this.signedIn, drill: d, expires_in_hours: 24 }, 201)
     }
-    if (key === 'POST /api/auth/logout') {
+    if (key === 'POST /api/auth/logout' || key === 'POST /api/auth/logout-all') {
+      this.signedIn = null
+      return json(null, 204)
+    }
+    if (key === 'DELETE /api/auth/me') {
+      const acc = this.signedIn ? this.accounts.get(this.signedIn.email) : undefined
+      if (!acc || acc.password !== body.password) {
+        const msg = 'That password is not right.'
+        return fail(401, 'unauthorized', msg, [{ field: 'password', issue: msg }])
+      }
+      this.accounts.delete(this.signedIn!.email)
+      this.drills = []
       this.signedIn = null
       return json(null, 204)
     }
