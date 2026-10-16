@@ -140,6 +140,41 @@ try {
   }), 'the incident feed is on the left of the map')
   check(await page.evaluate(() => !document.querySelector('[aria-label^="Weather advisories"]')), 'no weather chips cover the situation map')
 
+  // The map can be explored: zoom buttons, mouse wheel, double-click and dragging all work
+  // the distance between the two farthest pins on screen doubles with every zoom level
+  const zoomOf = () => page.evaluate(() => {
+    const pts = [...document.querySelectorAll('.ms-pin')].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y] })
+    let best = 0
+    for (const a of pts) for (const b of pts) best = Math.max(best, Math.hypot(a[0] - b[0], a[1] - b[1]))
+    return best
+  })
+  const panOf = () => page.evaluate(() => document.querySelector('.leaflet-map-pane').style.transform)
+  const box = await page.evaluate(() => { const r = document.querySelector('.leaflet-container').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })
+  const z0 = await zoomOf()
+  await clickText(page, 'button', /zoom in/)
+  await sleep(1200)
+  const z1 = await zoomOf()
+  check(z1 > z0 * 1.6, `the Zoom In button zooms the map (pins ${Math.round(z0)} px apart → ${Math.round(z1)} px)`)
+  await clickText(page, 'button', /zoom out/)
+  await sleep(1200)
+  check(Math.abs((await zoomOf()) - z0) < z0 * 0.1, 'the Zoom Out button zooms back')
+  await page.mouse.move(box.x, box.y)
+  await page.mouse.wheel({ deltaY: -400 })
+  await sleep(1500)
+  check((await zoomOf()) > z0 * 1.3, 'the mouse wheel zooms the map')
+  const pan0 = await panOf()
+  await page.mouse.move(box.x, box.y)
+  await page.mouse.down()
+  await page.mouse.move(box.x - 140, box.y - 60, { steps: 8 })
+  await page.mouse.up()
+  await sleep(600)
+  check((await panOf()) !== pan0, 'dragging pans the map')
+  await clickText(page, 'button', /show all incidents/)
+  await sleep(1500)
+  check(await page.evaluate(() => { const c = document.querySelector('.leaflet-container').getBoundingClientRect(); return [...document.querySelectorAll('.ms-pin')].every((e) => { const r = e.getBoundingClientRect(); return r.x >= c.x && r.right <= c.right && r.y >= c.y && r.bottom <= c.bottom }) }), 'Show All Incidents frames every incident')
+  await clickText(page, 'button', /re-center map/)
+  await sleep(1200)
+
   // 5. orders → approve all → fleet
   await clickText(page, 'nav[aria-label="Sections"] button', /^orders/i)
   await sleep(800)

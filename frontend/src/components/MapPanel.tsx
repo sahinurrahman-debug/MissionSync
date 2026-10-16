@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import L from 'leaflet'
 import { Circle, CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Hexagon, LocateFixed, Route } from 'lucide-react'
+import { Hexagon, LocateFixed, Maximize2, Minus, Plus, Route } from 'lucide-react'
 import type { Incident, Resource, Tier } from '../types'
 import { STATUS_HEX, STATUS_LABEL, TIER_HEX, TIER_LABEL } from '../lib/format'
 import { SECTORS } from '../lib/sectors'
@@ -81,13 +81,20 @@ export default function MapPanel({
   const [routes, setRoutes] = useState(true)
   const [sectors, setSectors] = useState(true)
   const [recenter, setRecenter] = useState(0)
+  const [map, setMap] = useState<L.Map | null>(null)
   const selected = useMemo(() => incidents.find((i) => i.id === selectedId) ?? null, [incidents, selectedId])
   const byId = useMemo(() => new Map(incidents.map((i) => [i.id, i])), [incidents])
+
+  /** Zoom to show every incident at once (the quickest way to get your bearings after exploring). */
+  const showAll = () => {
+    if (!map || incidents.length === 0) return
+    map.flyToBounds(L.latLngBounds(incidents.map((i) => [i.lat, i.lon] as [number, number])), { padding: [48, 48], maxZoom: 15, duration: 0.6 })
+  }
 
   return (
     <div className={`relative h-full min-h-0 w-full ${theme === 'dark' ? 'tiles-dark' : 'tiles-light'}`}>
       {loading && <MapSkeleton />}
-      <MapContainer center={CENTER} zoom={13} scrollWheelZoom={false} zoomControl={false} className="h-full w-full" attributionControl>
+      <MapContainer ref={setMap} center={CENTER} zoom={13} minZoom={9} maxZoom={19} scrollWheelZoom zoomControl={false} className="h-full w-full" attributionControl>
         <TileLayer
           attribution={TILE_ATTRIBUTION}
           url={TILE_URL}
@@ -174,8 +181,21 @@ export default function MapPanel({
         })}
       </MapContainer>
 
+      {/* Zoom: buttons (and the mouse wheel, double-click, pinch, drag and the arrow / + / - keys) all work */}
+      <div className="absolute left-2 top-2 z-[1000] flex flex-col gap-1.5" role="group" aria-label="Zoom">
+        <button type="button" className={ctl} onClick={() => map?.zoomIn()} aria-label="Zoom In" title="Zoom In">
+          <Plus size={18} aria-hidden />
+        </button>
+        <button type="button" className={ctl} onClick={() => map?.zoomOut()} aria-label="Zoom Out" title="Zoom Out">
+          <Minus size={18} aria-hidden />
+        </button>
+      </div>
+
       {/* Floating controls */}
       <div className="absolute right-2 top-2 z-[1000] flex flex-col gap-1.5">
+        <button type="button" className={ctl} onClick={showAll} disabled={incidents.length === 0} aria-label="Show All Incidents" title="Show All Incidents">
+          <Maximize2 size={18} aria-hidden />
+        </button>
         <button type="button" className={ctl} onClick={() => setRecenter((n) => n + 1)} aria-label="Re-Center Map" title="Re-Center Map">
           <LocateFixed size={18} aria-hidden />
         </button>
