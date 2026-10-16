@@ -66,6 +66,7 @@ const ctl =
 export default function MapPanel({
   incidents,
   resources,
+  showUnits = true,
   selectedId,
   onSelect,
   theme,
@@ -73,6 +74,8 @@ export default function MapPanel({
 }: {
   incidents: Incident[]
   resources: Resource[]
+  /** Draw the unit dots. Routes have their own toggle and stay available while the dots are hidden. */
+  showUnits?: boolean
   selectedId: string | null
   onSelect: (id: string | null) => void
   theme: 'dark' | 'light'
@@ -164,7 +167,7 @@ export default function MapPanel({
           )
         })}
 
-        {resources.map((r) => {
+        {showUnits && resources.map((r) => {
           const color = STATUS_HEX[r.status]
           return (
             <CircleMarker

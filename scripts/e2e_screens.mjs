@@ -205,7 +205,28 @@ try {
   await sleep(1500)
   check(await page.evaluate(() => { const c = document.querySelector('.leaflet-container').getBoundingClientRect(); return [...document.querySelectorAll('.ms-pin')].every((e) => { const r = e.getBoundingClientRect(); return r.x >= c.x && r.right <= c.right && r.y >= c.y && r.bottom <= c.bottom }) }), 'Show All Incidents frames every incident')
   await clickText(page, 'button', /re-center map/)
+  await sleep(1800)
+  const pinAt = () => page.evaluate(() => { const r = document.querySelector('.ms-pin').getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y)] })
+  const home = await pinAt()
+  await page.mouse.move(box.x + 200, box.y + 150)
+  await page.mouse.down()
+  await page.mouse.move(box.x - 150, box.y - 100, { steps: 10 })
+  await page.mouse.up()
+  await sleep(500)
+  const away = await pinAt()
+  await clickText(page, 'button', /re-center map/)
+  await sleep(1800)
+  const back = await pinAt()
+  check(Math.hypot(away[0] - home[0], away[1] - home[1]) > 100 && Math.hypot(back[0] - home[0], back[1] - home[1]) < 4, 'Re-Center Map brings the map back after exploring')
+  check(!(await page.evaluate(() => !!document.querySelector('button[aria-label="Clear Selection"]'))), 'no Clear Selection button until something is selected')
+  await page.evaluate(() => document.querySelector('#incident-feed button[aria-pressed]')?.click())
   await sleep(1200)
+  const shown = await page.evaluate(() => !!document.querySelector('button[aria-label="Clear Selection"]'))
+  await clickText(page, 'button', /clear selection/)
+  await sleep(500)
+  check(shown && !(await page.evaluate(() => !!document.querySelector('button[aria-label="Clear Selection"]'))), 'selecting an incident shows Clear Selection, and it clears it')
+  await clickText(page, 'button', /re-center map/)
+  await sleep(1500)
 
   // 5. orders → approve all → fleet
   await clickText(page, 'nav[aria-label="Sections"] button', /^orders/i)
@@ -217,6 +238,36 @@ try {
   await clickText(page, 'nav[aria-label="Sections"] button', /^fleet/i)
   await sleep(800)
   check(/EN ROUTE/i.test(await text(page)), 'fleet shows units en route')
+
+  // the map's own toggles each do what they say (the Fleet section shows the map beside the units)
+  const mapCount = () => page.evaluate(() => {
+    const paths = [...document.querySelectorAll('.leaflet-overlay-pane path')]
+    return {
+      sectors: document.querySelectorAll('.sector-label').length,
+      routes: paths.filter((p) => p.getAttribute('stroke-dasharray') === '4 7').length,
+      dots: paths.filter((p) => p.getAttribute('stroke-dasharray') === null && p.getAttribute('fill') !== 'none' && p.getAttribute('stroke') !== '#94A3B8').length,
+    }
+  })
+  const flip = async (label) => { await clickText(page, 'button', label); await sleep(500); return mapCount() }
+  const m0 = await mapCount()
+  check(m0.sectors > 0 && m0.routes > 0 && m0.dots > 0, 'the map starts with sector names, unit routes and unit dots')
+  let m = await flip(/toggle sector boundaries/)
+  check(m.sectors === 0 && m.routes === m0.routes, 'Toggle Sector Boundaries hides the sectors and nothing else')
+  m = await flip(/toggle sector boundaries/)
+  check(m.sectors === m0.sectors, '…and shows them again')
+  m = await flip(/toggle unit routes/)
+  check(m.routes === 0 && m.dots === m0.dots, 'Toggle Unit Routes hides the routes and keeps the units')
+  m = await flip(/toggle unit routes/)
+  check(m.routes === m0.routes, '…and shows them again')
+  await clickText(page, 'header button', /^menu$/)
+  await clickText(page, '[role="menuitemcheckbox"], [role="menuitem"]', /show units on the map/)
+  await sleep(500)
+  m = await mapCount()
+  check(m.dots === 0 && m.routes === m0.routes, 'Show Units on the Map (menu) hides the unit dots but keeps their routes')
+  await clickText(page, 'header button', /^menu$/)
+  await clickText(page, '[role="menuitemcheckbox"], [role="menuitem"]', /show units on the map/)
+  await sleep(500)
+  check((await mapCount()).dots === m0.dots, '…and shows them again')
   await shot(page, 'view-fleet')
 
   // 6. report

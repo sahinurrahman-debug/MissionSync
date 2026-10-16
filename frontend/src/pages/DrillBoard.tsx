@@ -183,7 +183,8 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
       <Suspense fallback={<MapFallback />}>
         <MapPanel
           incidents={snap.incidents}
-          resources={showUnits ? snap.resources : []}
+          resources={snap.resources}
+          showUnits={showUnits}
           selectedId={selected}
           onSelect={setSelected}
           theme={theme}
