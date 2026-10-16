@@ -10,7 +10,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- stage 2: the API + the built dashboard -----------------------------------------------------
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 COPY backend/requirements.txt ./
