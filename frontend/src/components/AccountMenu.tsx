@@ -22,7 +22,7 @@ export default function AccountMenu({ variant = 'header' }: { variant?: 'header'
       { id: 'delete', label: 'Delete Account', icon: <Trash2 size={18} />, danger: true, hint: 'Removes your account and all your drills.', onSelect: () => setDeleting(true) },
     ]),
   ]
-  const header = <><b className="block text-base text-ink">{user.display_name}</b><span className="block break-all">{user.email}</span>{user.is_guest && <span className="mt-1 block font-semibold text-warn">Temporary Demo Account</span>}</>
+  const header = <><b className="block text-base text-ink">{user.display_name}</b>{!user.is_guest && <span className="block break-all">{user.email}</span>}{user.is_guest && <span className="mt-1 block font-semibold text-warn">Temporary Demo Account</span>}</>
   const dialog = deleting && (
     <DeleteAccountDialog onClose={() => setDeleting(false)} onDelete={async (password) => { await deleteAccount(password); navigate('/login') }} />
   )
@@ -34,7 +34,7 @@ export default function AccountMenu({ variant = 'header' }: { variant?: 'header'
         icon={<span className="flex h-9 w-9 items-center justify-center rounded-full border border-accent/50 bg-accent/10 text-base font-bold text-accent" aria-hidden>{first.slice(0, 1).toUpperCase()}</span>}
         menuLabel="Account menu"
         placement="rail"
-        triggerTitle={`${user.display_name} — ${user.email}`}
+        triggerTitle={user.is_guest ? user.display_name : `${user.display_name} — ${user.email}`}
         triggerClassName="flex h-[76px] [@media(max-height:760px)]:h-16 w-full flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-1 text-xs font-semibold text-ink-2 transition-colors hover:bg-hi hover:text-ink aria-expanded:border-accent/50 aria-expanded:text-ink"
         header={header}
         items={items}

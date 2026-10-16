@@ -123,6 +123,25 @@ try {
   const railLast = await page.evaluate(() => document.querySelector('nav[aria-label="Sections"]').lastElementChild.innerText)
   check(/E2E/.test(railLast), 'the account name sits at the very bottom of the side rail')
   check(await page.evaluate(() => { const f = document.querySelector('footer'); return !!f && getComputedStyle(f).display !== 'none' }), 'the dashboard has its compact footer')
+  // the account menu opens beside the rail, whole, without clipping or pushing the rail sideways — also in a short window
+  for (const h of [800, 600]) {
+    await page.setViewport({ width: 1366, height: h })
+    await sleep(500)
+    await clickText(page, 'nav[aria-label="Sections"] button', /E2E/)
+    await sleep(500)
+    const geo = await page.evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Sections"]'); const menu = document.querySelector('[role="menu"]')
+      const trigger = nav.lastElementChild.querySelector('button'); const m = menu?.getBoundingClientRect(); const r = trigger.getBoundingClientRect()
+      const items = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((i) => i.getBoundingClientRect())
+      const top = menu ? document.elementFromPoint(m.x + m.width / 2, m.y + 20) : null
+      return { open: !!menu, inView: !!m && m.x >= 0 && m.y >= 0 && m.right <= innerWidth && m.bottom <= innerHeight, railOk: r.x >= 0 && nav.scrollLeft === 0, onTop: !!top && menu.contains(top), items: items.length }
+    })
+    check(geo.open && geo.inView && geo.railOk && geo.onTop && geo.items >= 2, `the account menu opens whole and on top, beside the rail (window height ${h})`)
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  }
+  await page.setViewport({ width: 1366, height: 800 })
+  await sleep(500)
   for (const v of ['situation', 'orders', 'report', 'fleet', 'weather']) {
     await clickText(page, 'nav[aria-label="Sections"] button', new RegExp('^' + v, 'i'))
     await sleep(700)

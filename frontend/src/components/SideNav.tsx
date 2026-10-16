@@ -14,7 +14,10 @@ export const VIEWS: Array<{ id: View; label: string; hint: string; Icon: LucideI
 /** Desktop navigation rail: one section per panel, the same mental model as the phone's bottom tabs. */
 export default function SideNav({ view, onChange, badge, footer }: { view: View; onChange: (v: View) => void; badge: Partial<Record<View, number>>; footer?: ReactNode }) {
   return (
-    <nav aria-label="Sections" className="flex w-[96px] shrink-0 flex-col gap-1 overflow-y-auto rounded-lg border border-line bg-panel px-2 py-3 shadow-panel">
+    // The section buttons scroll in a short window; the account sits below them in a part that never clips, because its
+    // menu opens sideways out of the rail and anything inside a scrolling box would be cut off.
+    <nav aria-label="Sections" className="flex w-[96px] shrink-0 flex-col rounded-lg border border-line bg-panel py-3 shadow-panel">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2">
       {VIEWS.map(({ id, label, hint, Icon }, i) => {
         const active = view === id
         const n = badge[id]
@@ -41,7 +44,8 @@ export default function SideNav({ view, onChange, badge, footer }: { view: View;
           </button>
         )
       })}
-      {footer && <div className="mt-auto border-t border-line pt-2">{footer}</div>}
+      </div>
+      {footer && <div className="mx-2 mt-2 shrink-0 border-t border-line pt-2">{footer}</div>}
     </nav>
   )
 }
