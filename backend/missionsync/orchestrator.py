@@ -92,6 +92,9 @@ class Orchestrator:
         self.auto_dispatch = _env_flag("AUTO_DISPATCH") if auto_dispatch is None else auto_dispatch
         self.viewers = 0                            # maintained by the WebSocket hub
         self.pause_when_unwatched = False           # the drill manager switches this on for served drills
+        self.budget = llm_mod.Budget(0)             # LLM tokens this drill may spend (0 = unlimited); set by the drill manager
+        self.refine_min_interval_s = 0.0            # seconds between background AI passes; set by the drill manager
+        self._last_refine_end = 0.0
         self.peak_viewers = 0
         self.drill_id: Optional[int] = None
         self._unsaved: list[EventLine] = []
@@ -154,7 +157,7 @@ class Orchestrator:
             del self.event_log[: len(self.event_log) - LOG_CAP]
 
     def _llm_available(self) -> bool:
-        return llm_mod.active_model() is not None
+        return llm_mod.active_model() is not None and not self.budget.spent
 
     async def _persist(self) -> None:
         """Flush the audit trail, the restorable world state and the LLM cache (no-ops
@@ -188,6 +191,7 @@ class Orchestrator:
 
     async def run(self, interval_s: float = TICK_SECONDS) -> None:
         """Restore or bootstrap the drill, then run the heartbeat forever."""
+        llm_mod.use_budget(self.budget)                 # every AI call this drill makes (and the tasks it starts) is charged to it
         self._refine_task = asyncio.create_task(self._refine_loop())
         try:
             if not await self._try_restore():
@@ -232,6 +236,7 @@ class Orchestrator:
 
     async def reset(self) -> WorldSnapshot:
         """Start the drill over (same scenario, fresh state, LLM scores reused)."""
+        llm_mod.use_budget(self.budget)
         async with self._lock:
             self._reset_state()
             await asyncio.to_thread(self.store.clear_drill_data, self.drill_id)   # a restart wipes the audit trail
@@ -329,6 +334,7 @@ class Orchestrator:
     async def inject_report(self, report: IncomingReport) -> tuple[ReportOutcome, WorldSnapshot]:
         """Free-text report mid-demo. Recognised text is ranked *immediately* (rules) and refined
         by the LLM in the background; text the rules can't classify waits for the LLM."""
+        llm_mod.use_budget(self.budget)
         async with self._lock:
             nonce = report.client_nonce
             if nonce and nonce in self._nonces:                      # idempotent retry
@@ -474,6 +480,9 @@ class Orchestrator:
         while True:
             await self._refine_event.wait()
             self._refine_event.clear()
+            gap = self._last_refine_end + self.refine_min_interval_s - time.monotonic()
+            if gap > 0:
+                await asyncio.sleep(gap)                # changes arriving meanwhile are batched into this one pass
             ids, self._refine_pending = list(self._refine_pending), set()
             dirty = self._command_dirty
             if not ids and not dirty:
@@ -483,6 +492,7 @@ class Orchestrator:
                     await self._refine(ids, dirty)
                 else:
                     await self._give_up_refining(ids)
+                self._last_refine_end = time.monotonic()
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -1084,9 +1094,11 @@ class Orchestrator:
             if inc.risk:
                 sources[inc.risk.source] = sources.get(inc.risk.source, 0) + 1
         stats = llm_stats()
+        mode = "budget_spent" if (stats["configured"] and self.budget.spent and stats["mode"] != "quota_exhausted") else stats["mode"]
 
         return {
-            "mode": stats["mode"],
+            "mode": mode,
+            "ai_tokens": {"used": self.budget.used, "limit": self.budget.limit},
             "model": stats["model"],
             "scenario_dataset": self.dataset_source,
             "ranking_accuracy": {

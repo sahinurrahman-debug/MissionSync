@@ -163,7 +163,7 @@ export interface EventLine {
 }
 
 /** How the agents are running: real LLM, rule-based twins, or out of quota. */
-export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted'
+export type EngineMode = 'llm' | 'fallback' | 'quota_exhausted' | 'budget_spent'
 
 export interface Metrics {
   cycle_ms: number

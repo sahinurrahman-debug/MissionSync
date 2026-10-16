@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from .config import Settings
 from .hub import Hub
+from .llm import Budget
 from .orchestrator import DomainError, Orchestrator
 from .persistence import Store
 
@@ -44,6 +45,8 @@ class DrillManager:
         self.sessions = sessions
         #: Optional async callable run about every ten minutes (expired sessions, expired guest accounts).
         self.housekeeping: Optional[Any] = None
+        #: Optional callable `drill_id -> bool`: is this a demo account's drill (it gets a smaller AI allowance).
+        self.is_guest_drill: Optional[Any] = None
         self._runtimes: dict[int, DrillRuntime] = {}
         self._admission = asyncio.Lock()          # loading is one at a time, so the live-drill limit is a real limit
         self._reaper: Optional[asyncio.Task] = None
@@ -86,6 +89,9 @@ class DrillManager:
     def _spawn(self, drill_id: int) -> DrillRuntime:
         orch = Orchestrator(self.store, drill_id=drill_id)
         orch.pause_when_unwatched = True            # nobody watching → no ticks, no AI calls, no writes
+        guest = bool(self.is_guest_drill(drill_id)) if self.is_guest_drill else False
+        orch.budget = Budget(self.settings.ai_tokens_per_guest_drill if guest else self.settings.ai_tokens_per_drill)
+        orch.refine_min_interval_s = self.settings.refine_min_interval_s
         hub = Hub(orch)
         orch.on_broadcast(hub.broadcast)
         task = asyncio.create_task(orch.run())

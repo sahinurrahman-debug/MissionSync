@@ -14,6 +14,7 @@ All agents talk to Groq through this module. Features:
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import os
@@ -68,6 +69,28 @@ _exhausted_until: dict[str, float] = {}     # model -> epoch seconds when its da
 _tokens_used: dict[str, int] = {}           # model -> tokens consumed this process
 _reasoning_supported = True                  # flips off if the API rejects reasoning_effort
 _semaphore: Optional[asyncio.Semaphore] = None
+
+
+class Budget:
+    """Tokens one drill may spend on the LLM. The free Groq tier is a small DAILY allowance shared by every drill, so
+    each drill gets its own share; when it is used up that drill carries on with the rule-based agents.
+    `limit <= 0` means unlimited (tests, local development with a paid key)."""
+
+    def __init__(self, limit: int = 0) -> None:
+        self.limit = limit
+        self.used = 0
+
+    @property
+    def spent(self) -> bool:
+        return self.limit > 0 and self.used >= self.limit
+
+
+_budget: contextvars.ContextVar[Optional[Budget]] = contextvars.ContextVar("llm_budget", default=None)
+
+
+def use_budget(budget: Optional[Budget]) -> None:
+    """Charge every LLM call made from this task (and tasks it starts) to `budget`."""
+    _budget.set(budget)
 
 
 def _sem() -> asyncio.Semaphore:
@@ -167,7 +190,8 @@ async def llm_json(
     handle that and fall back to deterministic logic.
     """
     global _reasoning_supported
-    if _client is None:
+    budget = _budget.get()
+    if _client is None or (budget is not None and budget.spent):
         _record_agent_call(agent, False)
         return None, 0
 
@@ -226,7 +250,10 @@ async def llm_json(
             content = choice.message.content or ""
             usage = getattr(response, "usage", None)
             if usage is not None:
-                _tokens_used[model] = _tokens_used.get(model, 0) + int(getattr(usage, "total_tokens", 0) or 0)
+                spent = int(getattr(usage, "total_tokens", 0) or 0)
+                _tokens_used[model] = _tokens_used.get(model, 0) + spent
+                if budget is not None:
+                    budget.used += spent
             parsed = _extract_json(content)
             if parsed is not None and getattr(choice, "finish_reason", "stop") != "length":
                 latency_log.append(

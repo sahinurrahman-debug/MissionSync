@@ -228,6 +228,11 @@ class DrillRepo:
             row = conn.execute(select(drills).where(drills.c.id == int(res.inserted_primary_key[0]))).mappings().one()
         return _drill(row)
 
+    def owner_is_guest(self, drill_id: int) -> bool:
+        with self.engine.connect() as conn:
+            row = conn.execute(select(users.c.is_guest).join(drills, drills.c.owner_id == users.c.id).where(drills.c.id == drill_id)).first()
+        return bool(row[0]) if row else False
+
     def list(self, owner_id: int) -> list[DrillRecord]:
         with self.engine.connect() as conn:
             rows = conn.execute(select(drills).where(drills.c.owner_id == owner_id).order_by(drills.c.id.desc())).mappings().all()

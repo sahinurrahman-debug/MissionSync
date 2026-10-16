@@ -375,6 +375,13 @@ describe('SystemBanners — busy server and dismissible notices', () => {
     expect(screen.getByRole('alert').textContent).toContain('busy running other drills')
   })
 
+  it('says a drill has used its share of the AI allowance, in plain words', () => {
+    const s = world().snap
+    render(<SystemBanners snap={{ ...s, engine: 'remote', metrics: { ...s.metrics, mode: 'budget_spent' } }} />)
+    expect(screen.getByText(/used its AI allowance/)).toBeTruthy()
+    expect(screen.getByText(/rule-based agents carry on/)).toBeTruthy()
+  })
+
   it('a warning can be hidden, and returns when the situation changes', async () => {
     const s = world().snap
     const quota = { ...s, engine: 'remote' as const, metrics: { ...s.metrics, mode: 'quota_exhausted' as const, quota_retry_s: 120 } }

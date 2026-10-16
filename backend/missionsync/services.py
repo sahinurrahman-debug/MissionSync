@@ -53,6 +53,7 @@ def build_services(settings: Optional[Settings] = None, engine: Optional[Engine]
         manager=DrillManager(store, settings, sessions=sessions),
     )
     svc.manager.housekeeping = lambda: housekeeping(svc)
+    svc.manager.is_guest_drill = svc.drills.owner_is_guest
     return svc
 
 

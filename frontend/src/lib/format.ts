@@ -82,6 +82,8 @@ export function modeChip(mode: EngineMode, model: string | null, booting: boolea
   switch (mode) {
     case 'llm':
       return { label: `AI · ${(model ?? 'LLM').replace(/^openai\//, '')}`, tone: 'ok', title: 'All five agents are running on the LLM.' }
+    case 'budget_spent':
+      return { label: 'AI ALLOWANCE USED', tone: 'warn', title: 'This drill has used its share of the AI allowance; rule-based agents continue. Restarting the drill after a while does not refill it — a new drill does.' }
     case 'quota_exhausted':
       return { label: 'AI QUOTA HIT', tone: 'bad', title: 'The Groq daily token quota is spent; rule-based agents are covering.' }
     default:

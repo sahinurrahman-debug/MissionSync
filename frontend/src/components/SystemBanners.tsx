@@ -42,6 +42,12 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
           {m.quota_retry_s != null && ` AI resumes in about ${Math.max(1, Math.ceil(m.quota_retry_s / 60))} min.`}</span>
         </Banner>
       )}
+      {m.mode === 'budget_spent' && hidden !== 'budget_spent' && (
+        <Banner tone="warn" icon={<TriangleAlert size={16} className="text-warn" />} onDismiss={() => setHidden('budget_spent')}>
+          <b>This drill has used its AI allowance.</b>
+          <span className="max-sm:sr-only"> The free AI plan is shared by every drill, so each gets a share. The rule-based agents carry on and nothing is lost.</span>
+        </Banner>
+      )}
       {m.mode === 'fallback' && hidden !== 'fallback' && snap.engine === 'remote' && snap.status === 'live' && (
         <Banner tone="warn" icon={<RadioTower size={16} className="text-warn" />} onDismiss={() => setHidden('fallback')}>
           <b>Degraded mode:</b><span className="max-sm:sr-only"> the LLM is unavailable (no API key, or the provider is failing) — rule-based agents are running.</span>

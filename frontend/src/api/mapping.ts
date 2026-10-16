@@ -15,7 +15,7 @@ export function mapMetrics(m: Raw = {}): Metrics {
   const llm = latency.llm ?? {}
   const exhausted: Record<string, number> = llm.quota?.exhausted_models ?? {}
   const waits = Object.values(exhausted).map((v) => num(v))
-  const mode = (['llm', 'fallback', 'quota_exhausted'].includes(m.mode) ? m.mode : 'fallback') as EngineMode
+  const mode = (['llm', 'fallback', 'quota_exhausted', 'budget_spent'].includes(m.mode) ? m.mode : 'fallback') as EngineMode
   return {
     cycle_ms: num(latency.last_cycle_ms),
     stages: latency.pipeline ?? {},

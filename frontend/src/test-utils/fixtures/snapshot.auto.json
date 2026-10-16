@@ -3,10 +3,10 @@
   {
    "deployments": [
     {
-     "created_at": "2026-10-15T17:43:08.367100+00:00",
+     "created_at": "2026-10-16T15:54:45.648229+00:00",
      "eta_minutes": 4.7,
-     "id": "dep_res_amb3_inc_3b12f278bd",
-     "incident_id": "inc_3b12f278bd",
+     "id": "dep_res_amb3_inc_ffaf3127d5",
+     "incident_id": "inc_ffaf3127d5",
      "incident_title": "Industrial Park sector \u2014 Structural damage survey: 101 structures ass\u2026",
      "priority": 1,
      "rationale": "",
@@ -16,10 +16,10 @@
      "role": "triage & evac"
     },
     {
-     "created_at": "2026-10-15T17:43:08.367136+00:00",
+     "created_at": "2026-10-16T15:54:45.648263+00:00",
      "eta_minutes": 2.8,
-     "id": "dep_res_dr2_inc_3b12f278bd",
-     "incident_id": "inc_3b12f278bd",
+     "id": "dep_res_dr2_inc_ffaf3127d5",
+     "incident_id": "inc_ffaf3127d5",
      "incident_title": "Industrial Park sector \u2014 Structural damage survey: 101 structures ass\u2026",
      "priority": 1,
      "rationale": "",
@@ -35,9 +35,9 @@
     "Establish an incident command perimeter",
     "First unit ETA ~3 min"
    ],
-   "generated_at": "2026-10-15T17:43:08.367145+00:00",
+   "generated_at": "2026-10-16T15:54:45.648273+00:00",
    "headline": "[P2] Start search & extrication at the Industrial Park collapse",
-   "incident_id": "inc_3b12f278bd",
+   "incident_id": "inc_ffaf3127d5",
    "incident_title": "Industrial Park sector \u2014 Structural damage survey: 101 structures ass\u2026",
    "latency_ms": 0,
    "priority": 1,
@@ -47,10 +47,10 @@
   {
    "deployments": [
     {
-     "created_at": "2026-10-15T17:43:08.367106+00:00",
+     "created_at": "2026-10-16T15:54:45.648235+00:00",
      "eta_minutes": 0.0,
-     "id": "dep_res_res1_inc_bda717b1e0",
-     "incident_id": "inc_bda717b1e0",
+     "id": "dep_res_res1_inc_ff921a7697",
+     "incident_id": "inc_ff921a7697",
      "incident_title": "Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
      "priority": 2,
      "rationale": "",
@@ -60,10 +60,10 @@
      "role": "search & rescue"
     },
     {
-     "created_at": "2026-10-15T17:43:08.367118+00:00",
+     "created_at": "2026-10-16T15:54:45.648246+00:00",
      "eta_minutes": 2.1,
-     "id": "dep_res_sw1_inc_bda717b1e0",
-     "incident_id": "inc_bda717b1e0",
+     "id": "dep_res_sw1_inc_ff921a7697",
+     "incident_id": "inc_ff921a7697",
      "incident_title": "Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
      "priority": 2,
      "rationale": "",
@@ -78,9 +78,9 @@
     "Stage swift-water team upstream of the debris line",
     "Establish an incident command perimeter"
    ],
-   "generated_at": "2026-10-15T17:43:08.367152+00:00",
+   "generated_at": "2026-10-16T15:54:45.648279+00:00",
    "headline": "[P2] Push boat crews into Downtown flooding; clear the low ground",
-   "incident_id": "inc_bda717b1e0",
+   "incident_id": "inc_ff921a7697",
    "incident_title": "Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
    "latency_ms": 0,
    "priority": 2,
@@ -90,10 +90,10 @@
   {
    "deployments": [
     {
-     "created_at": "2026-10-15T17:43:08.367112+00:00",
+     "created_at": "2026-10-16T15:54:45.648240+00:00",
      "eta_minutes": 5.7,
-     "id": "dep_res_res2_inc_a96c43c824",
-     "incident_id": "inc_a96c43c824",
+     "id": "dep_res_res2_inc_8447c1ba4e",
+     "incident_id": "inc_8447c1ba4e",
      "incident_title": "North Hills sector \u2014 Landslide and debris-flow damage survey: 20 stru\u2026",
      "priority": 3,
      "rationale": "",
@@ -103,10 +103,10 @@
      "role": "search & rescue"
     },
     {
-     "created_at": "2026-10-15T17:43:08.367124+00:00",
+     "created_at": "2026-10-16T15:54:45.648252+00:00",
      "eta_minutes": 7.2,
-     "id": "dep_res_eng1_inc_a96c43c824",
-     "incident_id": "inc_a96c43c824",
+     "id": "dep_res_eng1_inc_8447c1ba4e",
+     "incident_id": "inc_8447c1ba4e",
      "incident_title": "North Hills sector \u2014 Landslide and debris-flow damage survey: 20 stru\u2026",
      "priority": 3,
      "rationale": "",
@@ -122,9 +122,9 @@
     "Establish an incident command perimeter",
     "First unit ETA ~6 min"
    ],
-   "generated_at": "2026-10-15T17:43:08.367158+00:00",
+   "generated_at": "2026-10-16T15:54:45.648285+00:00",
    "headline": "[P2] Open an access route into North Hills before extraction",
-   "incident_id": "inc_a96c43c824",
+   "incident_id": "inc_8447c1ba4e",
    "incident_title": "North Hills sector \u2014 Landslide and debris-flow damage survey: 20 stru\u2026",
    "latency_ms": 0,
    "priority": 3,
@@ -134,10 +134,10 @@
   {
    "deployments": [
     {
-     "created_at": "2026-10-15T17:43:08.367074+00:00",
+     "created_at": "2026-10-16T15:54:45.648217+00:00",
      "eta_minutes": 1.7,
-     "id": "dep_res_amb1_inc_0164f1ffb0",
-     "incident_id": "inc_0164f1ffb0",
+     "id": "dep_res_amb1_inc_9cf9cf0f16",
+     "incident_id": "inc_9cf9cf0f16",
      "incident_title": "Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014\u2026",
      "priority": 4,
      "rationale": "",
@@ -147,10 +147,10 @@
      "role": "triage & evac"
     },
     {
-     "created_at": "2026-10-15T17:43:08.367093+00:00",
+     "created_at": "2026-10-16T15:54:45.648223+00:00",
      "eta_minutes": 1.7,
-     "id": "dep_res_amb2_inc_0164f1ffb0",
-     "incident_id": "inc_0164f1ffb0",
+     "id": "dep_res_amb2_inc_9cf9cf0f16",
+     "incident_id": "inc_9cf9cf0f16",
      "incident_title": "Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014\u2026",
      "priority": 4,
      "rationale": "",
@@ -166,9 +166,9 @@
     "Establish an incident command perimeter",
     "First unit ETA ~2 min"
    ],
-   "generated_at": "2026-10-15T17:43:08.367164+00:00",
+   "generated_at": "2026-10-16T15:54:45.648291+00:00",
    "headline": "[P2] Start search & extrication at the Riverfront collapse",
-   "incident_id": "inc_0164f1ffb0",
+   "incident_id": "inc_9cf9cf0f16",
    "incident_title": "Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014\u2026",
    "latency_ms": 0,
    "priority": 4,
@@ -181,157 +181,157 @@
   {
    "msg": "\ud83d\udfe2 Scenario loaded: 5 initial incidents, 12 resources \u2014 dataset: bundled real xBD snapshot; dispatch auto-dispatch",
    "seq": 1,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udef0 Surveillance parsed 5 incident(s) from 5 signal(s) [0ms, LLM]",
    "seq": 2,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [Downtown] Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
    "seq": 3,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [Riverfront] Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014\u2026",
    "seq": 4,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [North Hills] North Hills sector \u2014 Landslide and debris-flow damage survey: 20 stru\u2026",
    "seq": 5,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [Industrial Park] Industrial Park sector \u2014 Fire damage survey: 8 structures assessed \u2014\u2026",
    "seq": 6,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [Eastside] Eastside sector \u2014 Floodwater damage survey: 155 structures assessed \u2014\u2026",
    "seq": 7,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy USAR Team 1 \u2192 [#1] Downtown sector \u2014 Floodwater damage survey: 110 st (ETA 0 min): Nearest capable unit (rank #1, rule-based matcher).",
    "seq": 8,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Swift Water 1 \u2192 [#1] Downtown sector \u2014 Floodwater damage survey: 110 st (ETA 2 min): Nearest capable unit (rank #1, rule-based matcher).",
    "seq": 9,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Rescue 2 \u2192 [#2] North Hills sector \u2014 Landslide and debris-flow dam (ETA 6 min): Nearest capable unit (rank #2, rule-based matcher).",
    "seq": 10,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Engineering Squad \u2192 [#2] North Hills sector \u2014 Landslide and debris-flow dam (ETA 8 min): Nearest capable unit (rank #2, rule-based matcher).",
    "seq": 11,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Ambulance A1 \u2192 [#3] Riverfront sector \u2014 Structural damage survey: 6 st (ETA 2 min): Nearest capable unit (rank #3, rule-based matcher).",
    "seq": 12,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Ambulance A2 \u2192 [#3] Riverfront sector \u2014 Structural damage survey: 6 st (ETA 2 min): Nearest capable unit (rank #3, rule-based matcher).",
    "seq": 13,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Engine 2 \u2192 [#4] Industrial Park sector \u2014 Fire damage survey: 8 str (ETA 0 min): Nearest capable unit (rank #4, rule-based matcher).",
    "seq": 14,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Drone D1 \u2192 [#5] Eastside sector \u2014 Floodwater damage survey: 155 st (ETA 2 min): Nearest capable unit (rank #5, rule-based matcher).",
    "seq": 15,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\ude81 0 dispatch proposal(s) pending \u00b7 Command issued 4 recommendation(s) [0ms]",
    "seq": 16,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
-   "msg": "\u26a1 Pipeline cycle complete in 1ms",
+   "msg": "\u26a1 Pipeline cycle complete in 2ms",
    "seq": 17,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\u2705 Engine 2 on scene at Industrial Park sector \u2014 Fire damage survey: 8 str",
    "seq": 18,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\u2705 USAR Team 1 on scene at Downtown sector \u2014 Floodwater damage survey: 110 st",
    "seq": 19,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udce1 New incoming signal from Industrial Park",
    "seq": 20,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udef0 Surveillance parsed 1 incident(s) from 1 signal(s) [0ms, rules]",
    "seq": 21,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83c\udd95 New incident: [Industrial Park] Industrial Park sector \u2014 Structural damage survey: 101 structures ass\u2026",
    "seq": 22,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Ambulance A3 \u2192 [#1] Industrial Park sector \u2014 Structural damage survey: (ETA 5 min): Nearest capable unit (rank #1, rule-based matcher).",
    "seq": 23,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udea8 Deploy Drone D2 \u2192 [#1] Industrial Park sector \u2014 Structural damage survey: (ETA 3 min): Nearest capable unit (rank #1, rule-based matcher).",
    "seq": 24,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\ude81 0 dispatch proposal(s) pending \u00b7 Command issued 4 recommendation(s) [0ms]",
    "seq": 25,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\u26a1 Pipeline cycle complete in 0ms",
    "seq": 26,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udce1 Follow-up report on Downtown incident",
    "seq": 27,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udef0 Surveillance parsed 1 incident(s) from 1 signal(s) [0ms, rules]",
    "seq": 28,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\udd17 Report merged into: Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
    "seq": 29,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\ud83d\ude81 0 dispatch proposal(s) pending \u00b7 Command issued 4 recommendation(s) [0ms]",
    "seq": 30,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   },
   {
    "msg": "\u26a1 Pipeline cycle complete in 0ms",
    "seq": 31,
-   "t": "17:43:08Z"
+   "t": "15:54:45Z"
   }
  ],
  "incidents": [
@@ -339,14 +339,14 @@
    "affected_population": 87,
    "confidence": 0.75,
    "description": "Industrial Park sector \u2014 Structural damage survey: 101 structures assessed \u2014 5 severely damaged, 72 lightly damaged, 24 intact. Roughly 87 people in the affected footprint, 2 injured.",
-   "id": "inc_3b12f278bd",
+   "id": "inc_ffaf3127d5",
    "injuries": 2,
    "lat": 34.035299768875554,
    "location_known": true,
    "lon": -118.2589101170388,
    "merged_reports": 0,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.366168+00:00",
+   "reported_at": "2026-10-16T15:54:45.647178+00:00",
    "risk": {
     "breakdown": {
      "confidence": 75.0,
@@ -356,8 +356,8 @@
      "spread": 38.0,
      "time_criticality": 55.0
     },
-    "incident_id": "inc_3b12f278bd",
-    "scored_at": "2026-10-15T17:43:08.366287+00:00",
+    "incident_id": "inc_ffaf3127d5",
+    "scored_at": "2026-10-16T15:54:45.647382+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P2",
@@ -377,7 +377,7 @@
    },
    "title": "Industrial Park sector \u2014 Structural damage survey: 101 structures ass\u2026",
    "type": "structural_collapse",
-   "updated_at": "2026-10-15T17:43:08.366287+00:00",
+   "updated_at": "2026-10-16T15:54:45.647382+00:00",
    "weather": {
     "alert": null,
     "forecast_note": "",
@@ -395,14 +395,14 @@
    "affected_population": 387,
    "confidence": 0.92,
    "description": "Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014 74 severely damaged, 36 lightly damaged. Roughly 258 people in the affected footprint, 37 injured. | Downtown sector \u2014 update on the flood incident: situation worsening, now roughly 387 people affected, 39 injured, more casualties being reported.",
-   "id": "inc_bda717b1e0",
+   "id": "inc_ff921a7697",
    "injuries": 39,
    "lat": 34.058,
    "location_known": true,
    "lon": -118.245,
    "merged_reports": 1,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.363937+00:00",
+   "reported_at": "2026-10-16T15:54:45.644585+00:00",
    "risk": {
     "breakdown": {
      "confidence": 92.0,
@@ -412,8 +412,8 @@
      "spread": 41.599999999999994,
      "time_criticality": 65.0
     },
-    "incident_id": "inc_bda717b1e0",
-    "scored_at": "2026-10-15T17:43:08.366892+00:00",
+    "incident_id": "inc_ff921a7697",
+    "scored_at": "2026-10-16T15:54:45.648042+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P2",
@@ -433,7 +433,7 @@
    },
    "title": "Downtown sector \u2014 Floodwater damage survey: 110 structures assessed \u2014\u2026",
    "type": "flood",
-   "updated_at": "2026-10-15T17:43:08.366892+00:00",
+   "updated_at": "2026-10-16T15:54:45.648042+00:00",
    "weather": {
     "alert": null,
     "forecast_note": "",
@@ -451,14 +451,14 @@
    "affected_population": 50,
    "confidence": 0.75,
    "description": "North Hills sector \u2014 Landslide and debris-flow damage survey: 20 structures assessed \u2014 4 collapsed or gutted, 8 severely damaged, 6 lightly damaged, 2 intact. Roughly 50 people in the affected footprint, 8 injured.",
-   "id": "inc_a96c43c824",
+   "id": "inc_8447c1ba4e",
    "injuries": 8,
    "lat": 34.074,
    "location_known": true,
    "lon": -118.255,
    "merged_reports": 0,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.364014+00:00",
+   "reported_at": "2026-10-16T15:54:45.644657+00:00",
    "risk": {
     "breakdown": {
      "confidence": 75.0,
@@ -468,8 +468,8 @@
      "spread": 38.0,
      "time_criticality": 75.0
     },
-    "incident_id": "inc_a96c43c824",
-    "scored_at": "2026-10-15T17:43:08.365637+00:00",
+    "incident_id": "inc_8447c1ba4e",
+    "scored_at": "2026-10-16T15:54:45.646623+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P2",
@@ -489,7 +489,7 @@
    },
    "title": "North Hills sector \u2014 Landslide and debris-flow damage survey: 20 stru\u2026",
    "type": "landslide",
-   "updated_at": "2026-10-15T17:43:08.364390+00:00",
+   "updated_at": "2026-10-16T15:54:45.645007+00:00",
    "weather": {
     "alert": "red_flag_wind",
     "forecast_note": "gusting to 50 kph by hour 2",
@@ -507,14 +507,14 @@
    "affected_population": 16,
    "confidence": 0.75,
    "description": "Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014 2 collapsed or gutted, 2 severely damaged, 2 intact. Roughly 16 people in the affected footprint, 3 injured.",
-   "id": "inc_0164f1ffb0",
+   "id": "inc_9cf9cf0f16",
    "injuries": 3,
    "lat": 34.043,
    "location_known": true,
    "lon": -118.238,
    "merged_reports": 0,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.363980+00:00",
+   "reported_at": "2026-10-16T15:54:45.644623+00:00",
    "risk": {
     "breakdown": {
      "confidence": 75.0,
@@ -524,8 +524,8 @@
      "spread": 38.0,
      "time_criticality": 65.0
     },
-    "incident_id": "inc_0164f1ffb0",
-    "scored_at": "2026-10-15T17:43:08.365662+00:00",
+    "incident_id": "inc_9cf9cf0f16",
+    "scored_at": "2026-10-16T15:54:45.646650+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P2",
@@ -545,7 +545,7 @@
    },
    "title": "Riverfront sector \u2014 Structural damage survey: 6 structures assessed \u2014\u2026",
    "type": "structural_collapse",
-   "updated_at": "2026-10-15T17:43:08.364360+00:00",
+   "updated_at": "2026-10-16T15:54:45.644979+00:00",
    "weather": {
     "alert": "flood_watch",
     "forecast_note": "rain intensifying, river at 85% capacity",
@@ -563,14 +563,14 @@
    "affected_population": 1,
    "confidence": 0.75,
    "description": "Industrial Park sector \u2014 Fire damage survey: 8 structures assessed \u2014 8 intact. About 1 person in the affected footprint, 0 injured.",
-   "id": "inc_ae35277f51",
+   "id": "inc_e2710c8d32",
    "injuries": 0,
    "lat": 34.035,
    "location_known": true,
    "lon": -118.259,
    "merged_reports": 0,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.364043+00:00",
+   "reported_at": "2026-10-16T15:54:45.644683+00:00",
    "risk": {
     "breakdown": {
      "confidence": 75.0,
@@ -580,8 +580,8 @@
      "spread": 60.8,
      "time_criticality": 55.0
     },
-    "incident_id": "inc_ae35277f51",
-    "scored_at": "2026-10-15T17:43:08.365688+00:00",
+    "incident_id": "inc_e2710c8d32",
+    "scored_at": "2026-10-16T15:54:45.646682+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P3",
@@ -601,7 +601,7 @@
    },
    "title": "Industrial Park sector \u2014 Fire damage survey: 8 structures assessed \u2014\u2026",
    "type": "fire",
-   "updated_at": "2026-10-15T17:43:08.364416+00:00",
+   "updated_at": "2026-10-16T15:54:45.645030+00:00",
    "weather": {
     "alert": null,
     "forecast_note": "",
@@ -619,14 +619,14 @@
    "affected_population": 6,
    "confidence": 0.75,
    "description": "Eastside sector \u2014 Floodwater damage survey: 155 structures assessed \u2014 6 lightly damaged, 149 intact. Roughly 6 people in the affected footprint, 0 injured.",
-   "id": "inc_97c4545cb9",
+   "id": "inc_4656241b6e",
    "injuries": 0,
    "lat": 34.052,
    "location_known": true,
    "lon": -118.221,
    "merged_reports": 0,
    "provisional": false,
-   "reported_at": "2026-10-15T17:43:08.364078+00:00",
+   "reported_at": "2026-10-16T15:54:45.644716+00:00",
    "risk": {
     "breakdown": {
      "confidence": 75.0,
@@ -636,8 +636,8 @@
      "spread": 43.4,
      "time_criticality": 55.0
     },
-    "incident_id": "inc_97c4545cb9",
-    "scored_at": "2026-10-15T17:43:08.365710+00:00",
+    "incident_id": "inc_4656241b6e",
+    "scored_at": "2026-10-16T15:54:45.646704+00:00",
     "scoring_latency_ms": 0,
     "source": "rules",
     "tier": "P3",
@@ -657,7 +657,7 @@
    },
    "title": "Eastside sector \u2014 Floodwater damage survey: 155 structures assessed \u2014\u2026",
    "type": "flood",
-   "updated_at": "2026-10-15T17:43:08.364446+00:00",
+   "updated_at": "2026-10-16T15:54:45.645056+00:00",
    "weather": {
     "alert": null,
     "forecast_note": "",
@@ -673,6 +673,10 @@
   }
  ],
  "metrics": {
+  "ai_tokens": {
+   "limit": 0,
+   "used": 0
+  },
   "database": "disabled",
   "drill_id": null,
   "latency": {
@@ -778,7 +782,7 @@
    "type": "fire_unit"
   },
   {
-   "assigned_incident": "inc_ae35277f51",
+   "assigned_incident": "inc_e2710c8d32",
    "base_lat": 34.035,
    "base_lon": -118.259,
    "capable_of": [],
@@ -794,7 +798,7 @@
    "type": "fire_unit"
   },
   {
-   "assigned_incident": "inc_0164f1ffb0",
+   "assigned_incident": "inc_9cf9cf0f16",
    "base_lat": 34.058,
    "base_lon": -118.245,
    "capable_of": [],
@@ -810,7 +814,7 @@
    "type": "ambulance"
   },
   {
-   "assigned_incident": "inc_0164f1ffb0",
+   "assigned_incident": "inc_9cf9cf0f16",
    "base_lat": 34.052,
    "base_lon": -118.221,
    "capable_of": [],
@@ -826,7 +830,7 @@
    "type": "ambulance"
   },
   {
-   "assigned_incident": "inc_3b12f278bd",
+   "assigned_incident": "inc_ffaf3127d5",
    "base_lat": 34.066,
    "base_lon": -118.229,
    "capable_of": [],
@@ -842,7 +846,7 @@
    "type": "ambulance"
   },
   {
-   "assigned_incident": "inc_bda717b1e0",
+   "assigned_incident": "inc_ff921a7697",
    "base_lat": 34.058,
    "base_lon": -118.245,
    "capable_of": [],
@@ -858,7 +862,7 @@
    "type": "rescue_team"
   },
   {
-   "assigned_incident": "inc_a96c43c824",
+   "assigned_incident": "inc_8447c1ba4e",
    "base_lat": 34.052,
    "base_lon": -118.221,
    "capable_of": [],
@@ -874,7 +878,7 @@
    "type": "rescue_team"
   },
   {
-   "assigned_incident": "inc_bda717b1e0",
+   "assigned_incident": "inc_ff921a7697",
    "base_lat": 34.043,
    "base_lon": -118.238,
    "capable_of": [],
@@ -890,7 +894,7 @@
    "type": "swift_water"
   },
   {
-   "assigned_incident": "inc_a96c43c824",
+   "assigned_incident": "inc_8447c1ba4e",
    "base_lat": 34.035,
    "base_lon": -118.259,
    "capable_of": [],
@@ -906,7 +910,7 @@
    "type": "engineering"
   },
   {
-   "assigned_incident": "inc_97c4545cb9",
+   "assigned_incident": "inc_4656241b6e",
    "base_lat": 34.058,
    "base_lon": -118.245,
    "capable_of": [],
@@ -922,7 +926,7 @@
    "type": "drone"
   },
   {
-   "assigned_incident": "inc_3b12f278bd",
+   "assigned_incident": "inc_ffaf3127d5",
    "base_lat": 34.074,
    "base_lon": -118.255,
    "capable_of": [],
@@ -959,7 +963,7 @@
   "dispatch_mode": "auto",
   "llm_available": false
  },
- "sim_time": "2026-10-15T17:43:08.367195+00:00",
+ "sim_time": "2026-10-16T15:54:45.648320+00:00",
  "status": "live",
  "tick": 3,
  "weather": [

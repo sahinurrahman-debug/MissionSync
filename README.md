@@ -158,6 +158,7 @@ Full list with comments: [`backend/.env.example`](./backend/.env.example), [`fro
 | `DATABASE_URL` | Postgres connection string; empty = local SQLite file | Neon dashboard → Connection string |
 | `APP_ENV` | `production` turns on Secure cookies and refuses SQLite | set to `production` when deployed |
 | `GROQ_API_KEY` | Enables the LLM agents (free tier: ~200k tokens/day/model, shared per organisation) | <https://console.groq.com/keys> |
+| `AI_TOKENS_PER_DRILL`, `AI_TOKENS_PER_GUEST_DRILL`, `REFINE_MIN_INTERVAL_S` | The free Groq plan is ~200k tokens a day **per model for everyone**, so each loaded drill gets its own share (demo drills the smaller one) and background AI passes are batched; a drill that spends its share carries on with the rule-based agents (header: "AI ALLOWANCE USED") | defaults 80000 / 30000 / 45 |
 | `MAX_DRILLS_PER_USER`, `MAX_LIVE_DRILLS` | Fair-use limits for a small instance | defaults 10 / 6 |
 | `ALLOW_DEMO`, `GUEST_HOURS`, `MAX_GUESTS`, `GUEST_MAX_DRILLS` | The one-click demo: on/off, how long a guest lives, how many may exist, drills per guest | defaults true / 24 / 150 / 2 |
 | `ALLOW_SIGNUP` | Close sign-ups on a shared server | default `true` |

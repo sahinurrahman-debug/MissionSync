@@ -308,8 +308,11 @@ def test_a_finished_drill_does_not_take_a_dispatch_mode_change(tmp_path) -> None
     with client:
         signed_in(client)
         d = client.post("/api/drills", json={"name": "x"}).json()["drill"]
-        time.sleep(0.5)
-        client.post(f"/api/drills/{d['id']}/end")
+        for _ in range(100):                                             # wait for the drill to finish booting
+            if client.get(f"/api/drills/{d['id']}/snapshot").json()["status"] == "live":
+                break
+            time.sleep(0.1)
+        assert client.post(f"/api/drills/{d['id']}/end").status_code == 200
         assert client.post(f"/api/drills/{d['id']}/settings", json={"auto_dispatch": True}).status_code == 409
 
 

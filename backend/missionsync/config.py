@@ -40,6 +40,12 @@ class Settings:
     max_body_bytes: int = 65536
     #: Sessions one account may hold at once; the oldest is signed out when it signs in on one more device.
     max_sessions_per_user: int = 10
+    #: LLM tokens one drill may spend while it is loaded (the free Groq tier is ~200k a day per model for EVERYONE);
+    #: afterwards that drill continues on the rule-based agents. 0 = unlimited.
+    ai_tokens_per_drill: int = 80000
+    ai_tokens_per_guest_drill: int = 30000
+    #: Minimum seconds between two background AI refinement passes of one drill (changes in between are batched).
+    refine_min_interval_s: float = 45.0
 
     @property
     def production(self) -> bool:
@@ -66,4 +72,7 @@ def load_settings() -> Settings:
         trusted_proxy_hops=max(0, int(os.getenv("TRUSTED_PROXY_HOPS", "0"))),
         max_body_bytes=int(os.getenv("MAX_BODY_BYTES", "65536")),
         max_sessions_per_user=max(1, int(os.getenv("MAX_SESSIONS_PER_USER", "10"))),
+        ai_tokens_per_drill=int(os.getenv("AI_TOKENS_PER_DRILL", "80000")),
+        ai_tokens_per_guest_drill=int(os.getenv("AI_TOKENS_PER_GUEST_DRILL", "30000")),
+        refine_min_interval_s=float(os.getenv("REFINE_MIN_INTERVAL_S", "45")),
     )
