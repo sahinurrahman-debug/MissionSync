@@ -140,6 +140,19 @@ try {
   }), 'the incident feed is on the left of the map')
   check(await page.evaluate(() => !document.querySelector('[aria-label^="Weather advisories"]')), 'no weather chips cover the situation map')
 
+  // the six stat labels are written out in full (no "RANKING ACCURA…"): every label fits inside its tile, at every desktop width
+  for (const w of [1024, 1280, 1366, 1920]) {
+    await page.setViewport({ width: w, height: 800 })
+    await sleep(500)
+    const cut = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Drill telemetry"] > div')].filter((tile) => {
+      const label = tile.querySelector('span'); const cs = getComputedStyle(label)
+      return label.scrollWidth > label.clientWidth + 1 || cs.textOverflow === 'ellipsis' || tile.scrollWidth > tile.clientWidth + 1
+    }).map((tile) => tile.innerText.split(String.fromCharCode(10))[0]))
+    check(cut.length === 0 && /Ranking Accuracy/i.test(await text(page)), `stat labels are written in full at ${w}px${cut.length ? ' — cut: ' + cut.join(', ') : ''}`)
+  }
+  await page.setViewport({ width: 1366, height: 800 })
+  await sleep(500)
+
   // The map can be explored: zoom buttons, mouse wheel, double-click and dragging all work
   // the distance between the two farthest pins on screen doubles with every zoom level
   const zoomOf = () => page.evaluate(() => {
