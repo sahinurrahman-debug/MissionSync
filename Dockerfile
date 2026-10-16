@@ -2,7 +2,7 @@
 # in stage 2, so the session cookie stays SameSite/httpOnly and the WebSocket needs no cross-site tricks.
 
 # ---- stage 1: build the dashboard -------------------------------------------------------------
-FROM node:22-alpine AS web
+FROM node:25-alpine AS web
 WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
