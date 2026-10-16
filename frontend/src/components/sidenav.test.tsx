@@ -57,11 +57,14 @@ describe('Board navigation (desktop layout)', () => {
     })) as unknown as typeof window.matchMedia
   })
 
-  it('shows one section per panel and switches by click and by the 1-4 keys', async () => {
+  it('shows one section per panel and switches by click and by the 1-5 keys', async () => {
     board()
     await screen.findByRole('navigation', { name: 'Sections' })
     // Situation (default): map + ranked feed, but not the intake or fleet panels.
-    expect(await screen.findByRole('region', { name: /Ranked incident feed|incident feed/i })).toBeTruthy()
+    const feed = await screen.findByRole('region', { name: /Ranked incident feed|incident feed/i })
+    expect(feed).toBeTruthy()
+    const mapBox = document.querySelector('.leaflet-container, [aria-label="Loading the map"]')?.closest('div.relative')
+    if (mapBox) expect(feed.compareDocumentPosition(mapBox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()   // the feed is on the left, the map after it
     expect(screen.queryByLabelText('Field report')).toBeNull()
 
     await userEvent.click(screen.getByRole('button', { name: /^Orders/ }))
@@ -75,6 +78,12 @@ describe('Board navigation (desktop layout)', () => {
     await userEvent.keyboard('4')
     expect(await screen.findByRole('region', { name: 'Resource fleet' })).toBeTruthy()
     expect(screen.queryByLabelText('Field report')).toBeNull()
+
+    await userEvent.keyboard('5')
+    const weather = await screen.findByRole('region', { name: 'Weather' })
+    expect(weather).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Weather/ }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByLabelText(/Weather advisories/)).toBeNull()
 
     await userEvent.keyboard('1')
     expect(screen.getByRole('button', { name: /^Situation/ }).getAttribute('aria-current')).toBe('page')

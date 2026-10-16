@@ -33,7 +33,7 @@ Base URL: the same origin as the dashboard (`http://127.0.0.1:8000` locally). Al
 | Method | Route | Auth | Success | Description |
 |---|---|---|---|---|
 | POST | `/api/auth/signup` | – | `201 {user}` + cookie | `{email, password (8–128), display_name}`. Email is lower-cased and unique (`409`); the password is hashed with argon2id. Signs you in. |
-| POST | `/api/auth/demo` | – | `201 {user, drill, expires_in_hours}` + cookie | One click, no body: creates a **guest** (`is_guest: true`, address `guest-…@guest.missionsync.invalid`, random password nobody sees) that owns one ready "Demo drill" (real xBD scenario, real agents). The session lasts `GUEST_HOURS` (24); then the guest and its drills are deleted. Guests keep 2 drills. Rate-limited like sign-up; `503` when `MAX_GUESTS` exist; `403` if `ALLOW_DEMO=false`. |
+| POST | `/api/auth/demo` | – | `201 {user, drill, expires_in_hours}` + cookie | One click, no body: creates a **guest** (`is_guest: true`, address `guest-…@guest.missionsync.invalid`, random password nobody sees) that owns one ready "My first drill" (real xBD scenario, real agents). The session lasts `GUEST_HOURS` (24); then the guest and its drills are deleted. Guests keep 2 drills. Rate-limited like sign-up; `503` when `MAX_GUESTS` exist; `403` if `ALLOW_DEMO=false`. |
 | POST | `/api/auth/login` | – | `200 {user}` + cookie | `{email, password}`. A wrong email and a wrong password give the same `401` sentence. 8 attempts, then ~1 per 6 s, per IP and per email. |
 | POST | `/api/auth/logout` | – | `204` | Revokes the session server-side and clears the cookie. |
 | GET | `/api/auth/me` | session | `200 {user}` | Who the cookie belongs to (`401` otherwise). |

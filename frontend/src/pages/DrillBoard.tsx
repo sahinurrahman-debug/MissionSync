@@ -21,8 +21,9 @@ import ReportIntake from '../components/ReportIntake'
 import ResourceBoard from '../components/ResourceBoard'
 import SideNav, { VIEWS, type View } from '../components/SideNav'
 import { FleetSkeleton } from '../components/Skeletons'
-import SystemBanners, { WeatherStrip } from '../components/SystemBanners'
+import SystemBanners from '../components/SystemBanners'
 import { Panel, PanelHeader } from '../components/ui'
+import WeatherPanel from '../components/WeatherPanel'
 
 // Leaflet is ~90 KB gzipped: load it after first paint so the shell appears sooner (most of all on phones).
 const loadMap = () => import('../components/MapPanel')
@@ -105,6 +106,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
   const ended = snap.status === 'ended'
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
   const p1p2 = snap.incidents.filter((i) => i.risk?.tier === 'P1' || i.risk?.tier === 'P2').length
+  const warnings = snap.weather.filter((w) => w.alert).length
   const exportUrl = source.exportUrl && m.drill_id != null ? source.exportUrl() : null
   const autoDispatch = snap.settings.auto_dispatch
   const inputsLocked = offline || loading || ended
@@ -114,7 +116,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
     setToast({ id: toastId.current, tone, text })
   }, [])
 
-  // 1-4 jump between sections (desktop), unless the user is typing or a dialog is open.
+  // 1-5 jump between sections (desktop), unless the user is typing or a dialog is open.
   useEffect(() => {
     if (!desktop) return
     const onKey = (e: KeyboardEvent) => {
@@ -259,6 +261,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
       </div>
     </Panel>
   )
+  const weatherPanel = <ErrorBoundary label="The weather"><WeatherPanel snap={snap} /></ErrorBoundary>
   const mapFrame = <div className="relative h-full min-h-0 overflow-hidden rounded-lg border border-line">{map}</div>
   const fleet = <FleetAndLog snap={snap} loading={loading} injections={m.injections} onRecall={actions.onRecall} disabled={busy || inputsLocked} />
 
@@ -300,15 +303,12 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
 
       {desktop ? (
         <div className="flex min-h-0 flex-1">
-          <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length }} footer={railAccount} />
+          <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length, weather: warnings }} footer={railAccount} />
           <main id="main" className="min-h-0 min-w-0 flex-1 p-2">
             {view === 'situation' && (
-              <div className="flex h-full min-h-0 flex-col gap-2">
-                <WeatherStrip snap={snap} />
-                <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,58fr)_minmax(0,42fr)] gap-2">
-                  {mapFrame}
-                  <div id="incident-feed" tabIndex={-1} className="min-h-0 outline-none">{feed}</div>
-                </div>
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,42fr)_minmax(0,58fr)] gap-2">
+                <div id="incident-feed" tabIndex={-1} className="min-h-0 outline-none">{feed}</div>
+                {mapFrame}
               </div>
             )}
             {view === 'orders' && (
@@ -329,18 +329,22 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
                 {mapFrame}
               </div>
             )}
+            {view === 'weather' && (
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                {weatherPanel}
+                {mapFrame}
+              </div>
+            )}
           </main>
         </div>
       ) : (
         <>
           <main id="main" className="min-h-0 flex-1 p-2">
-            <div className={tab === 'map' ? 'flex h-full flex-col gap-2' : 'hidden'}>
-              <WeatherStrip snap={snap} />
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-line">{map}</div>
-            </div>
+            <div className={tab === 'map' ? 'relative h-full overflow-hidden rounded-lg border border-line' : 'hidden'}>{map}</div>
             {tab === 'feed' && <div id="incident-feed" tabIndex={-1} className="h-full outline-none">{feed}</div>}
             {tab === 'orders' && <div className="h-full">{orders}</div>}
             {tab === 'report' && <div className="flex h-full flex-col gap-2 overflow-y-auto">{intake}<div className="min-h-[260px] flex-1">{logPanel}</div></div>}
+            {tab === 'weather' && <div className="h-full">{weatherPanel}</div>}
             {tab === 'fleet' && (
               <div className="flex h-full flex-col gap-2 overflow-y-auto">
                 <StatGrid snap={snap} />
@@ -348,7 +352,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
               </div>
             )}
           </main>
-          <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2, orders: snap.proposals.length }} />
+          <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2, orders: snap.proposals.length, weather: warnings }} />
         </>
       )}
 

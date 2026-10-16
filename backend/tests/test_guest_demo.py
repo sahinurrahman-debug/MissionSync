@@ -31,7 +31,7 @@ def test_one_click_creates_a_guest_with_a_ready_drill_and_signs_it_in(api) -> No
     assert r.status_code == 201
     body = r.json()
     assert body["user"]["is_guest"] is True and body["user"]["email"].endswith("@guest.missionsync.invalid")
-    assert body["drill"]["name"] == "Demo drill" and "deleted after 24 hours" in body["drill"]["notes"]
+    assert body["drill"]["name"] == "My first drill" and "deleted after 24 hours" in body["drill"]["notes"]
     cookie = r.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=lax" in cookie and f"max-age={24 * 3600}" in cookie
     assert c.get("/api/auth/session").json()["user"]["is_guest"] is True            # signed in straight away
@@ -73,7 +73,7 @@ def test_two_guests_never_see_each_others_drills(api) -> None:
 
 def test_a_guest_keeps_fewer_drills(api) -> None:
     c, _ = api
-    c.post("/api/auth/demo")                                                         # already owns the "Demo drill"
+    c.post("/api/auth/demo")                                                         # already owns the "My first drill"
     assert c.post("/api/drills", json={"name": "Second"}).status_code == 201
     r = c.post("/api/drills", json={"name": "Third"})
     assert r.status_code == 409 and "demo account can keep up to 2" in r.json()["error"]

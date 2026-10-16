@@ -16,7 +16,8 @@ import HeaderHud, { StatGrid, TelemetryBar, clockOf, statsOf } from './HeaderHud
 import IncidentCard from './IncidentCard'
 import Recommendations from './Recommendations'
 import ReportIntake from './ReportIntake'
-import SystemBanners, { WeatherStrip } from './SystemBanners'
+import SystemBanners from './SystemBanners'
+import WeatherPanel from './WeatherPanel'
 
 describe('Recommendations — the approval surface', () => {
   it('tells the operator nothing moves until they approve, and offers Approve all', async () => {
@@ -361,10 +362,31 @@ describe('SystemBanners', () => {
     expect(screen.getByText(/Degraded mode/)).toBeTruthy()
     rerender(<SystemBanners snap={{ ...s, engine: 'remote' }} />)
     expect(screen.queryByText(/Demo engine/)).toBeNull()                               // there is no demo engine any more
-    expect(screen.queryByLabelText(/Weather advisories/)).toBeNull()                 // weather lives with the map now
-    document.body.innerHTML = ''
-    render(<WeatherStrip snap={s} />)
-    expect(screen.getByLabelText(/Weather advisories/).textContent).toMatch(/wind/)
+    expect(screen.queryByLabelText(/Weather/)).toBeNull()                            // weather has its own section now
+  })
+})
+
+describe('WeatherPanel', () => {
+  it('lists every zone, warnings first, with wind, rain and temperature', () => {
+    const s = world().snap
+    const weather = [
+      { zone: 'Calm Bay', wind_kph: 6, wind_direction_deg: 90, precipitation_mm_h: 0, temperature_c: 21, alert: null, forecast_note: '' },
+      { zone: 'North Hills', wind_kph: 62, wind_direction_deg: 270, precipitation_mm_h: 3.5, temperature_c: 14, alert: 'high_wind', forecast_note: 'Gusts easing by dusk' },
+    ]
+    render(<WeatherPanel snap={{ ...s, weather }} />)
+    const region = screen.getByRole('region', { name: 'Weather' })
+    const zones = within(region).getAllByRole('listitem').map((li) => li.textContent ?? '')
+    expect(zones[0]).toContain('North Hills')                                         // the warning comes first
+    expect(zones[0]).toMatch(/high wind/)
+    expect(zones[0]).toMatch(/62.*kph/)
+    expect(zones[0]).toContain('Gusts easing by dusk')
+    expect(zones[1]).toContain('Clear')
+    expect(region.textContent).toContain('1 warning')
+  })
+
+  it('says so when there is no weather yet', () => {
+    render(<WeatherPanel snap={{ ...world().snap, weather: [] }} />)
+    expect(screen.getByText(/No weather has been reported/)).toBeTruthy()
   })
 })
 

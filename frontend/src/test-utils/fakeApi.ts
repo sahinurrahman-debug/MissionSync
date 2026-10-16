@@ -69,7 +69,7 @@ export class FakeApi {
     }
     if (key === 'POST /api/auth/demo') {
       if (this.demoFails) return fail(503, 'degraded', 'The demo is busy right now. Please try again in a few minutes, or create a free account.')
-      const d = this.make('Demo drill', 'Real xBD damage scenarios with the AI agents. This temporary account is deleted after 24 hours.')
+      const d = this.make('My first drill', 'Real xBD damage scenarios with the AI agents. This temporary account is deleted after 24 hours.')
       this.drills.push(d)
       this.signedIn = { id: 99, email: 'guest-ab12cd@guest.missionsync.invalid', display_name: 'Demo guest', created_at: new Date().toISOString(), is_guest: true }
       return json({ user: this.signedIn, drill: d, expires_in_hours: 24 }, 201)

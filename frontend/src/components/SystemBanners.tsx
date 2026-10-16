@@ -1,4 +1,4 @@
-import { CloudOff, RadioTower, TriangleAlert, Wind } from 'lucide-react'
+import { CloudOff, RadioTower, TriangleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Snapshot } from '../types'
 
@@ -16,7 +16,7 @@ function Banner({ tone, icon, children }: { tone: 'warn' | 'bad' | 'info'; icon:
   )
 }
 
-/** The non-blocking alert slot under the HUD: connectivity, engine state, quota, weather. */
+/** The non-blocking alert slot under the HUD: connectivity, engine state, quota. */
 export default function SystemBanners({ snap }: { snap: Snapshot }) {
   const m = snap.metrics
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
@@ -38,26 +38,6 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
           <b>Degraded mode:</b> the LLM is unavailable (no API key, or the provider is failing) — rule-based agents are running.
         </Banner>
       )}
-    </div>
-  )
-}
-
-/** Simulated weather advisories. Shown where they matter (the map), not as a permanent global strip. */
-export function WeatherStrip({ snap }: { snap: Snapshot }) {
-  const alerts = snap.weather.filter((w) => w.alert)
-  if (alerts.length === 0) return null
-  return (
-    <div className="flex shrink-0 flex-wrap gap-2" role="status" aria-label="Weather advisories (simulated)">
-      {alerts.map((w) => (
-        <span key={w.zone} className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2 py-0.5 text-sm text-warn">
-          <Wind size={14} aria-hidden />
-          <b className="font-semibold">{w.zone}</b>
-          <span className="text-ink-2">
-            {(w.alert ?? '').replace(/_/g, ' ')} · wind <span className="font-mono tnum">{Math.round(w.wind_kph)}</span> kph
-            {w.forecast_note ? ` · ${w.forecast_note}` : ''}
-          </span>
-        </span>
-      ))}
     </div>
   )
 }

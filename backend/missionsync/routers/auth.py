@@ -65,7 +65,7 @@ async def demo(request: Request, response: Response, svc: Services = Depends(get
     password_hash = await asyncio.to_thread(hash_password, secrets.token_urlsafe(24))
     user = await asyncio.to_thread(svc.users.create, f"guest-{secrets.token_hex(6)}@{GUEST_DOMAIN}", "Demo guest", password_hash, True)
     drill = await asyncio.to_thread(
-        svc.drills.create, user.id, "Demo drill",
+        svc.drills.create, user.id, "My first drill",
         f"Real xBD damage scenarios with the AI agents. This temporary account is deleted after {svc.settings.guest_hours} hours.",
         svc.settings.guest_max_drills,
     )

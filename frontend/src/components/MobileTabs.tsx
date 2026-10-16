@@ -1,6 +1,6 @@
-import { ListOrdered, Map as MapIcon, Radio, Target, Truck, type LucideIcon } from 'lucide-react'
+import { CloudSun, ListOrdered, Map as MapIcon, Radio, Target, Truck, type LucideIcon } from 'lucide-react'
 
-export type MobileTab = 'map' | 'feed' | 'orders' | 'report' | 'fleet'
+export type MobileTab = 'map' | 'feed' | 'orders' | 'report' | 'fleet' | 'weather'
 
 const TABS: Array<{ id: MobileTab; label: string; Icon: LucideIcon }> = [
   { id: 'map', label: 'Map', Icon: MapIcon },
@@ -8,6 +8,7 @@ const TABS: Array<{ id: MobileTab; label: string; Icon: LucideIcon }> = [
   { id: 'orders', label: 'Orders', Icon: Target },
   { id: 'report', label: 'Report', Icon: Radio },
   { id: 'fleet', label: 'Units', Icon: Truck },
+  { id: 'weather', label: 'Weather', Icon: CloudSun },
 ]
 
 /** Bottom navigation for phones and small tablets: thumb-reachable, 56px tall. */

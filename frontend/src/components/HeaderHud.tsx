@@ -79,9 +79,9 @@ export function EngineChips({ snap, className = '' }: { snap: Snapshot; classNam
   return (
     <div className={`shrink-0 items-center gap-1.5 ${className}`}>
       <Chip tone={mode.tone} title={mode.title}>{mode.label}</Chip>
-      <Chip className="w-[150px] justify-start" title="What the AI pipeline is doing right now">
+      <Chip className="w-[150px] justify-start" title="What the AI agents are doing right now (Agents ready = waiting for the next report)">
         {busy ? <Loader2 size={13} className="animate-spin text-accent" aria-hidden /> : <span className="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />}
-        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : 'idle'}</span>
+        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : 'Agents ready'}</span>
       </Chip>
     </div>
   )

@@ -184,10 +184,10 @@ No secret is committed; `.env` is git-ignored and `.env.example` lists every nam
 | `backend/tests/test_drills_crud.py`, `test_play_api.py` | CRUD with server-side validation and limits, cascade delete, restart recovery, the whole report → approve flow | 22 |
 | `backend/tests/test_migrations.py` | schema from scratch, idempotent, adopts the old database, downgrade/upgrade, the real `alembic` CLI | 8 |
 | remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), frontend-fixture drift, simulator, data, static serving | 104 |
-| `frontend/src/**/*.test.*` | footer, account in the side rail, guards, inline validation, the one-click demo, optimistic create/rename/delete and approve with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 114 |
-| `scripts/e2e_screens.mjs` | the real app in a headless browser: one-click demo, sign up → drill → approve → refresh → end → sign out; footer on every page, account pinned in the rail, and **no sideways scrolling** on every page and tab at 1366 px and 375 px | 32 checks |
+| `frontend/src/**/*.test.*` | footer, account in the side rail, guards, inline validation, the one-click demo, optimistic create/rename/delete and approve with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 116 |
+| `scripts/e2e_screens.mjs` | the real app in a headless browser: one-click demo, sign up → drill → approve → refresh → end → sign out; footer on every page, account pinned in the rail, and **no sideways scrolling** on every page and tab at 1366 px and 375 px | 36 checks |
 
-**200 backend tests (93 % line coverage) and 114 frontend tests (89 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
+**200 backend tests (93 % line coverage) and 116 frontend tests (89 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
 
 ```bash
 cd backend  && .venv/Scripts/python -m pytest --cov=missionsync      # install requirements-dev.txt first

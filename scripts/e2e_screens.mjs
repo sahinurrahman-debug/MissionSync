@@ -120,12 +120,22 @@ try {
   const railLast = await page.evaluate(() => document.querySelector('nav[aria-label="Sections"]').lastElementChild.innerText)
   check(/E2E/.test(railLast), 'the account name sits at the very bottom of the side rail')
   check(await page.evaluate(() => { const f = document.querySelector('footer'); return !!f && getComputedStyle(f).display !== 'none' }), 'the dashboard has its compact footer')
-  for (const v of ['situation', 'orders', 'report', 'fleet']) {
+  for (const v of ['situation', 'orders', 'report', 'fleet', 'weather']) {
     await clickText(page, 'nav[aria-label="Sections"] button', new RegExp('^' + v, 'i'))
     await sleep(700)
     await noSideways(page, `dashboard ${v}, desktop`)
   }
+  await clickText(page, 'nav[aria-label="Sections"] button', /^weather/i)
+  await sleep(500)
+  check(await page.evaluate(() => !!document.querySelector('section[aria-label="Weather"] li')), 'the Weather section lists the zones')
+  await shot(page, 'view-weather')
   await clickText(page, 'nav[aria-label="Sections"] button', /^situation/i)
+  await sleep(500)
+  check(await page.evaluate(() => {
+    const feed = document.getElementById('incident-feed'); const map = document.querySelector('.leaflet-container')
+    return !!feed && !!map && feed.getBoundingClientRect().left < map.getBoundingClientRect().left
+  }), 'the incident feed is on the left of the map')
+  check(await page.evaluate(() => !document.querySelector('[aria-label^="Weather advisories"]')), 'no weather chips cover the situation map')
 
   // 5. orders → approve all → fleet
   await clickText(page, 'nav[aria-label="Sections"] button', /^orders/i)
@@ -177,7 +187,7 @@ try {
   const headerFits = await phone.evaluate(() => [...document.querySelectorAll('header button, header a')].every((el) => el.getBoundingClientRect().right <= innerWidth + 1))
   check(headerFits, 'every header control is on screen at 375px')
   await shot(phone, 'mobile')
-  for (const tab of ['map', 'incidents', 'orders', 'report', 'units']) {
+  for (const tab of ['map', 'incidents', 'orders', 'report', 'units', 'weather']) {
     await clickText(phone, 'nav[aria-label="Sections"] button', new RegExp(tab, 'i'))
     await sleep(600)
     await noSideways(phone, `dashboard ${tab} tab, 375 px`)

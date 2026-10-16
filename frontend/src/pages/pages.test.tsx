@@ -96,7 +96,7 @@ describe('protected routes', () => {
     visit('/demo')
     await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
     expect(api.calls.some((c) => c.path === '/api/auth/demo' && c.method === 'POST')).toBe(true)
-    expect(api.drills.map((d) => d.name)).toEqual(['Demo drill'])
+    expect(api.drills.map((d) => d.name)).toEqual(['My first drill'])
     expect(api.signedIn?.is_guest).toBe(true)
     expect(await screen.findByText('Temporary demo account.')).toBeTruthy()           // says plainly that it is temporary
     expect(screen.getByRole('link', { name: 'Create an account' }).getAttribute('href')).toBe('/signup')
