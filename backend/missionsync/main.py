@@ -99,7 +99,7 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
         response.headers["X-Request-ID"] = rid
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         if request.url.path in ("/docs", "/redoc"):

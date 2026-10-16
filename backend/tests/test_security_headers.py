@@ -11,7 +11,7 @@ def test_every_response_carries_the_hardening_headers(tmp_path) -> None:
     with client:
         h = client.get("/api/health").headers
     assert h["x-content-type-options"] == "nosniff" and h["x-frame-options"] == "DENY"
-    assert h["referrer-policy"] == "same-origin" and "camera=()" in h["permissions-policy"]
+    assert h["referrer-policy"] == "strict-origin-when-cross-origin" and "camera=()" in h["permissions-policy"]
     assert h["cross-origin-opener-policy"] == "same-origin"
     csp = h["content-security-policy"]
     assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
