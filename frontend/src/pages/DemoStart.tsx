@@ -31,7 +31,7 @@ export default function DemoStart() {
 
   return (
     <PageShell center>
-      <main id="main" className="m-4 w-full max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-panel">
+      <main id="main" className="m-4 w-full max-w-md rounded-xl border border-line bg-panel p-6 text-center shadow-panel">
         {error ? (
           <>
             <h1 className="text-xl font-bold">The Demo Could Not Start</h1>

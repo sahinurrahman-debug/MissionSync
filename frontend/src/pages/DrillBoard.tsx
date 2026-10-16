@@ -262,7 +262,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
     </Panel>
   )
   const weatherPanel = <ErrorBoundary label="The weather"><WeatherPanel snap={snap} /></ErrorBoundary>
-  const mapFrame = <div className="relative h-full min-h-0 overflow-hidden rounded-lg border border-line">{map}</div>
+  const mapFrame = <div className="relative h-full min-h-0 overflow-hidden rounded-lg border border-line shadow-panel">{map}</div>
   const fleet = <FleetAndLog snap={snap} loading={loading} injections={m.injections} onRecall={actions.onRecall} disabled={busy || inputsLocked} />
 
   return (
@@ -296,15 +296,16 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
         leading={leading}
         trailing={desktop ? null : account}
       />
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2 lg:px-3">
       <TelemetryBar snap={snap} />
       <NextStep snap={snap} onGo={goTo} />
       <GuestBanner />
       <SystemBanners snap={snap} />
 
       {desktop ? (
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 gap-2">
           <SideNav view={view} onChange={setView} badge={{ situation: p1p2, orders: snap.proposals.length, weather: warnings }} footer={railAccount} />
-          <main id="main" className="min-h-0 min-w-0 flex-1 p-2">
+          <main id="main" className="min-h-0 min-w-0 flex-1">
             {view === 'situation' && (
               <div className="grid h-full min-h-0 grid-cols-[minmax(0,42fr)_minmax(0,58fr)] gap-2">
                 <div id="incident-feed" tabIndex={-1} className="min-h-0 outline-none">{feed}</div>
@@ -339,8 +340,8 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
         </div>
       ) : (
         <>
-          <main id="main" className="min-h-0 flex-1 p-2">
-            <div className={tab === 'map' ? 'relative h-full overflow-hidden rounded-lg border border-line' : 'hidden'}>{map}</div>
+          <main id="main" className="min-h-0 flex-1">
+            <div className={tab === 'map' ? 'relative h-full overflow-hidden rounded-lg border border-line shadow-panel' : 'hidden'}>{map}</div>
             {tab === 'feed' && <div id="incident-feed" tabIndex={-1} className="h-full outline-none">{feed}</div>}
             {tab === 'orders' && <div className="h-full">{orders}</div>}
             {tab === 'report' && <div className="flex h-full flex-col gap-2 overflow-y-auto">{intake}<div className="min-h-[260px] flex-1">{logPanel}</div></div>}
@@ -352,9 +353,10 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
               </div>
             )}
           </main>
-          <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2, orders: snap.proposals.length, weather: warnings }} />
         </>
       )}
+      </div>
+      {!desktop && <MobileTabs tab={tab} onChange={setTab} badge={{ feed: p1p2, orders: snap.proposals.length, weather: warnings }} />}
 
       <Footer variant="compact" />
 

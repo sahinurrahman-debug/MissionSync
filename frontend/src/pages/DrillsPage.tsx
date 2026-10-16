@@ -40,7 +40,7 @@ function DrillCard({ d, onRename, onDelete }: { d: Item; onRename: (id: number, 
   }
 
   return (
-    <li className={`flex flex-col rounded-lg border border-line bg-panel p-4 transition-opacity ${d.pending ? 'opacity-70' : ''}`} aria-busy={d.pending}>
+    <li className={`flex flex-col rounded-xl border border-line bg-panel p-4 shadow-panel transition hover:border-accent/50 ${d.pending ? 'opacity-70' : ''}`} aria-busy={d.pending}>
       <div className="flex items-start gap-2">
         {editing ? (
           <form onSubmit={save} className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -142,7 +142,7 @@ export default function DrillsPage() {
         <h2 className="text-2xl font-extrabold">My Drills</h2>
         <p className="mt-1 text-base text-ink-2">Each drill is a private practice exercise. Create one, open it, type radio reports and approve the dispatches the AI suggests.</p>
 
-        <form onSubmit={submit} noValidate className="mt-5 rounded-lg border border-line bg-panel p-4" aria-label="Create a drill">
+        <form onSubmit={submit} noValidate className="mt-5 rounded-xl border border-line bg-panel p-4 shadow-panel" aria-label="Create a drill">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start">
             <FormField label="Drill Name" value={name} onChange={(e) => setName(e.target.value)} error={nameError} placeholder="e.g. Saturday campus drill" maxLength={80} />
             <FormField label="Notes (Optional)" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Who is taking part, what to practise…" maxLength={500} />
@@ -156,15 +156,15 @@ export default function DrillsPage() {
         <section aria-label="Your drills" className="mt-6">
           {items === null ? (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading your drills">
-              {[0, 1, 2].map((i) => <li key={i} className="h-44 animate-pulse rounded-lg border border-line bg-panel" />)}
+              {[0, 1, 2].map((i) => <li key={i} className="h-44 animate-pulse rounded-xl border border-line bg-panel" />)}
             </ul>
           ) : loadError ? (
-            <div role="alert" className="rounded-lg border border-p1/50 bg-panel p-4">
+            <div role="alert" className="rounded-xl border border-p1/50 bg-panel p-4">
               <p className="text-base text-ink">{loadError}</p>
               <button type="button" onClick={() => void reload()} className="mt-2 h-11 rounded-md border border-line bg-hi px-4 text-base font-semibold hover:border-accent">Try Again</button>
             </div>
           ) : count === 0 ? (
-            <div className="rounded-lg border border-dashed border-line bg-panel">
+            <div className="rounded-xl border border-dashed border-line bg-panel">
               <EmptyRadar title="No Drills Yet." hint="Name your first drill above and press New Drill." />
             </div>
           ) : (

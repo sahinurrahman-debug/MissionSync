@@ -14,7 +14,7 @@ export const VIEWS: Array<{ id: View; label: string; hint: string; Icon: LucideI
 /** Desktop navigation rail: one section per panel, the same mental model as the phone's bottom tabs. */
 export default function SideNav({ view, onChange, badge, footer }: { view: View; onChange: (v: View) => void; badge: Partial<Record<View, number>>; footer?: ReactNode }) {
   return (
-    <nav aria-label="Sections" className="flex w-[96px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-panel px-2 py-3">
+    <nav aria-label="Sections" className="flex w-[96px] shrink-0 flex-col gap-1 overflow-y-auto rounded-lg border border-line bg-panel px-2 py-3 shadow-panel">
       {VIEWS.map(({ id, label, hint, Icon }, i) => {
         const active = view === id
         const n = badge[id]
@@ -30,7 +30,6 @@ export default function SideNav({ view, onChange, badge, footer }: { view: View;
               active ? 'border-accent/50 bg-accent/10 text-accent' : 'border-transparent text-ink-2 hover:bg-hi hover:text-ink'
             }`}
           >
-            {active && <span className="absolute -left-2 top-3 h-[calc(100%-24px)] w-1 rounded-r bg-accent" aria-hidden />}
             <Icon size={22} aria-hidden />
             {label}
             {n != null && n > 0 && (

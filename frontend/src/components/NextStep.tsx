@@ -52,7 +52,7 @@ export function nextStepOf(snap: Snapshot): Step {
 export default function NextStep({ snap, onGo }: { snap: Snapshot; onGo: (t: Target) => void }) {
   const step = nextStepOf(snap)
   return (
-    <div role="status" aria-label="Next step" className="flex shrink-0 items-center gap-3 border-b border-line bg-accent/10 px-3 py-1.5 text-base text-ink lg:px-4">
+    <div role="status" aria-label="Next step" className="flex shrink-0 items-center gap-3 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-base text-ink">
       <span className="shrink-0 text-accent" aria-hidden>{step.icon}</span>
       <span className="min-w-0 flex-1 leading-snug">
         <b>{step.lead}</b>

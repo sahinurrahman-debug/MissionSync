@@ -34,7 +34,7 @@ export default {
       // Every text size in the UI is >= 16px: `sm` and `xs` are deliberately remapped to 1rem, so
       // hierarchy comes from weight, colour, case and letter-spacing instead of shrinking type.
       fontSize: { xs: ['1rem', { lineHeight: '1.3' }], sm: ['1rem', { lineHeight: '1.4' }] },
-      borderRadius: { DEFAULT: '6px', md: '6px', lg: '8px' },
+      borderRadius: { DEFAULT: '6px', md: '8px', lg: '12px', xl: '16px' },
       boxShadow: {
         panel: '0 4px 12px rgba(0, 0, 0, 0.4)',
         glow: '0 0 0 1px rgb(var(--accent) / 0.5), 0 0 12px rgb(var(--accent) / 0.25)',

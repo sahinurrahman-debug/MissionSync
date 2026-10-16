@@ -13,7 +13,7 @@ export const TIER_BORDER: Record<Tier, string> = { P1: 'border-p1', P2: 'border-
 
 export function Panel({ children, className = '', label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <section aria-label={label} className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel ${className}`}>
+    <section aria-label={label} className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-panel ${className}`}>
       {children}
     </section>
   )

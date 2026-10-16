@@ -42,9 +42,9 @@ export function statsOf(snap: Snapshot): Stat[] {
 
 function BarCell({ stat }: { stat: Stat }) {
   return (
-    <div title={stat.title} className="flex min-w-0 flex-col items-center justify-center border-l border-line px-1 py-1 text-center first:border-l-0 2xl:flex-row 2xl:gap-2.5 tnum">
-      <span className="text-xs font-semibold uppercase leading-tight tracking-micro text-ink-2">{stat.label}</span>
-      <b className="whitespace-nowrap font-mono text-sm font-bold text-ink">{stat.value}</b>
+    <div title={stat.title} className="flex min-w-0 flex-col justify-center rounded-lg border border-line bg-panel px-3 py-1 shadow-panel tnum">
+      <span className="truncate text-xs font-semibold uppercase leading-tight tracking-micro text-ink-2">{stat.label}</span>
+      <b className="whitespace-nowrap font-mono text-lg font-bold leading-tight text-ink">{stat.value}</b>
     </div>
   )
 }
@@ -52,7 +52,7 @@ function BarCell({ stat }: { stat: Stat }) {
 /** Desktop telemetry bar: six equal columns in one straight line under the header. */
 export function TelemetryBar({ snap }: { snap: Snapshot }) {
   return (
-    <div role="group" aria-label="Drill telemetry" className="hidden shrink-0 grid-cols-6 items-stretch border-b border-line bg-panel px-2 lg:grid">
+    <div role="group" aria-label="Drill telemetry" className="hidden shrink-0 grid-cols-6 gap-2 lg:grid">
       {statsOf(snap).map((s) => <BarCell key={s.id} stat={s} />)}
     </div>
   )

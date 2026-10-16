@@ -72,23 +72,25 @@ export default function AuthPage({ mode }: { mode: Mode }) {
   return (
     <PageShell>
       <main id="main" className="mx-auto grid w-full flex-1 max-w-5xl items-center gap-8 px-4 py-8 md:grid-cols-[1fr_minmax(0,26rem)]">
-        <section className="max-md:order-2">
-          <h1 className="text-3xl font-extrabold tracking-tight">Mission<span className="text-accent">Sync</span></h1>
-          <p className="mt-2 max-w-md text-xl font-semibold leading-snug text-ink">A calm, ranked picture for emergency-response drills.</p>
-          <ul className="mt-5 space-y-3">
+        <section className="grid gap-3 max-md:order-2 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+          <div className="rounded-xl border border-line bg-panel p-5 shadow-panel sm:col-span-3 md:col-span-1 lg:col-span-3">
+            <h1 className="text-3xl font-extrabold tracking-tight">Mission<span className="text-accent">Sync</span></h1>
+            <p className="mt-2 max-w-md text-xl font-semibold leading-snug text-ink">A calm, ranked picture for emergency-response drills.</p>
+          </div>
+          <ul className="contents">
             {POINTS.map(({ Icon, text }) => (
-              <li key={text} className="flex items-start gap-3 text-base text-ink-2">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/40 bg-accent/10 text-accent" aria-hidden><Icon size={18} /></span>
+              <li key={text} className="flex flex-col gap-3 rounded-xl border border-line bg-panel p-4 text-base text-ink-2 shadow-panel md:flex-row md:items-start lg:flex-col">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent" aria-hidden><Icon size={18} /></span>
                 <span>{text}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-base text-ink-2">
+          <p className="rounded-xl border border-dashed border-line p-4 text-base text-ink-2 sm:col-span-3 md:col-span-1 lg:col-span-3">
             Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the Demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
           </p>
         </section>
 
-        <section aria-labelledby="auth-title" className="rounded-lg border border-line bg-panel p-5 shadow-panel">
+        <section aria-labelledby="auth-title" className="rounded-xl border border-line bg-panel p-5 shadow-panel">
           <div role="tablist" aria-label="Account" className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-bg p-1">
             {(['signin', 'signup'] as const).map((m) => (
               <Link

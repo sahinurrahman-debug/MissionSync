@@ -28,7 +28,7 @@ export default function GuestBanner() {
     }
   }
   return (
-    <div role="note" className="flex shrink-0 items-center gap-3 border-b border-line bg-hi px-3 py-1.5 text-base text-ink lg:px-4">
+    <div role="note" className="flex shrink-0 items-center gap-3 rounded-lg border border-line bg-panel px-3 py-1.5 text-base text-ink shadow-panel">
       <Clock size={18} className="shrink-0 text-ink-2" aria-hidden />
       <span className="min-w-0 flex-1 leading-snug">
         <b>Temporary Demo Account.</b>

@@ -8,7 +8,7 @@ export default function MessagePage({ title, body, action }: { title: string; bo
   useTheme()
   return (
     <PageShell center>
-      <main id="main" className="m-4 w-full max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-panel">
+      <main id="main" className="m-4 w-full max-w-md rounded-xl border border-line bg-panel p-6 text-center shadow-panel">
         <SearchX size={32} className="mx-auto text-accent" aria-hidden />
         <h1 className="mt-3 text-xl font-bold">{title}</h1>
         <p className="mt-1 text-base text-ink-2">{body}</p>

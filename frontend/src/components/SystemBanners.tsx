@@ -9,7 +9,7 @@ function Banner({ tone, icon, children }: { tone: 'warn' | 'bad' | 'info'; icon:
     info: 'border-accent/30 bg-accent/10',
   }[tone]
   return (
-    <div role={tone === 'bad' ? 'alert' : 'status'} className={`flex items-start gap-2 border-b px-3 py-1.5 text-sm text-ink lg:px-4 ${cls}`}>
+    <div role={tone === 'bad' ? 'alert' : 'status'} className={`flex items-start gap-2 rounded-lg border px-3 py-1.5 text-sm text-ink ${cls}`}>
       <span className="mt-0.5 shrink-0" aria-hidden>{icon}</span>
       <span className="min-w-0">{children}</span>
     </div>
@@ -21,7 +21,7 @@ export default function SystemBanners({ snap }: { snap: Snapshot }) {
   const m = snap.metrics
   const offline = snap.engine === 'remote' && snap.connection === 'offline'
   return (
-    <div className="shrink-0">
+    <div className="shrink-0 space-y-2 empty:hidden">
       {offline && (
         <Banner tone="bad" icon={<CloudOff size={16} className="text-p1" />}>
           Lost the connection to the MissionSync server — showing the last known picture and reconnecting…
