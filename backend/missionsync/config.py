@@ -33,6 +33,13 @@ class Settings:
     max_guests: int
     #: Drills a guest may keep.
     guest_max_drills: int
+    #: Reverse proxies in front of the app that append to X-Forwarded-For (Render: 1; direct or local: 0). Only that
+    #: many entries from the right are trusted — anything further left is written by the client and ignored.
+    trusted_proxy_hops: int = 0
+    #: Largest request body the API reads (bytes).
+    max_body_bytes: int = 65536
+    #: Sessions one account may hold at once; the oldest is signed out when it signs in on one more device.
+    max_sessions_per_user: int = 10
 
     @property
     def production(self) -> bool:
@@ -56,4 +63,7 @@ def load_settings() -> Settings:
         guest_hours=int(os.getenv("GUEST_HOURS", "24")),
         max_guests=int(os.getenv("MAX_GUESTS", "150")),
         guest_max_drills=int(os.getenv("GUEST_MAX_DRILLS", "2")),
+        trusted_proxy_hops=max(0, int(os.getenv("TRUSTED_PROXY_HOPS", "0"))),
+        max_body_bytes=int(os.getenv("MAX_BODY_BYTES", "65536")),
+        max_sessions_per_user=max(1, int(os.getenv("MAX_SESSIONS_PER_USER", "10"))),
     )

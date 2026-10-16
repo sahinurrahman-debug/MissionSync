@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Optional
@@ -20,7 +21,9 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
+from .deps import client_ip
 from .errors import error_response, install_error_handlers
 from .logging_setup import configure_logging, request_id_var
 from .routers import auth, drills, live, play, system
@@ -40,13 +43,20 @@ if os.getenv("SENTRY_DSN"):                     # optional error tracking; no de
 DEV_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
-# The dashboard may only run its own scripts; tiles and images may come from any https host (map tiles).
-APP_CSP = ("default-src 'self'; "
-           "img-src 'self' data: https:; "
-           "style-src 'self' 'unsafe-inline'; "
-           "font-src 'self' data:; "
-           "connect-src 'self' ws: wss:; "
-           "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+# The dashboard may only run its own scripts, talk to its own server (HTTP and WebSocket) and load map tiles from
+# OpenStreetMap (CSP_IMG_SRC adds another tile host when VITE_TILE_URL points elsewhere).
+_HOST = re.compile(r"^[A-Za-z0-9.\-]+(:\d{1,5})?$")
+
+
+def app_csp(host: str) -> str:
+    sockets = f" ws://{host} wss://{host}" if _HOST.match(host or "") else ""           # 'self' does not cover WebSockets in every browser
+    tiles = " ".join(["https://*.tile.openstreetmap.org", *os.getenv("CSP_IMG_SRC", "").split()])
+    return ("default-src 'self'; "
+            f"img-src 'self' data: {tiles}; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
+            f"connect-src 'self'{sockets}; "
+            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 DOCS_CSP = ("default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -75,6 +85,7 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
     if services is not None:
         app.state.services = services
 
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(
         CORSMiddleware, allow_origins=origins, allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Content-Type"],
@@ -88,12 +99,19 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
         token = request_id_var.set(rid)
         started = time.perf_counter()
         try:
+            response = None
+            settings = getattr(getattr(request.app.state, "services", None), "settings", None)
             if request.method in UNSAFE and request.url.path.startswith("/api/"):
                 origin = request.headers.get("origin")
+                length = request.headers.get("content-length", "")
                 if origin and origin not in origins and urlparse(origin).netloc != request.headers.get("host", ""):
                     # Belt and braces next to SameSite=Lax: a foreign site cannot make a signed-in browser act.
-                    return error_response(request, 403, "forbidden", "Requests from other websites are not allowed.")
-            response = await call_next(request)
+                    response = error_response(request, 403, "forbidden", "Requests from other websites are not allowed.")
+                elif settings and (not length.isdigit() and "chunked" in request.headers.get("transfer-encoding", "")
+                                   or length.isdigit() and int(length) > settings.max_body_bytes):
+                    response = error_response(request, 413, "too_large", "That request is too large.")
+            if response is None:
+                response = await call_next(request)
         finally:
             request_id_var.reset(token)
         response.headers["X-Request-ID"] = rid
@@ -105,14 +123,14 @@ def create_app(services: Optional[Services] = None) -> FastAPI:
         if request.url.path in ("/docs", "/redoc"):
             csp = DOCS_CSP                       # Swagger UI / ReDoc ship from a CDN and bootstrap with an inline script
         else:
-            csp = APP_CSP
+            csp = app_csp(request.headers.get("host", ""))
         response.headers.setdefault("Content-Security-Policy", csp)
         if production:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         if request.url.path.startswith("/api/") and request.url.path != "/api/health":
             logger.info("request", extra={
                 "method": request.method, "path": request.url.path, "status": response.status_code,
-                "ms": int((time.perf_counter() - started) * 1000), "ip": request.client.host if request.client else "?",
+                "ms": int((time.perf_counter() - started) * 1000), "ip": client_ip(request),
                 "user": getattr(request.state, "user_id", None)})
             if request.url.path.startswith("/api/auth/"):
                 response.headers["Cache-Control"] = "no-store"

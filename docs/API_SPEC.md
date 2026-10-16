@@ -24,6 +24,7 @@ Base URL: the same origin as the dashboard (`http://127.0.0.1:8000` locally). Al
 | 403 | `forbidden` | Sign-ups closed, or a request from a foreign website (origin guard) |
 | 404 | `not_found` | Unknown route, or a drill / unit / incident / proposal that is not yours or does not exist |
 | 409 | `conflict` | Email already registered; drill limit reached; the drill has ended; unit busy; stale proposal |
+| 413 | `too_large` | The request body is over `MAX_BODY_BYTES` (64 KiB) |
 | 429 | `rate_limited` | Too many requests; `Retry-After` header and `details[0].issue` give the wait in seconds |
 | 503 | `degraded` | The server is running its maximum number of drills; try again shortly |
 | 500 | `internal_error` | Unexpected fault — the sentence is generic, the cause is in the log under `request_id` |
@@ -36,6 +37,8 @@ Base URL: the same origin as the dashboard (`http://127.0.0.1:8000` locally). Al
 | POST | `/api/auth/demo` | – | `201 {user, drill, expires_in_hours}` + cookie | One click, no body: creates a **guest** (`is_guest: true`, address `guest-…@guest.missionsync.invalid`, random password nobody sees) that owns one ready "Demo Drill" (real xBD scenario, real agents). The session lasts `GUEST_HOURS` (24); then the guest and its drills are deleted. Guests keep 2 drills. Rate-limited like sign-up; `503` when `MAX_GUESTS` exist; `403` if `ALLOW_DEMO=false`. |
 | POST | `/api/auth/login` | – | `200 {user}` + cookie | `{email, password}`. A wrong email and a wrong password give the same `401` sentence. 8 attempts, then ~1 per 6 s, per IP and per email. |
 | POST | `/api/auth/logout` | – | `204` | Revokes the session server-side and clears the cookie. |
+| POST | `/api/auth/logout-all` | – | `204` | Signs the account out on every device; open live sockets close within ~15 s (code 4401). |
+| DELETE | `/api/auth/me` | `{password}` | `204` | Deletes the account and every drill it owns. Needs the password again; `401` when it is wrong. |
 | GET | `/api/auth/me` | session | `200 {user}` | Who the cookie belongs to (`401` otherwise). |
 | GET | `/api/auth/session` | – | `200 {user \| null}` | Same, but a visitor is a normal answer — what the page asks on load, so nothing is logged as an error. |
 
@@ -85,7 +88,7 @@ A client that stops reading is dropped after 5 s and never delays anyone else.
 
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `/api/health` | – | `{status, database, mode, model, quota, live_drills, signup_open, uptime_s, version}` — nothing about any account. |
+| GET | `/api/health` | – | `{status, database, version}`; `503` with `status: "degraded"` when the database cannot be reached — nothing about any account or the AI quota. |
 | GET | `/docs`, `/redoc`, `/openapi.json` | – | Generated API documentation. |
 
 ## What changed from the Level 1 plan

@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..auth import SESSION_COOKIE
+from ..deps import MAX_ID
 from ..orchestrator import DomainError
 
 router = APIRouter()
@@ -34,11 +35,36 @@ async def _refuse(ws: WebSocket, code: int) -> None:
         await ws.close(code=code)
 
 
+RECHECK_S = 15.0
+
+
+async def _keep_authorised(ws: WebSocket, svc, token: str, user_id: int, drill_id: int) -> None:
+    """A socket is only as good as the session that opened it: when that session is signed out, expires, or the drill is
+    deleted, the connection is closed (4401 / 4404) instead of streaming to someone who no longer has access."""
+    while True:
+        await asyncio.sleep(RECHECK_S)
+        try:
+            user = await asyncio.to_thread(svc.sessions.resolve, token)
+            if user is None or user.id != user_id:
+                code = 4401
+            elif await asyncio.to_thread(svc.drills.get, user_id, drill_id, False) is None:
+                code = 4404
+            else:
+                continue
+        except Exception:
+            continue                                   # a database hiccup is not a reason to drop everyone
+        with contextlib.suppress(Exception):
+            await ws.close(code=code)
+        return
+
+
 @router.websocket("/ws/drills/{drill_id}")
 async def drill_socket(ws: WebSocket, drill_id: int) -> None:
     svc = ws.app.state.services
     if not origin_allowed(ws):
         return await _refuse(ws, 4403)
+    if not 1 <= drill_id <= MAX_ID:
+        return await _refuse(ws, 4404)
     token = ws.cookies.get(SESSION_COOKIE, "")
     user = await asyncio.to_thread(svc.sessions.resolve, token) if token else None
     if user is None:
@@ -51,6 +77,7 @@ async def drill_socket(ws: WebSocket, drill_id: int) -> None:
         return await _refuse(ws, 1013)
     if not await rt.hub.join(ws):
         return
+    guard = asyncio.create_task(_keep_authorised(ws, svc, token, user.id, drill_id))
     try:
         while True:
             message = await ws.receive()
@@ -62,4 +89,5 @@ async def drill_socket(ws: WebSocket, drill_id: int) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        guard.cancel()
         rt.hub.leave(ws)

@@ -30,7 +30,9 @@ class Services:
     manager: DrillManager
     login_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=8, refill_per_s=1 / 6))      # brute-force guard
     signup_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=4, refill_per_s=1 / 30))
+    demo_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=3, refill_per_s=1 / 60))      # a guest is an account: a few per minute per address
     report_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=5, refill_per_s=0.5))       # burst 5, then 1 per 2 s
+    user_report_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=12, refill_per_s=1.0))   # per account, across all its drills: the shared AI quota is not one person's to drain
     ops_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(burst=30, refill_per_s=3))
 
 
@@ -43,7 +45,7 @@ def build_services(settings: Optional[Settings] = None, engine: Optional[Engine]
     engine = engine or make_engine(settings.database_url)
     migrate(engine)
     store = Store(engine)
-    sessions = SessionRepo(engine, settings.session_days)
+    sessions = SessionRepo(engine, settings.session_days, settings.max_sessions_per_user)
     svc = Services(
         settings=settings, engine=engine, store=store,
         users=UserRepo(engine), sessions=sessions,

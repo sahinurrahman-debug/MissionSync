@@ -4,20 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, FastAPI, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 
 from ..deps import get_services
 from ..errors import ApiError
-from ..llm import llm_stats
 from ..services import Services
 
 router = APIRouter()
-STARTED_AT = time.time()
 
 
 @router.get("/api/health", tags=["system"])
@@ -31,20 +28,10 @@ async def health(svc: Services = Depends(get_services)) -> dict:
         db_ok = await asyncio.to_thread(ping)
     except Exception:
         db_ok = False
-    llm = llm_stats()
-    return {
-        "status": "ok" if db_ok else "degraded",
-        "database": svc.engine.dialect.name if db_ok else "error",
-        "mode": llm["mode"],
-        "model": llm["model"],
-        "llm_configured": llm["configured"],
-        "quota": llm["quota"],
-        "agents": llm["agents"],
-        "live_drills": svc.manager.live_count,
-        "signup_open": svc.settings.allow_signup,
-        "uptime_s": int(time.time() - STARTED_AT),
-        "version": "4.0",
-    }
+    body = {"status": "ok" if db_ok else "degraded", "database": svc.engine.dialect.name if db_ok else "error", "version": "4.0"}
+    if not db_ok:
+        return JSONResponse(status_code=503, content=body)       # so a host's health check sees a broken database
+    return JSONResponse(content=body)
 
 
 def _static_dir() -> Path | None:
@@ -66,6 +53,8 @@ def mount_dashboard(app: FastAPI) -> None:
     async def spa(path: str) -> Response:
         if path.startswith(("api/", "ws/")) or path in ("api", "ws"):
             raise ApiError(404, "not_found", "No such endpoint.")
+        if "." in path.rsplit("/", 1)[-1] and not (root / path).resolve().is_file():
+            raise ApiError(404, "not_found", "No such file.")           # a missing script or image is a 404, not the app page
         target = (root / path).resolve()
         if path and target.is_file() and root in target.parents:
             immutable = path.startswith("assets/")

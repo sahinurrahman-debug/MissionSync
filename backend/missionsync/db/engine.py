@@ -7,7 +7,7 @@ from typing import Any
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, text
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ def migrate(engine: Engine, revision: str = "head") -> None:
     """Bring the database to `revision` (default: the latest schema). Idempotent."""
     cfg = alembic_config()
     with engine.begin() as conn:
+        if engine.dialect.name == "postgresql":
+            conn.execute(text("SELECT pg_advisory_xact_lock(7283001)"))     # two instances starting together migrate one after the other
         cfg.attributes["connection"] = conn
         command.upgrade(cfg, revision)
     logger.info("database schema is at %s", revision)

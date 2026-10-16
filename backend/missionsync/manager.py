@@ -36,6 +36,8 @@ class DrillRuntime:
 
 
 class DrillManager:
+    EVICT_AFTER_S = 20.0
+
     def __init__(self, store: Store, settings: Settings, sessions: Optional[Any] = None) -> None:
         self.store = store
         self.settings = settings
@@ -43,7 +45,7 @@ class DrillManager:
         #: Optional async callable run about every ten minutes (expired sessions, expired guest accounts).
         self.housekeeping: Optional[Any] = None
         self._runtimes: dict[int, DrillRuntime] = {}
-        self._loading: dict[int, asyncio.Lock] = {}
+        self._admission = asyncio.Lock()          # loading is one at a time, so the live-drill limit is a real limit
         self._reaper: Optional[asyncio.Task] = None
 
     # -- lifecycle ------------------------------------------------------------------------
@@ -73,18 +75,17 @@ class DrillManager:
         """The running drill, loading (restoring or booting) it first when needed. Ownership is checked by the caller."""
         rt = self._runtimes.get(drill_id)
         if rt is None:
-            lock = self._loading.setdefault(drill_id, asyncio.Lock())
-            async with lock:
+            async with self._admission:
                 rt = self._runtimes.get(drill_id)
                 if rt is None:
                     await self._make_room()
                     rt = self._spawn(drill_id)
-            self._loading.pop(drill_id, None)
         rt.touch()
         return rt
 
     def _spawn(self, drill_id: int) -> DrillRuntime:
         orch = Orchestrator(self.store, drill_id=drill_id)
+        orch.pause_when_unwatched = True            # nobody watching → no ticks, no AI calls, no writes
         hub = Hub(orch)
         orch.on_broadcast(hub.broadcast)
         task = asyncio.create_task(orch.run())
@@ -96,7 +97,9 @@ class DrillManager:
     async def _make_room(self) -> None:
         if len(self._runtimes) < self.settings.max_live_drills:
             return
-        idle = sorted((r for r in self._runtimes.values() if r.hub.viewers == 0), key=lambda r: r.last_active)
+        # A drill opened a moment ago has no viewer yet (the page connects its socket right after loading), so only
+        # drills that have really been left alone are candidates.
+        idle = sorted((r for r in self._runtimes.values() if r.hub.viewers == 0 and r.idle_s > self.EVICT_AFTER_S), key=lambda r: r.last_active)
         if not idle:
             raise DomainError(503, "degraded", "The server is running its maximum number of drills right now. Try again in a minute.")
         await self.unload(idle[0].drill_id)

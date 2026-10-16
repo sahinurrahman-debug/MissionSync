@@ -22,4 +22,5 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser &&
 USER appuser
 EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 CMD sh -c "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT:-10000}/api/health').read()\""
-CMD ["sh", "-c", "uvicorn missionsync.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips='*'"]
+# The app reads the client address itself (TRUSTED_PROXY_HOPS, see render.yaml); uvicorn must not rewrite it from a header anyone can send.
+CMD ["sh", "-c", "uvicorn missionsync.main:app --host 0.0.0.0 --port ${PORT:-10000} --no-proxy-headers"]

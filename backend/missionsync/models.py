@@ -15,6 +15,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from .textutil import strip_controls
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -290,7 +292,7 @@ class IncomingReport(BaseModel):
     @field_validator("text")
     @classmethod
     def _not_blank(cls, v: str) -> str:
-        v = v.strip()
+        v = strip_controls(v).strip()                 # NUL and direction-override characters never reach the pipeline or the database
         if not v:
             raise ValueError("Report text must not be blank")
         return v

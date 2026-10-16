@@ -114,6 +114,10 @@ class UserRepo:
             row = conn.execute(select(users).where(users.c.id == user_id)).mappings().first()
         return _user(row) if row else None
 
+    def drill_ids(self, user_id: int) -> list[int]:
+        with self.engine.connect() as conn:
+            return list(conn.execute(select(drills.c.id).where(drills.c.owner_id == user_id)).scalars().all())
+
     def count_guests(self) -> int:
         with self.engine.connect() as conn:
             return conn.execute(select(func.count()).select_from(users).where(users.c.is_guest.is_(True))).scalar_one()
@@ -150,9 +154,10 @@ class SessionRepo:
 
     TOUCH_EVERY_S = 60
 
-    def __init__(self, engine: Engine, lifetime_days: int) -> None:
+    def __init__(self, engine: Engine, lifetime_days: int, max_per_user: int = 10) -> None:
         self.engine = engine
         self.lifetime = timedelta(days=lifetime_days)
+        self.max_per_user = max_per_user
 
     @staticmethod
     def _key(token: str) -> str:
@@ -165,6 +170,11 @@ class SessionRepo:
         with self.engine.begin() as conn:
             conn.execute(sessions.insert().values(
                 id=self._key(token), user_id=user_id, created_at=now, expires_at=expires, last_seen_at=now, user_agent=user_agent[:200]))
+            stale = conn.execute(                                          # one more device signs the oldest one out
+                select(sessions.c.id).where(sessions.c.user_id == user_id)
+                .order_by(sessions.c.created_at.desc(), sessions.c.id).offset(self.max_per_user)).scalars().all()
+            if stale:
+                conn.execute(delete(sessions).where(sessions.c.id.in_(stale)))
         return token, expires
 
     def resolve(self, token: str) -> Optional[User]:
@@ -189,6 +199,11 @@ class SessionRepo:
         with self.engine.begin() as conn:
             conn.execute(delete(sessions).where(sessions.c.id == self._key(token)))
 
+    def revoke_all(self, user_id: int) -> int:
+        """Sign the account out everywhere."""
+        with self.engine.begin() as conn:
+            return conn.execute(delete(sessions).where(sessions.c.user_id == user_id)).rowcount or 0
+
     def purge_expired(self) -> int:
         with self.engine.begin() as conn:
             return conn.execute(delete(sessions).where(sessions.c.expires_at <= _now())).rowcount or 0
@@ -203,6 +218,7 @@ class DrillRepo:
 
     def create(self, owner_id: int, name: str, notes: str = "", limit: Optional[int] = None) -> DrillRecord:
         with self.engine.begin() as conn:
+            conn.execute(select(users.c.id).where(users.c.id == owner_id).with_for_update())    # two simultaneous creates cannot both fit under the limit
             count = conn.execute(select(func.count()).select_from(drills).where(drills.c.owner_id == owner_id)).scalar_one()
             if count >= (limit or self.max_per_user):
                 raise LimitReached()
@@ -215,19 +231,20 @@ class DrillRepo:
     def list(self, owner_id: int) -> list[DrillRecord]:
         with self.engine.connect() as conn:
             rows = conn.execute(select(drills).where(drills.c.owner_id == owner_id).order_by(drills.c.id.desc())).mappings().all()
-            out = []
-            for row in rows:
-                ev = conn.execute(select(func.count()).select_from(audit_events).where(audit_events.c.drill_id == row["id"])).scalar_one()
-                rp = conn.execute(select(func.count()).select_from(reports).where(reports.c.drill_id == row["id"])).scalar_one()
-                out.append(_drill(row, ev, rp))
-        return out
+            ids = [r["id"] for r in rows]
+            ev = dict(conn.execute(select(audit_events.c.drill_id, func.count()).where(audit_events.c.drill_id.in_(ids)).group_by(audit_events.c.drill_id)).all()) if ids else {}
+            rp = dict(conn.execute(select(reports.c.drill_id, func.count()).where(reports.c.drill_id.in_(ids)).group_by(reports.c.drill_id)).all()) if ids else {}
+        return [_drill(r, ev.get(r["id"], 0), rp.get(r["id"], 0)) for r in rows]
 
-    def get(self, owner_id: int, drill_id: int) -> Optional[DrillRecord]:
-        """The drill, only if `owner_id` owns it — a stranger's drill is indistinguishable from a missing one."""
+    def get(self, owner_id: int, drill_id: int, counts: bool = True) -> Optional[DrillRecord]:
+        """The drill, only if `owner_id` owns it — a stranger's drill is indistinguishable from a missing one.
+        `counts=False` skips the report/event totals (the ownership check on every action does not need them)."""
         with self.engine.connect() as conn:
             row = conn.execute(select(drills).where(drills.c.id == drill_id, drills.c.owner_id == owner_id)).mappings().first()
             if row is None:
                 return None
+            if not counts:
+                return _drill(row)
             ev = conn.execute(select(func.count()).select_from(audit_events).where(audit_events.c.drill_id == drill_id)).scalar_one()
             rp = conn.execute(select(func.count()).select_from(reports).where(reports.c.drill_id == drill_id)).scalar_one()
         return _drill(row, ev, rp)

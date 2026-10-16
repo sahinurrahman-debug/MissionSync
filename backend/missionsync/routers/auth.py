@@ -12,8 +12,8 @@ from ..auth import SESSION_COOKIE, hash_password, needs_rehash, password_problem
 from ..deps import client_ip, current_user, enforce, get_services
 from ..errors import ApiError
 from ..repos import EmailTaken, LimitReached, User, normalize_email
-from ..schemas import LoginBody, SignupBody
-from ..services import Services
+from ..schemas import LoginBody, PasswordBody, SignupBody
+from ..services import Services, housekeeping
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -58,17 +58,23 @@ async def demo(request: Request, response: Response, svc: Services = Depends(get
     `guest_hours` (the session lasts as long) and is then deleted with its data."""
     if not svc.settings.allow_demo:
         raise ApiError(403, "forbidden", "The one-click demo is switched off on this server. Please create an account.")
-    enforce(svc.signup_limiter, client_ip(request), "Too many demos started from this connection — wait a moment, or create an account.")
+    enforce(svc.demo_limiter, client_ip(request), "Too many demos started from this connection — wait a minute, or create an account.")
     if await asyncio.to_thread(svc.users.count_guests) >= svc.settings.max_guests:
-        raise ApiError(503, "degraded", "The demo is busy right now. Please try again in a few minutes, or create a free account.")
+        await housekeeping(svc)                                       # expired guests may be holding the places
+        if await asyncio.to_thread(svc.users.count_guests) >= svc.settings.max_guests:
+            raise ApiError(503, "degraded", "The demo is busy right now. Please try again in a few minutes, or create a free account.")
     lifetime = timedelta(hours=svc.settings.guest_hours)
-    password_hash = await asyncio.to_thread(hash_password, secrets.token_urlsafe(24))
-    user = await asyncio.to_thread(svc.users.create, f"guest-{secrets.token_hex(6)}@{GUEST_DOMAIN}", "Demo guest", password_hash, True)
-    drill = await asyncio.to_thread(
-        svc.drills.create, user.id, "Demo Drill",
-        f"Real xBD damage scenarios with the AI agents. This temporary account is deleted after {svc.settings.guest_hours} hours.",
-        svc.settings.guest_max_drills,
-    )
+    unusable = "!" + secrets.token_hex(16)                            # not a hash of anything: nobody can ever sign in to a guest
+    user = await asyncio.to_thread(svc.users.create, f"guest-{secrets.token_hex(6)}@{GUEST_DOMAIN}", "Demo guest", unusable, True)
+    try:
+        drill = await asyncio.to_thread(
+            svc.drills.create, user.id, "Demo Drill",
+            f"Real xBD damage scenarios with the AI agents. This temporary account is deleted after {svc.settings.guest_hours} hours.",
+            svc.settings.guest_max_drills,
+        )
+    except Exception:
+        await asyncio.to_thread(svc.users.delete_with_data, user.id)   # never leave an empty guest behind
+        raise
     token, expires = await asyncio.to_thread(svc.sessions.create, user.id, request.headers.get("user-agent", ""), lifetime)
     response.set_cookie(
         SESSION_COOKIE, token, expires=expires, max_age=int(lifetime.total_seconds()),
@@ -84,8 +90,10 @@ async def demo(request: Request, response: Response, svc: Services = Depends(get
 @router.post("/login")
 async def login(body: LoginBody, request: Request, response: Response, svc: Services = Depends(get_services)) -> dict:
     email = normalize_email(body.email)
-    enforce(svc.login_limiter, client_ip(request), "Too many sign-in attempts — wait a moment and try again.")
-    enforce(svc.login_limiter, f"email:{email}", "Too many sign-in attempts for this account — wait a moment and try again.")
+    ip = client_ip(request)
+    enforce(svc.login_limiter, ip, "Too many sign-in attempts — wait a moment and try again.")
+    # Keyed by address AND email: a stranger guessing at your address cannot lock you out from your own connection.
+    enforce(svc.login_limiter, f"{ip}|{email}", "Too many sign-in attempts for this account — wait a moment and try again.")
     found = await asyncio.to_thread(svc.users.by_email, email)
     stored = found[1] if found else None
     ok = await asyncio.to_thread(verify_password, stored, body.password)     # always runs a full hash: no timing oracle
@@ -104,6 +112,31 @@ async def logout(request: Request, svc: Services = Depends(get_services)) -> Res
     token = request.cookies.get(SESSION_COOKIE, "")
     if token:
         await asyncio.to_thread(svc.sessions.revoke, token)
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE, path="/", httponly=True, secure=svc.settings.secure_cookies, samesite="lax")
+    return response
+
+
+@router.post("/logout-all", status_code=204)
+async def logout_all(user: User = Depends(current_user), svc: Services = Depends(get_services)) -> Response:
+    """Sign this account out on every device (the live sockets close within seconds)."""
+    await asyncio.to_thread(svc.sessions.revoke_all, user.id)
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE, path="/", httponly=True, secure=svc.settings.secure_cookies, samesite="lax")
+    return response
+
+
+@router.delete("/me", status_code=204)
+async def delete_account(body: PasswordBody, request: Request, user: User = Depends(current_user), svc: Services = Depends(get_services)) -> Response:
+    """Delete the account and everything it owns. Needs the password again, so a stolen session cannot do it."""
+    enforce(svc.login_limiter, f"{client_ip(request)}|{user.email}", "Too many attempts — wait a moment and try again.")
+    found = await asyncio.to_thread(svc.users.by_email, user.email)
+    if found is None or not await asyncio.to_thread(verify_password, found[1], body.password):
+        msg = "That password is not right."
+        raise ApiError(401, "unauthorized", msg, [{"field": "password", "issue": msg}])
+    for drill_id in await asyncio.to_thread(svc.users.drill_ids, user.id):
+        await svc.manager.unload(drill_id, save=False)
+    await asyncio.to_thread(svc.users.delete_with_data, user.id)
     response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE, path="/", httponly=True, secure=svc.settings.secure_cookies, samesite="lax")
     return response

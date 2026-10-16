@@ -30,6 +30,8 @@ services:
         value: "4"
       - key: MAX_GUESTS         # temporary demo accounts that may exist at once (each lives GUEST_HOURS=24)
         value: "60"
+      - key: TRUSTED_PROXY_HOPS # Render's load balancer is one proxy in front of the app: only the rightmost X-Forwarded-For entry is believed
+        value: "1"
       - key: LOG_FORMAT
         value: json
       - key: SENTRY_DSN         # optional error tracking (pip install sentry-sdk to activate)

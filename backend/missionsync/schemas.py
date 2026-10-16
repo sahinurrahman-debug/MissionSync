@@ -6,11 +6,12 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from .textutil import clean_line, has_controls, strip_controls
+
 _EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 
 
-def _clean(value: str) -> str:
-    return " ".join(value.split())              # trims and collapses runs of whitespace
+_clean = clean_line                             # trims, collapses whitespace runs, drops control and direction characters
 
 
 class SignupBody(BaseModel):
@@ -22,7 +23,7 @@ class SignupBody(BaseModel):
     @classmethod
     def _email(cls, v: str) -> str:
         v = v.strip().lower()
-        if not _EMAIL.match(v):
+        if has_controls(v) or not _EMAIL.match(v):
             raise ValueError("Enter a valid email address.")
         return v
 
@@ -40,9 +41,18 @@ class LoginBody(BaseModel):
     password: str = Field(max_length=256)
 
 
+class PasswordBody(BaseModel):
+    password: str = Field(max_length=256)
+
+
 class DrillCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     notes: str = Field(default="", max_length=500)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, v: str) -> str:
+        return strip_controls(v).strip()
 
     @field_validator("name")
     @classmethod
@@ -56,6 +66,11 @@ class DrillCreate(BaseModel):
 class DrillPatch(BaseModel):
     name: Optional[str] = Field(default=None, max_length=80)
     notes: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, v: Optional[str]) -> Optional[str]:
+        return None if v is None else strip_controls(v).strip()
 
     @field_validator("name")
     @classmethod

@@ -7,8 +7,7 @@ def test_health_is_public_and_says_what_it_is_running_on(tmp_path) -> None:
     with client:
         h = client.get("/api/health").json()
     assert h["status"] == "ok" and h["database"] == "sqlite" and h["version"] == "4.0"
-    assert {"mode", "model", "quota", "live_drills", "uptime_s", "signup_open"} <= set(h)
-    assert "email" not in str(h) and "owner" not in str(h)              # nothing about any account
+    assert set(h) == {"status", "database", "version"}                  # nothing about accounts, the AI quota or the load
 
 
 def test_the_dashboard_is_served_with_a_fallback_for_client_side_routes(tmp_path, monkeypatch) -> None:

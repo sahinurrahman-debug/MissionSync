@@ -50,6 +50,7 @@ from .models import (
     utcnow,
 )
 from .persistence import Store
+from .textutil import strip_controls
 
 logger = logging.getLogger(__name__)
 Simulator = sim.Simulator
@@ -90,6 +91,7 @@ class Orchestrator:
         self._fixed_drill_id = drill_id             # the database row this drill lives in (None = in-memory only)
         self.auto_dispatch = _env_flag("AUTO_DISPATCH") if auto_dispatch is None else auto_dispatch
         self.viewers = 0                            # maintained by the WebSocket hub
+        self.pause_when_unwatched = False           # the drill manager switches this on for served drills
         self.peak_viewers = 0
         self.drill_id: Optional[int] = None
         self._unsaved: list[EventLine] = []
@@ -142,7 +144,7 @@ class Orchestrator:
 
     def _log(self, msg: str) -> None:
         self._seq += 1
-        line = EventLine(seq=self._seq, t=_clock(), msg=msg)
+        line = EventLine(seq=self._seq, t=_clock(), msg=strip_controls(msg))
         self.event_log.append(line)
         if self.store.enabled:
             self._unsaved.append(line)
@@ -256,7 +258,7 @@ class Orchestrator:
         return {
             "version": STATE_VERSION, "saved_at": time.time(),
             "status": self.status, "tick": self.tick, "seq": self._seq, "drill_id": self.drill_id,
-            "started_at": self.started_at, "ended_at": self.ended_at,
+            "started_at": self.started_at, "ended_at": self.ended_at, "elapsed_s": self.elapsed_s(),
             "injection_count": self._injection_count, "resolved": self._resolved,
             "dataset_source": self.dataset_source, "auto_dispatch": self.auto_dispatch,
             "incidents": [i.model_dump(mode="json") for i in self.incidents.values()],
@@ -275,6 +277,8 @@ class Orchestrator:
         self.status = d["status"]
         self.tick, self._seq = int(d["tick"]), int(d["seq"])           # the drill id is this runtime's own, never the saved one
         self.started_at, self.ended_at = float(d["started_at"]), d.get("ended_at")
+        if self.ended_at is None and "elapsed_s" in d:
+            self.started_at = time.time() - float(d["elapsed_s"])      # the clock did not run while the drill was unloaded
         self._injection_count, self._resolved = int(d["injection_count"]), int(d["resolved"])
         self.dataset_source = d.get("dataset_source", self.dataset_source)
         self.auto_dispatch = bool(d.get("auto_dispatch", self.auto_dispatch))
@@ -364,9 +368,11 @@ class Orchestrator:
                     urgency=inc.risk.urgency if inc.risk else None,
                     provisional=inc.provisional,
                 )
-            await asyncio.to_thread(
+            saved = await asyncio.to_thread(
                 self.store.add_report, self.drill_id, text, report.source, outcome.kind,
                 outcome.title, outcome.tier, outcome.urgency)
+            if not saved and self.store.enabled:
+                self._log("⚠️ That report could not be saved to the database; it is on the board but will be missing from the CSV.")
             if nonce:
                 self._nonces[nonce] = outcome.model_dump(mode="json")
                 while len(self._nonces) > NONCE_CAP:
@@ -544,10 +550,20 @@ class Orchestrator:
     # -- simulation heartbeat -------------------------------------------------------------
 
     async def run_forever(self, interval_s: float = TICK_SECONDS) -> None:
-        """Main loop: sim ticks + refresh cycles, broadcasting every interval."""
+        """Main loop: sim ticks + refresh cycles, broadcasting every interval. With `pause_when_unwatched` the world
+        stands still (no ticks, no AI calls, no database writes) while nobody has the drill open."""
+        paused_at: Optional[float] = None
         while True:
             await asyncio.sleep(interval_s)
             try:
+                if self.pause_when_unwatched and self.viewers == 0 and self.status == "live":
+                    if paused_at is None:
+                        paused_at = time.time()
+                        await self._persist()                  # save once, then stay quiet until someone comes back
+                    continue
+                if paused_at is not None:
+                    self.started_at += time.time() - paused_at  # the drill clock did not run while nobody was watching
+                    paused_at = None
                 async with self._lock:
                     await self._tick_once()
             except asyncio.CancelledError:
@@ -895,6 +911,8 @@ class Orchestrator:
 
     async def set_auto_dispatch(self, enabled: bool) -> WorldSnapshot:
         async with self._lock:
+            if self.status == "ended":
+                raise DomainError(409, "conflict", "The drill has ended — restart it to change how dispatches are handled.")
             self.auto_dispatch = enabled
             self._log("⚙️ Dispatch mode: " + ("AUTO (demo) — recommendations are committed immediately"
                                               if enabled else "MANUAL — recommendations await your approval"))

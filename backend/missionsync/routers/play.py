@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from ..deps import enforce, get_services, running_drill
+from ..deps import current_user, enforce, get_services, running_drill
 from ..hub import snapshot_json
 from ..manager import DrillRuntime
 from ..models import IncomingReport, WorldSnapshot
+from ..repos import User
 from ..schemas import ApproveBody, IncidentPatch, ManualDispatchBody, RejectBody, SettingsBody
 from ..services import Services
 
@@ -27,9 +28,10 @@ async def snapshot(rt: DrillRuntime = Depends(running_drill)) -> dict:
 
 
 @router.post("/report")
-async def inject_report(report: IncomingReport, rt: DrillRuntime = Depends(running_drill), svc: Services = Depends(get_services)) -> dict:
+async def inject_report(report: IncomingReport, rt: DrillRuntime = Depends(running_drill), user: User = Depends(current_user), svc: Services = Depends(get_services)) -> dict:
     """Accepts free text and answers fast: recognised reports are ranked immediately (rules) and
     refined by the LLM in the background (watch the WebSocket)."""
+    enforce(svc.user_report_limiter, f"user:{user.id}", "Too many reports — slow down a little.")
     enforce(svc.report_limiter, _who(rt), "Too many reports — slow down a little.")
     outcome, snap = await rt.orch.inject_report(report)
     return {

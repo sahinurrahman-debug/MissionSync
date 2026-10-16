@@ -13,8 +13,10 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import Engine, delete, select, update
+from sqlalchemy.exc import DataError
 
 from .db.schema import audit_events, drills, kv, reports
+from .textutil import strip_controls
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +52,29 @@ class Store:
             return False
         try:
             now = _now()
+            rows = [{"drill_id": drill_id, "seq": s, "t": t, "msg": strip_controls(m), "created_at": now} for s, t, m in events]
             with self._engine.begin() as conn:  # type: ignore[union-attr]
-                conn.execute(audit_events.insert(), [
-                    {"drill_id": drill_id, "seq": s, "t": t, "msg": m, "created_at": now} for s, t, m in events
-                ])
+                conn.execute(audit_events.insert(), rows)
             return True
+        except DataError:
+            return self._add_events_one_by_one(drill_id, rows)           # one bad line must not block the whole trail
         except Exception as exc:
             logger.error("add_events failed: %s", exc)
             return False
+
+    def _add_events_one_by_one(self, drill_id: int, rows: list[dict[str, Any]]) -> bool:
+        kept = 0
+        for row in rows:
+            try:
+                with self._engine.begin() as conn:  # type: ignore[union-attr]
+                    conn.execute(audit_events.insert(), [row])
+                kept += 1
+            except DataError:
+                logger.error("audit line %s of drill %s dropped: the database refused it", row["seq"], drill_id)
+            except Exception as exc:
+                logger.error("add_events failed: %s", exc)
+                return False                                              # the database itself is unavailable: retry later
+        return True
 
     def add_report(self, drill_id: Optional[int], text: str, source: str, kind: str,
                    title: str = "", tier: Optional[str] = None, urgency: Optional[float] = None) -> bool:
@@ -66,7 +83,7 @@ class Store:
         try:
             with self._engine.begin() as conn:  # type: ignore[union-attr]
                 conn.execute(reports.insert().values(
-                    drill_id=drill_id, text=text, source=source, kind=kind, incident_title=title,
+                    drill_id=drill_id, text=strip_controls(text), source=source, kind=kind, incident_title=strip_controls(title),
                     tier=tier, urgency=urgency, created_at=_now()))
             return True
         except Exception as exc:

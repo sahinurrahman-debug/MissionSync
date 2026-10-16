@@ -34,8 +34,9 @@ async def create_drill(body: DrillCreate, user: User = Depends(current_user), sv
 
 
 @router.get("/{drill_id}")
-async def read_drill(drill: DrillRecord = Depends(owned_drill)) -> dict:
-    return {"drill": drill.public()}
+async def read_drill(drill: DrillRecord = Depends(owned_drill), user: User = Depends(current_user), svc: Services = Depends(get_services)) -> dict:
+    full = await asyncio.to_thread(svc.drills.get, user.id, drill.id)         # with the report and event totals
+    return {"drill": (full or drill).public()}
 
 
 @router.patch("/{drill_id}")
