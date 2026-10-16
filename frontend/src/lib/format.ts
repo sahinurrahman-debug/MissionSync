@@ -105,5 +105,5 @@ export function logTone(msg: string): 'deploy' | 'merge' | 'alert' | 'done' | 'i
 
 /** Strip the leading emoji so the log can show a proper icon instead. */
 export function stripMarker(msg: string): string {
-  return msg.replace(/^[^\p{L}\p{N}“"'\[(]+/u, '').trim()
+  return msg.replace(/^[^\p{L}\p{N}“"'[(]+/u, '').trim()
 }

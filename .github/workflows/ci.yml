@@ -27,6 +27,8 @@ jobs:
           DATABASE_URL=sqlite:///ci-check.db alembic downgrade 0001
           DATABASE_URL=sqlite:///ci-check.db alembic upgrade head
       - run: python -m pytest -q --cov=missionsync --cov-fail-under=85 --cov-report=term-missing:skip-covered   # LLM calls are faked; no secrets needed
+      - name: Known-vulnerability scan of the runtime dependencies
+        run: pip install pip-audit && pip-audit -r requirements.txt
 
   frontend:
     runs-on: ubuntu-latest
@@ -42,6 +44,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm run coverage
       - run: npm run audit:contrast      # WCAG AA on every token pair, both themes
       - run: npm run build
@@ -53,3 +56,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: The production image builds
         run: docker build -t missionsync .
+
+  e2e:
+    # The real app in a real browser: sign up, drill, approve, no sideways scrolling, footer, sign out. Advisory for now
+    # (it has only ever run on a developer machine), so a failure here is visible but does not block a merge.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip, cache-dependency-path: backend/requirements.txt }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: pip install -r backend/requirements.txt
+      - run: cd frontend && npm ci && npm run build
+      - run: cd scripts && npm install
+      - name: Run the app and walk through it
+        env:
+          DATABASE_URL: sqlite:///ci-e2e.db
+          STATIC_DIR: ${{ github.workspace }}/frontend/dist
+          CHROME_PATH: /usr/bin/google-chrome
+        working-directory: backend
+        run: |
+          python -m uvicorn missionsync.main:app --port 8000 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/health && break || sleep 1; done
+          node ../scripts/e2e_screens.mjs

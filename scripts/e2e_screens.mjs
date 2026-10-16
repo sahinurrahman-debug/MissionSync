@@ -2,7 +2,7 @@
 //
 //   (terminal 1)  cd backend && .venv/Scripts/python -m uvicorn missionsync.main:app --port 8000   # serves the built dashboard
 //   (terminal 2)  cd frontend && npm run build
-//   (terminal 3)  node scripts/e2e_screens.mjs            # needs: npm i -D puppeteer-core   (or NODE_PATH=<its node_modules>)
+//   (terminal 3)  cd scripts && npm install && node e2e_screens.mjs     # CHROME_PATH=<chrome or edge> if it is not the default
 //
 // It signs up a throw-away account through the UI, creates a drill, opens it, approves dispatches, adds a report,
 // ends the drill, signs out — asserting what a person would see at each step — and writes screenshots/*.png.

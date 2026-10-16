@@ -33,6 +33,9 @@ env/
 
 # ---- Local databases & data caches ----------------------------------------------
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 # (backend/missionsync/data/xbd_seeds.json IS committed: the bundled real-xBD snapshot)

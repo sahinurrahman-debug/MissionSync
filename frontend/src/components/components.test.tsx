@@ -107,7 +107,7 @@ describe('IncidentCard — net control actions', () => {
   })
 
   it('only offers units that can actually serve this incident, and dispatches the chosen one', async () => {
-    const { incident, props, snap } = card(true)
+    const { incident, props } = card(true)
     const select = screen.getByLabelText(new RegExp(`Send a unit to`)) as HTMLSelectElement
     const offered = [...select.options].map((o) => o.value).filter(Boolean)
     expect(offered.length).toBeGreaterThan(0)

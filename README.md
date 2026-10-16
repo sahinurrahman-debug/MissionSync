@@ -106,7 +106,8 @@ Migrations live in [`backend/migrations/`](./backend/migrations) (`0001` baselin
 | POST | `/api/auth/signup` | – | Create an account and sign in (`201`) |
 | POST | `/api/auth/login` | – | Sign in (`200`); rate-limited |
 | POST | `/api/auth/demo` | – | One-click guest account with a ready drill (`201`); rate-limited, capped, auto-deleted |
-| POST | `/api/auth/logout` | – | Revoke the session (`204`) |
+| POST | `/api/auth/logout` · `/logout-all` | session | Revoke this session · every session of the account (`204`) |
+| DELETE | `/api/auth/me` | session + password | Delete the account and all its drills (`204`) |
 | GET | `/api/auth/session` · `/api/auth/me` | – · session | Current user (`null` for visitors) · strict `401` version |
 | GET / POST | `/api/drills` | session | List your drills · create one (`201`, max 10) |
 | GET / PATCH / DELETE | `/api/drills/{id}` | owner | Read · rename or edit notes · delete (`204`) |
@@ -117,7 +118,7 @@ Migrations live in [`backend/migrations/`](./backend/migrations) (`0001` baselin
 | POST | `/api/drills/{id}/end` · `/reset` · `/settings` | owner | End · restart · toggle auto-dispatch |
 | GET | `/api/drills/{id}/audit` · `/export.csv` | owner | Stored audit trail and reports · CSV |
 | WS | `/ws/drills/{id}` | owner | Live snapshots |
-| GET | `/api/health` | – | Health, database, LLM mode |
+| GET | `/api/health` | – | `{status, database, version}`; `503` when the database is unreachable |
 
 Someone else's drill answers `404`, errors are `{"error": "sentence", "code": …, "request_id": …}`. Full contract: [API_SPEC.md](./docs/API_SPEC.md); interactive docs at `/docs` on any running server.
 
@@ -160,6 +161,8 @@ Full list with comments: [`backend/.env.example`](./backend/.env.example), [`fro
 | `MAX_DRILLS_PER_USER`, `MAX_LIVE_DRILLS` | Fair-use limits for a small instance | defaults 10 / 6 |
 | `ALLOW_DEMO`, `GUEST_HOURS`, `MAX_GUESTS`, `GUEST_MAX_DRILLS` | The one-click demo: on/off, how long a guest lives, how many may exist, drills per guest | defaults true / 24 / 150 / 2 |
 | `ALLOW_SIGNUP` | Close sign-ups on a shared server | default `true` |
+| `TRUSTED_PROXY_HOPS` | Reverse proxies in front of the app. The client address for rate limits is that many entries from the **right** of `X-Forwarded-For`; `0` ignores the header | `1` on Render (in `render.yaml`), `0` locally |
+| `MAX_BODY_BYTES`, `MAX_SESSIONS_PER_USER` | Largest request body · sign-ins an account may hold at once | defaults 65536 / 10 |
 | `CORS_ORIGINS` | Only if the dashboard is hosted on a different origin | – |
 
 No secret is committed; `.env` is git-ignored and `.env.example` lists every name with empty values.
@@ -170,7 +173,7 @@ No secret is committed; `.env` is git-ignored and `.env.example` lists every nam
 
 1. **Sign up / in** — the server validates the body, hashes the password with argon2id (or verifies it, always doing a full hash so timing reveals nothing), creates a random 256-bit token, stores only its SHA-256 in `sessions`, and sets it as an `httpOnly`, `SameSite=Lax` (and `Secure` in production) cookie.
 2. **Every request** — `current_user` hashes the cookie, finds the unexpired session, and loads the user; otherwise `401`. Drill routes then add `WHERE owner_id = <you>`.
-3. **Sign out** — the session row is deleted, so a copied cookie stops working.
+3. **Sign out** — the session row is deleted, so a copied cookie stops working; *Sign Out Everywhere* deletes all of the account's sessions, and an open live socket re-checks its session every 15 s and closes when it is gone. An account holds at most 10 sessions (the oldest is signed out), and *Delete Account* asks for the password again.
 4. **Protected routes** — the SPA redirects visitors from `/drills` to `/login` and returns them afterwards, but the guard is only a convenience: the server enforces access on every API call and WebSocket.
 
 ---
@@ -183,19 +186,20 @@ No secret is committed; `.env` is git-ignored and `.env.example` lists every nam
 | `backend/tests/test_auth.py`, `test_guest_demo.py` | validation per field, hashed passwords, cookie flags, revoked/expired/forged sessions, login rate limit, origin guard; guest demo: own drill, no re-login, limits, expiry clean-up | 30 |
 | `backend/tests/test_drills_crud.py`, `test_play_api.py` | CRUD with server-side validation and limits, cascade delete, restart recovery, the whole report → approve flow | 22 |
 | `backend/tests/test_migrations.py` | schema from scratch, idempotent, adopts the old database, downgrade/upgrade, the real `alembic` CLI | 8 |
+| `backend/tests/test_hardening.py` | forged `X-Forwarded-For`, impossible ids, control characters, a refused audit line, sockets that close with their session, session cap, logout-all, account deletion, demo allowance, body limit, live-drill limit under concurrency, paused drills | 20 |
 | remaining backend | agents, orchestrator, dispatch rules, persistence, WebSocket hub, security headers (CSP, HSTS), frontend-fixture drift, simulator, data, static serving | 104 |
-| `frontend/src/**/*.test.*` | footer, account in the side rail, guards, inline validation, the one-click demo, optimistic create/rename/delete and approve with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 116 |
-| `scripts/e2e_screens.mjs` | the real app in a headless browser: one-click demo, sign up → drill → approve → refresh → end → sign out; footer on every page, account pinned in the rail, and **no sideways scrolling** on every page and tab at 1366 px and 375 px | 36 checks |
+| `frontend/src/**/*.test.*` | a slow server is not "signed out", account deletion, footer, account in the side rail, guards, inline validation, the one-click demo, optimistic create/rename/delete and approve with rollback, keyboard/ARIA, axe-core, WebSocket reconnect and snapshot ordering, no inline scripts under the CSP | 127 |
+| `scripts/e2e_screens.mjs` | the real app in a headless browser: the demo (asks before it creates anything), sign up → drill → approve → refresh → end → sign out; footer on every page, account pinned in the rail, and **no sideways scrolling** on every page and tab at 1366 px and 375 px | 37 checks |
 
-**200 backend tests (93 % line coverage) and 116 frontend tests (89 % statements); CI enforces minimum coverage.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
+**220 backend tests (93 % line coverage) and 127 frontend tests (89 % statements); CI enforces minimum coverage, ESLint and a dependency vulnerability scan.** Lighthouse on the sign-in page: desktop 98 / 100 / 100 / 100 (performance / accessibility / best practices / SEO), phone 74 / 100 / 100 / 100 on a simulated slow-4G, 4× slower CPU.
 
 ```bash
 cd backend  && .venv/Scripts/python -m pytest --cov=missionsync      # install requirements-dev.txt first
-cd frontend && npm test && npm run typecheck && npm run audit:contrast
-node scripts/e2e_screens.mjs    # with the backend running; needs `npm i -D puppeteer-core`
+cd frontend && npm test && npm run typecheck && npm run lint && npm run audit:contrast
+cd scripts  && npm install && node e2e_screens.mjs    # with the backend running and the dashboard built
 ```
 
-CI ([`ci.yml`](./.github/workflows/ci.yml)) runs all of it plus the migration up/down/up check and a Docker build.
+CI ([`ci.yml`](./.github/workflows/ci.yml)) runs all of it plus the migration up/down/up check, `pip-audit`, a Docker build and (advisory) the browser walk-through; Dependabot keeps dependencies current.
 
 ---
 

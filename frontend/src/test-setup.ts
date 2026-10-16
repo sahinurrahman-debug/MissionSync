@@ -21,7 +21,6 @@ if (typeof window !== 'undefined') {
   }
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= RO
   Element.prototype.scrollIntoView ??= function scrollIntoView() {}
-  HTMLElement.prototype.focus = HTMLElement.prototype.focus
 }
 
 afterEach(async () => {

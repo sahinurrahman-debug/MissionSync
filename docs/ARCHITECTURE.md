@@ -37,6 +37,17 @@ drills.state               JSON world state (incidents, units, proposals…) use
 kv                         shared, non-personal LLM score cache keyed by report content
 ```
 
+### Known limits (by design, and what would change them)
+
+| Limit | Why | What would change it |
+|---|---|---|
+| **One server instance.** Live drills, their sockets and the rate-limit counters live in the process. | A drill is one asyncio task with its own world; sharing it across instances needs a worker queue and a shared limiter. | A separate simulation worker plus Redis for limits and pub/sub for snapshots. |
+| **No password reset or email verification.** | There is no mail service; a reset link needs one. | Add a provider (Resend, Postmark) and a reset-token table. Until then *Delete Account* and demo accounts cover "start over". |
+| **Sign-up says when an email is taken** (`409`). | Friendlier than a silent failure; it is the usual trade-off without email verification. Sign-in never reveals it, and the per-address limits slow enumeration. | Email verification. |
+| **One shared AI quota.** All drills use one Groq key; per-account and per-drill limits stop one person draining it, but the free tier is still small. | Cost. | Per-user keys or a paid tier. |
+| **`TRUSTED_PROXY_HOPS` must match the host.** If it is too low every visitor appears as the proxy (one shared limit); too high lets a client choose its own address. | The app cannot know how many proxies sit in front of it. | `1` on Render (set in `render.yaml`); check one request's `X-Forwarded-For` after deploying. |
+| **An unwatched drill pauses** (no ticks, AI calls or writes) and its clock stops; it resumes where it was. | Keeps a free database asleep and the AI quota unspent. | – |
+
 ### Deviations from the Level 1 plan (and why)
 
 | Level 1 plan | Built | Why |
