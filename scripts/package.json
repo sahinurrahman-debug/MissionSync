@@ -4,6 +4,6 @@
   "type": "module",
   "description": "Tools that drive the real app in a browser (end-to-end walk-through and README screenshots).",
   "devDependencies": {
-    "puppeteer-core": "^24.0.0"
+    "puppeteer-core": "^25.13.0"
   }
 }
