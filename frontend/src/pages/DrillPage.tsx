@@ -10,7 +10,7 @@ import DrillBoard from './DrillBoard'
 import MessagePage from './MessagePage'
 
 const backLink = (
-  <Link to="/drills" aria-label="Back to my drills" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-base font-semibold text-ink hover:border-accent sm:px-3">
+  <Link to="/drills" aria-label="Back to My Drills" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-base font-semibold text-ink hover:border-accent sm:px-3">
     <ArrowLeft size={18} aria-hidden /><span className="max-sm:sr-only">Drills</span>
   </Link>
 )
@@ -47,10 +47,10 @@ export default function DrillPage() {
   }, [source])
 
   if (problem === 'missing') {
-    return <MessagePage title="That drill does not exist" body="It may have been deleted, or the link is wrong. Drills are private to the account that created them." action={{ to: '/drills', label: 'Back to my drills' }} />
+    return <MessagePage title="That Drill Does Not Exist" body="It may have been deleted, or the link is wrong. Drills are private to the account that created them." action={{ to: '/drills', label: 'Back to My Drills' }} />
   }
   if (problem === 'failed') {
-    return <MessagePage title="Could not open the drill" body="The server did not answer. Check your connection and try again." action={{ to: `/drills/${drillId}`, label: 'Try again', reload: true }} />
+    return <MessagePage title="Could Not Open the Drill" body="The server did not answer. Check your connection and try again." action={{ to: `/drills/${drillId}`, label: 'Try Again', reload: true }} />
   }
   if (!drill || !source) {
     return (

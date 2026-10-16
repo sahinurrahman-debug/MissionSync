@@ -20,12 +20,12 @@ import SystemBanners from './SystemBanners'
 import WeatherPanel from './WeatherPanel'
 
 describe('Recommendations — the approval surface', () => {
-  it('tells the operator nothing moves until they approve, and offers Approve all', async () => {
+  it('tells the operator nothing moves until they approve, and offers Approve All', async () => {
     const { snap } = world()
     const onApprove = vi.fn()
     render(<Recommendations actions={snap.actions} proposals={snap.proposals} loading={false} autoDispatch={false} onApprove={onApprove} onReject={vi.fn()} />)
     expect(screen.getByText(/Nothing moves until you approve/)).toBeTruthy()
-    const all = screen.getByRole('button', { name: /Approve all \((\d+)\)/ })
+    const all = screen.getByRole('button', { name: /Approve All \((\d+)\)/ })
     expect(all.textContent).toContain(`(${snap.proposals.length})`)
     await userEvent.click(all)
     expect(onApprove).toHaveBeenCalledWith()                       // no ids ⇒ every pending proposal
@@ -55,13 +55,13 @@ describe('Recommendations — the approval surface', () => {
     const { snap } = world(true)
     render(<Recommendations actions={snap.actions} proposals={snap.proposals} loading={false} autoDispatch onApprove={vi.fn()} onReject={vi.fn()} />)
     expect(screen.queryByText(/Nothing moves until you approve/)).toBeNull()
-    expect(screen.getAllByText('On the way').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('On the Way').length).toBeGreaterThan(0)
     expect(snap.actions.some((a) => a.deployments.length > 0)).toBe(true)
   })
 
   it('has a designed empty state and a loading skeleton', () => {
     const { rerender } = render(<Recommendations actions={[]} proposals={[]} loading={false} autoDispatch={false} onApprove={vi.fn()} onReject={vi.fn()} />)
-    expect(screen.getByText(/No orders yet/)).toBeTruthy()
+    expect(screen.getByText(/No Orders Yet/)).toBeTruthy()
     rerender(<Recommendations actions={[]} proposals={[]} loading autoDispatch={false} onApprove={vi.fn()} onReject={vi.fn()} />)
     expect(screen.getByLabelText('Loading command recommendations').getAttribute('aria-busy')).toBe('true')
   })
@@ -197,7 +197,7 @@ describe('ReportIntake', () => {
 
   it('fills the box from a sample, counts characters, and locks when disabled', async () => {
     const { rerender } = render(<ReportIntake onInject={vi.fn()} onSample={() => 'Sample fire report'} stage="idle" />)
-    await userEvent.click(screen.getByRole('button', { name: /Inject sample/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Inject Sample/ }))
     expect((screen.getByLabelText('Field report') as HTMLTextAreaElement).value).toBe('Sample fire report')
     expect(screen.getByText('18/2000')).toBeTruthy()
     rerender(<ReportIntake onInject={vi.fn()} onSample={() => 's'} stage="idle" disabled />)
@@ -252,25 +252,25 @@ describe('HeaderHud', () => {
     const { onToggleAuto, onEndDrill, onReset, onGuide, onToggleUnits } = hud({}, { autoDispatch: true })
     await openMenu()
     expect(screen.getByRole('menu')).toBeTruthy()
-    const auto = screen.getByRole('menuitemcheckbox', { name: /Auto-dispatch/ })
+    const auto = screen.getByRole('menuitemcheckbox', { name: /Auto-Dispatch/ })
     expect(auto.getAttribute('aria-checked')).toBe('true')
     await userEvent.click(auto)
-    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /How it works/ }))
-    await openMenu(); await userEvent.click(screen.getByRole('menuitemcheckbox', { name: /Show units on the map/ }))
-    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /End the drill/ }))
-    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /Restart the drill/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /How It Works/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitemcheckbox', { name: /Show Units on the Map/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /End the Drill/ }))
+    await openMenu(); await userEvent.click(screen.getByRole('menuitem', { name: /Restart the Drill/ }))
     expect([onToggleAuto, onGuide, onToggleUnits, onEndDrill, onReset].every((f) => f.mock.calls.length === 1)).toBe(true)
   })
 
   it('disables ending an ended drill, and offers the CSV only when there is one', async () => {
     hud({ status: 'ended' }, { exportUrl: null })
     await openMenu()
-    expect((screen.getByRole('menuitem', { name: /End the drill/ }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('menuitem', { name: /Download after-action CSV/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('menuitem', { name: /End the Drill/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('menuitem', { name: /Download After-Action CSV/ }) as HTMLButtonElement).disabled).toBe(true)
     document.body.innerHTML = ''
     hud({}, { exportUrl: '/api/drills/3/export.csv' })
     await openMenu()
-    expect(screen.getByRole('menuitem', { name: /Download after-action CSV/ }).getAttribute('href')).toBe('/api/drills/3/export.csv')
+    expect(screen.getByRole('menuitem', { name: /Download After-Action CSV/ }).getAttribute('href')).toBe('/api/drills/3/export.csv')
   })
 })
 
@@ -320,9 +320,9 @@ describe('HowItWorks and ConfirmDialog', () => {
     localStorage.clear()
     const onClose = vi.fn()
     render(<HowItWorks onClose={onClose} />)
-    expect(screen.getByRole('dialog', { name: 'How MissionSync works' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'How MissionSync Works' })).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(4)
-    await userEvent.click(screen.getByRole('button', { name: /Got it/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Got It/ }))
     expect(onClose).toHaveBeenCalled()
     expect(localStorage.getItem('ms-guide-seen')).toBe('1')
   })
@@ -333,14 +333,14 @@ describe('HowItWorks and ConfirmDialog', () => {
     opener.focus()
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
-    const { unmount } = render(<ConfirmDialog title="End this drill?" body="It freezes." confirmLabel="End drill" danger onConfirm={onConfirm} onCancel={onCancel} />)
-    const dialog = screen.getByRole('dialog', { name: 'End this drill?' })
+    const { unmount } = render(<ConfirmDialog title="End This Drill?" body="It freezes." confirmLabel="End Drill" danger onConfirm={onConfirm} onCancel={onCancel} />)
+    const dialog = screen.getByRole('dialog', { name: 'End This Drill?' })
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(document.activeElement?.textContent).toBe('Cancel')                       // the safe choice has focus
     await userEvent.tab()
     await userEvent.tab()
     expect(dialog.contains(document.activeElement)).toBe(true)                        // Tab stays inside
-    await userEvent.click(screen.getByRole('button', { name: 'End drill' }))
+    await userEvent.click(screen.getByRole('button', { name: 'End Drill' }))
     expect(onConfirm).toHaveBeenCalled()
     await userEvent.keyboard('{Escape}')
     expect(onCancel).toHaveBeenCalled()
@@ -377,7 +377,7 @@ describe('WeatherPanel', () => {
     const region = screen.getByRole('region', { name: 'Weather' })
     const zones = within(region).getAllByRole('listitem').map((li) => li.textContent ?? '')
     expect(zones[0]).toContain('North Hills')                                         // the warning comes first
-    expect(zones[0]).toMatch(/high wind/)
+    expect(zones[0]).toMatch(/High Wind/)
     expect(zones[0]).toMatch(/62.*kph/)
     expect(zones[0]).toContain('Gusts easing by dusk')
     expect(zones[1]).toContain('Clear')
@@ -430,7 +430,7 @@ describe('ActionToast and ErrorBoundary', () => {
     const alert = screen.getByRole('alert')
     expect(alert.textContent).toContain('MissionSync hit a problem')
     expect(alert.textContent).not.toMatch(/Cannot read|undefined|TypeError/)
-    expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reload the Page' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     spy.mockRestore()
   })
@@ -441,14 +441,14 @@ describe('Footer', () => {
     render(<Footer />)
     const footer = screen.getByRole('contentinfo')
     expect(within(footer).getByText(/A private, AI-assisted practice board/)).toBeTruthy()
-    expect(within(footer).getByRole('link', { name: 'API documentation' }).getAttribute('href')).toBe('/docs')
-    const source = within(footer).getByRole('link', { name: 'Source code on GitHub' })
+    expect(within(footer).getByRole('link', { name: 'API Documentation' }).getAttribute('href')).toBe('/docs')
+    const source = within(footer).getByRole('link', { name: 'Source Code on GitHub' })
     expect(source.getAttribute('href')).toMatch(/^https:\/\/github\.com\/.+\/MissionSync$/)
     for (const a of within(footer).getAllByRole('link')) {
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')                       // an opened page can never script this one
     }
-    expect(within(footer).getByText(/xBD damage data/)).toBeTruthy()
+    expect(within(footer).getByText(/xBD Damage Data/)).toBeTruthy()
     expect(within(footer).getByText(new RegExp(`© ${new Date().getFullYear()} MissionSync`))).toBeTruthy()
     expect(within(footer).getByText(/not for real emergencies/)).toBeTruthy()
   })
@@ -457,6 +457,6 @@ describe('Footer', () => {
     render(<Footer variant="compact" />)
     const footer = screen.getByRole('contentinfo')
     expect(footer.className).toContain('lg:flex')                              // desktop only: phones keep their bottom tab bar
-    expect(within(footer).getAllByRole('link').map((a) => a.textContent)).toEqual(['API docs', 'How it works', 'Source on GitHub', 'Data credits'])
+    expect(within(footer).getAllByRole('link').map((a) => a.textContent)).toEqual(['API Docs', 'How It Works', 'Source on GitHub', 'Data Credits'])
   })
 })

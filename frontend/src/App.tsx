@@ -46,7 +46,7 @@ export default function App() {
           <Route path="/demo" element={<DemoStart />} />
           <Route path="/drills" element={<RequireAuth><DrillsPage /></RequireAuth>} />
           <Route path="/drills/:id" element={<RequireAuth><DrillPage /></RequireAuth>} />
-          <Route path="*" element={<MessagePage title="Page not found" body="That address does not lead anywhere." action={{ to: '/', label: 'Go to the start' }} />} />
+          <Route path="*" element={<MessagePage title="Page Not Found" body="That address does not lead anywhere." action={{ to: '/', label: 'Go to the Start' }} />} />
         </Routes>
         </Suspense>
       </AuthProvider>

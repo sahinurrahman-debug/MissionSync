@@ -6,11 +6,11 @@ import DrillMenu, { type MenuItem } from './DrillMenu'
 import { Chip } from './ui'
 
 const STAGE_LABEL: Record<string, string> = {
-  surveillance: 'reading reports',
-  terrain: 'checking terrain',
-  risk: 'scoring urgency',
-  logistics: 'matching units',
-  command: 'drafting orders',
+  surveillance: 'Reading Reports',
+  terrain: 'Checking Terrain',
+  risk: 'Scoring Urgency',
+  logistics: 'Matching Units',
+  command: 'Drafting Orders',
 }
 
 /** 3725 s → "01:02:05" */
@@ -81,7 +81,7 @@ export function EngineChips({ snap, className = '' }: { snap: Snapshot; classNam
       <Chip tone={mode.tone} title={mode.title}>{mode.label}</Chip>
       <Chip className="w-[150px] justify-start" title="What the AI agents are doing right now (Agents ready = waiting for the next report)">
         {busy ? <Loader2 size={13} className="animate-spin text-accent" aria-hidden /> : <span className="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />}
-        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : 'Agents ready'}</span>
+        <span className="truncate">{busy ? STAGE_LABEL[snap.pipeline.stage] : 'Agents Ready'}</span>
       </Chip>
     </div>
   )
@@ -134,19 +134,19 @@ export default function HeaderHud({
 
   const items: MenuItem[] = [
     {
-      id: 'auto', label: 'Auto-dispatch', icon: <Zap size={18} />, pressed: autoDispatch, disabled: ended || offline, onSelect: onToggleAuto,
+      id: 'auto', label: 'Auto-Dispatch', icon: <Zap size={18} />, pressed: autoDispatch, disabled: ended || offline, onSelect: onToggleAuto,
       hint: autoDispatch ? 'ON — recommendations are sent without asking (demo mode).' : 'OFF — you approve every dispatch.',
     },
-    { id: 'units', label: 'Show units on the map', icon: <Truck size={18} />, pressed: showUnits, onSelect: onToggleUnits },
-    { id: 'theme', label: theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme', icon: theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />, onSelect: onToggleTheme, className: 'sm:hidden' },
-    { id: 'guide', label: 'How it works', icon: <BookOpen size={18} />, onSelect: onGuide, hint: 'A 4-step walkthrough.' },
+    { id: 'units', label: 'Show Units on the Map', icon: <Truck size={18} />, pressed: showUnits, onSelect: onToggleUnits },
+    { id: 'theme', label: theme === 'dark' ? 'Switch to the Light Theme' : 'Switch to the Dark Theme', icon: theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />, onSelect: onToggleTheme, className: 'sm:hidden' },
+    { id: 'guide', label: 'How It Works', icon: <BookOpen size={18} />, onSelect: onGuide, hint: 'A 4-step walkthrough.' },
     {
-      id: 'csv', label: 'Download after-action CSV', icon: <Download size={18} />, href: exportUrl ?? undefined, disabled: !exportUrl,
+      id: 'csv', label: 'Download After-Action CSV', icon: <Download size={18} />, href: exportUrl ?? undefined, disabled: !exportUrl,
       hint: exportUrl ? 'Every report and audit-log line of this drill.' : 'Needs a connected database.',
     },
-    { id: 'end', label: 'End the drill', icon: <Flag size={18} />, onSelect: onEndDrill, disabled: ended || offline || !booted, hint: 'Freezes the picture for review.' },
+    { id: 'end', label: 'End the Drill', icon: <Flag size={18} />, onSelect: onEndDrill, disabled: ended || offline || !booted, hint: 'Freezes the picture for review.' },
     {
-      id: 'reset', label: 'Restart the drill', icon: resetting ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />,
+      id: 'reset', label: 'Restart the Drill', icon: resetting ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />,
       danger: true, onSelect: onReset, disabled: resetting || offline, hint: 'Clears this drill and starts over.',
     },
   ]
@@ -180,13 +180,13 @@ export default function HeaderHud({
           className="hidden h-11 items-center gap-2 rounded-md border border-line bg-hi px-3 text-base font-semibold text-ink transition-colors hover:border-accent disabled:opacity-50 aria-pressed:border-accent/60 aria-pressed:text-accent xl:inline-flex"
         >
           <Zap size={16} aria-hidden />
-          {autoDispatch ? 'Auto-dispatch' : 'Manual approval'}
+          {autoDispatch ? 'Auto-Dispatch' : 'Manual Approval'}
         </button>
         <DrillMenu
           items={items}
           header={<span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${mode.tone === 'ok' ? 'bg-ok' : mode.tone === 'bad' ? 'bg-p1' : 'bg-warn'}`} aria-hidden />{mode.label}</span>}
         />
-        <button type="button" className={`${iconBtn} max-sm:hidden`} onClick={onToggleTheme} title="Switch between dark and light" aria-label="Toggle color theme">
+        <button type="button" className={`${iconBtn} max-sm:hidden`} onClick={onToggleTheme} title="Switch between dark and light" aria-label="Toggle Color Theme">
           {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
         </button>
         {trailing}

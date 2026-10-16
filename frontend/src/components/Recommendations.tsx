@@ -86,7 +86,7 @@ function OrderCard({
 
         {mine.length > 0 && (
           <div className="mt-2.5">
-            <p className={`${micro} mb-1`}>Waiting for your decision</p>
+            <p className={`${micro} mb-1`}>Waiting for Your Decision</p>
             <ul className="space-y-1.5" aria-label={`Proposed deployments for ${a.incident_title}`}>
               {mine.map((p) => (
                 <ProposalRow key={p.id} p={p} disabled={disabled} onApprove={(id) => onApprove([id])} onReject={onReject} />
@@ -96,7 +96,7 @@ function OrderCard({
         )}
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <span className={`${micro} mr-0.5`}>On the way</span>
+          <span className={`${micro} mr-0.5`}>On the Way</span>
           {a.deployments.length === 0 ? (
             <span className="text-sm text-ink-2">{mine.length ? 'nobody yet — approve above' : 'nobody — no capable unit is free'}</span>
           ) : (
@@ -122,7 +122,7 @@ function OrderCard({
               className="inline-flex h-11 items-center gap-1.5 text-sm font-semibold text-ink-2 hover:text-ink sm:h-8"
             >
               <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
-              {open ? 'Hide field steps' : `Show ${steps.length} field steps`}
+              {open ? 'Hide Field Steps' : `Show ${steps.length} Field Steps`}
             </button>
             {open && (
               <ul className="mt-1 space-y-1">
@@ -170,7 +170,7 @@ export default function Recommendations({
               onClick={() => onApprove()}
               className="inline-flex h-11 items-center gap-1.5 rounded-md bg-accent px-3 whitespace-nowrap text-sm font-bold text-bg hover:brightness-110 disabled:opacity-40 sm:h-9"
             >
-              <CheckCheck size={14} aria-hidden /> Approve all ({proposals.length})
+              <CheckCheck size={14} aria-hidden /> Approve All ({proposals.length})
             </button>
           ) : top ? (
             <span className="truncate">top: <b className="text-ink">#{top.priority}</b></span>
@@ -186,7 +186,7 @@ export default function Recommendations({
         {loading ? (
           <RecommendationSkeleton />
         ) : actions.length === 0 && others.length === 0 ? (
-          <EmptyRadar title="No orders yet." hint="Orders appear here as soon as incidents are ranked. Add a field report to begin." />
+          <EmptyRadar title="No Orders Yet." hint="Orders appear here as soon as incidents are ranked. Add a field report to begin." />
         ) : (
           <>
             {actions.map((a, i) => (

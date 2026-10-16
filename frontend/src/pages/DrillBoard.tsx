@@ -277,7 +277,7 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
           requestAnimationFrame(() => document.getElementById('incident-feed')?.focus())
         }}
       >
-        Skip to the incident feed
+        Skip to the Incident Feed
       </a>
       <HeaderHud
         snap={snap}
@@ -362,16 +362,16 @@ export default function DrillBoard({ source, title, leading, account, railAccoun
       {guide && <HowItWorks onClose={() => setGuide(false)} />}
       {confirm === 'end' && (
         <ConfirmDialog
-          title="End this drill?"
+          title="End This Drill?"
           body="The picture freezes so you can review it. You can still download the CSV, and restart afterwards."
-          confirmLabel="End drill"
+          confirmLabel="End Drill"
           onConfirm={doEnd}
           onCancel={() => setConfirm(null)}
         />
       )}
       {confirm === 'reset' && (
         <ConfirmDialog
-          title="Restart this drill?"
+          title="Restart This Drill?"
           body="All incidents, units and the audit log of this drill are cleared and the scenario starts again."
           confirmLabel="Restart"
           danger

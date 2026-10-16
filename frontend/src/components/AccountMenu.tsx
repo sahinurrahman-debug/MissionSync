@@ -11,10 +11,10 @@ export default function AccountMenu({ variant = 'header' }: { variant?: 'header'
   if (!user) return null
   const first = user.display_name.split(' ')[0]
   const items = [
-    { id: 'drills', label: 'My drills', icon: <Folders size={18} />, onSelect: () => navigate('/drills') },
-    { id: 'out', label: 'Sign out', icon: <LogOut size={18} />, onSelect: () => void signOut().then(() => navigate('/login')) },
+    { id: 'drills', label: 'My Drills', icon: <Folders size={18} />, onSelect: () => navigate('/drills') },
+    { id: 'out', label: 'Sign Out', icon: <LogOut size={18} />, onSelect: () => void signOut().then(() => navigate('/login')) },
   ]
-  const header = <><b className="block text-base text-ink">{user.display_name}</b><span className="block break-all">{user.email}</span>{user.is_guest && <span className="mt-1 block font-semibold text-warn">Temporary demo account</span>}</>
+  const header = <><b className="block text-base text-ink">{user.display_name}</b><span className="block break-all">{user.email}</span>{user.is_guest && <span className="mt-1 block font-semibold text-warn">Temporary Demo Account</span>}</>
   if (variant === 'rail') {
     return (
       <DrillMenu

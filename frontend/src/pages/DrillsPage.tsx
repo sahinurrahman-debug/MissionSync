@@ -12,8 +12,8 @@ import { useTheme } from '../lib/useTheme'
 import { ApiError } from '../types'
 
 const STATUS: Record<Item['status'], { label: string; cls: string }> = {
-  new: { label: 'Not started', cls: 'border-line text-ink-2' },
-  live: { label: 'In progress', cls: 'border-ok/50 bg-ok/10 text-ok' },
+  new: { label: 'Not Started', cls: 'border-line text-ink-2' },
+  live: { label: 'In Progress', cls: 'border-ok/50 bg-ok/10 text-ok' },
   ended: { label: 'Ended', cls: 'border-line bg-hi text-ink-2' },
 }
 
@@ -132,22 +132,22 @@ export default function DrillsPage() {
         <h1 className="text-lg font-extrabold tracking-tight">Mission<span className="text-accent">Sync</span></h1>
         <div className="ml-auto flex items-center gap-2">
           <AccountMenu />
-          <button type="button" onClick={toggle} aria-label="Toggle color theme" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-line bg-hi text-ink-2 hover:border-accent hover:text-accent">
+          <button type="button" onClick={toggle} aria-label="Toggle Color Theme" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-line bg-hi text-ink-2 hover:border-accent hover:text-accent">
             {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
           </button>
         </div>
       </header>
 
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-        <h2 className="text-2xl font-extrabold">My drills</h2>
+        <h2 className="text-2xl font-extrabold">My Drills</h2>
         <p className="mt-1 text-base text-ink-2">Each drill is a private practice exercise. Create one, open it, type radio reports and approve the dispatches the AI suggests.</p>
 
         <form onSubmit={submit} noValidate className="mt-5 rounded-lg border border-line bg-panel p-4" aria-label="Create a drill">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start">
-            <FormField label="Drill name" value={name} onChange={(e) => setName(e.target.value)} error={nameError} placeholder="e.g. Saturday campus drill" maxLength={80} />
-            <FormField label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Who is taking part, what to practise…" maxLength={500} />
+            <FormField label="Drill Name" value={name} onChange={(e) => setName(e.target.value)} error={nameError} placeholder="e.g. Saturday campus drill" maxLength={80} />
+            <FormField label="Notes (Optional)" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Who is taking part, what to practise…" maxLength={500} />
             <button type="submit" disabled={creating || count >= limit} className="mt-0 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-accent px-4 text-base font-bold text-bg hover:brightness-110 disabled:opacity-50 sm:mt-7">
-              {creating ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Plus size={18} aria-hidden />} New drill
+              {creating ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Plus size={18} aria-hidden />} New Drill
             </button>
           </div>
           {count >= limit && <p className="mt-2 text-sm text-ink-2">You have {limit} drills, the most one account can keep. Delete one to make room.</p>}
@@ -161,11 +161,11 @@ export default function DrillsPage() {
           ) : loadError ? (
             <div role="alert" className="rounded-lg border border-p1/50 bg-panel p-4">
               <p className="text-base text-ink">{loadError}</p>
-              <button type="button" onClick={() => void reload()} className="mt-2 h-11 rounded-md border border-line bg-hi px-4 text-base font-semibold hover:border-accent">Try again</button>
+              <button type="button" onClick={() => void reload()} className="mt-2 h-11 rounded-md border border-line bg-hi px-4 text-base font-semibold hover:border-accent">Try Again</button>
             </div>
           ) : count === 0 ? (
             <div className="rounded-lg border border-dashed border-line bg-panel">
-              <EmptyRadar title="No drills yet." hint="Name your first drill above and press New drill." />
+              <EmptyRadar title="No Drills Yet." hint="Name your first drill above and press New Drill." />
             </div>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -180,7 +180,7 @@ export default function DrillsPage() {
         <ConfirmDialog
           title={`Delete “${toDelete.name}”?`}
           body="Its incidents, reports and audit log are removed for good. This cannot be undone."
-          confirmLabel="Delete drill"
+          confirmLabel="Delete Drill"
           danger
           onConfirm={() => void confirmDelete()}
           onCancel={() => setToDelete(null)}

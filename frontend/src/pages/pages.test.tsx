@@ -36,12 +36,12 @@ describe('protected routes', () => {
   it('sends a visitor from /drills to the sign-in page, and brings them back after signing in', async () => {
     api.addAccount('ann@example.com', 'correct horse 9')
     visit('/drills')
-    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
     expect(window.location.pathname).toBe('/login')
     await userEvent.type(screen.getByLabelText('Email'), 'ann@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'correct horse 9')
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
-    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }))
+    expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
     expect(window.location.pathname).toBe('/drills')
   })
 
@@ -52,14 +52,14 @@ describe('protected routes', () => {
     expect(await screen.findByLabelText('Email')).toBeTruthy()
     await userEvent.type(screen.getByLabelText('Email'), 'ann@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'correct horse 9')
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }))
     await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
   })
 
   it('a signed-in user who opens /login is sent on to their drills', async () => {
     api.signIn()
     visit('/login')
-    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
   })
 
   it('verifies the session with the server on load (nothing is trusted from the browser)', async () => {
@@ -77,66 +77,66 @@ describe('protected routes', () => {
     api.signedIn = null                                                                   // the server forgot us
     await userEvent.click(screen.getByRole('button', { name: /Rename One/ }))
     await userEvent.type(screen.getByLabelText(/New name for/), ' two{Enter}')
-    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
   })
 
   it('shows a friendly page — not an error — for a drill that is not yours', async () => {
     api.signIn()
     visit('/drills/999')
-    expect(await screen.findByRole('heading', { name: 'That drill does not exist' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Back to my drills' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'That Drill Does Not Exist' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Back to My Drills' })).toBeTruthy()
   })
 
   it('has a catch-all page, and the demo needs no account', async () => {
     visit('/nope/nowhere')
-    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Page Not Found' })).toBeTruthy()
   })
 
   it('the demo needs no form: one click makes a temporary guest with its own drill and opens it', async () => {
     visit('/demo')
     await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
     expect(api.calls.some((c) => c.path === '/api/auth/demo' && c.method === 'POST')).toBe(true)
-    expect(api.drills.map((d) => d.name)).toEqual(['My first drill'])
+    expect(api.drills.map((d) => d.name)).toEqual(['Demo Drill'])
     expect(api.signedIn?.is_guest).toBe(true)
-    expect(await screen.findByText('Temporary demo account.')).toBeTruthy()           // says plainly that it is temporary
-    expect(screen.getByRole('link', { name: 'Create an account' }).getAttribute('href')).toBe('/signup')
-    await userEvent.click(screen.getByRole('button', { name: 'Hide this notice' }))      // dismissible, so it never costs a phone screen its room
-    expect(screen.queryByText('Temporary demo account.')).toBeNull()
+    expect(await screen.findByText('Temporary Demo Account.')).toBeTruthy()           // says plainly that it is temporary
+    expect(screen.getByRole('link', { name: 'Create an Account' }).getAttribute('href')).toBe('/signup')
+    await userEvent.click(screen.getByRole('button', { name: 'Hide This Notice' }))      // dismissible, so it never costs a phone screen its room
+    expect(screen.queryByText('Temporary Demo Account.')).toBeNull()
   })
 
   it('the demo explains a busy server and offers to try again or sign up', async () => {
     api.demoFails = true
     visit('/demo')
     expect(await screen.findByText(/The demo is busy right now/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Create an account' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Create an Account' })).toBeTruthy()
     api.demoFails = false
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Try Again' }))
     await waitFor(() => expect(window.location.pathname).toBe('/drills/1'))
   })
 
   it('someone who is already signed in is not given a second, guest account', async () => {
     api.signIn()
     visit('/demo')
-    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
     expect(api.calls.some((c) => c.path === '/api/auth/demo')).toBe(false)
   })
 
   it('the sign-in page advertises the demo in plain words', async () => {
     visit('/login')
-    const link = await screen.findByRole('link', { name: 'Try the demo' })
+    const link = await screen.findByRole('link', { name: 'Try the Demo' })
     expect(link.getAttribute('href')).toBe('/demo')
     expect(document.body.textContent).toMatch(/real data and the AI agents/)
   })
 })
 
 describe('site footer', () => {
-  it('every full page ends with the footer: sign-in, My drills, not-found', async () => {
+  it('every full page ends with the footer: sign-in, My Drills, not-found', async () => {
     visit('/login')
     expect(await screen.findByRole('contentinfo')).toBeTruthy()
     document.body.innerHTML = ''
     api.signIn()
     visit('/drills')
-    await screen.findByRole('heading', { name: 'My drills' })
+    await screen.findByRole('heading', { name: 'My Drills' })
     expect(screen.getByRole('contentinfo').textContent).toContain('MissionSync')
     document.body.innerHTML = ''
     visit('/nowhere')
@@ -156,7 +156,7 @@ describe('site footer', () => {
 describe('sign in and sign up forms', () => {
   it('shows validation inline — never an alert popup — and does not call the server', async () => {
     visit('/signup')
-    await userEvent.click(await screen.findByRole('button', { name: 'Create account' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Create Account' }))
     expect(screen.getByText('Enter your name.')).toBeTruthy()
     expect(screen.getByText('Enter a valid email address.')).toBeTruthy()
     expect(screen.getAllByText('Use at least 8 characters.').length).toBeGreaterThan(0)
@@ -170,30 +170,30 @@ describe('sign in and sign up forms', () => {
     visit('/login')
     await userEvent.type(await screen.findByLabelText('Email'), 'ann@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'wrong password!')
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }))
     expect(await screen.findByText('That email and password do not match.')).toBeTruthy()
     expect(window.location.pathname).toBe('/login')
     expect(window.alert).not.toHaveBeenCalled()
   })
 
-  it('creates an account, signs in and lands on an empty My drills page', async () => {
+  it('creates an account, signs in and lands on an empty My Drills page', async () => {
     visit('/signup')
-    await userEvent.type(await screen.findByLabelText('Your name'), 'Bea Tester')
+    await userEvent.type(await screen.findByLabelText('Your Name'), 'Bea Tester')
     await userEvent.type(screen.getByLabelText('Email'), 'bea@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'a long passphrase')
-    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
-    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
-    expect(screen.getByText('No drills yet.')).toBeTruthy()                                // a designed empty state
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
+    expect(screen.getByText('No Drills Yet.')).toBeTruthy()                                // a designed empty state
     expect(screen.getByRole('button', { name: /Bea/ })).toBeTruthy()                       // the account menu knows who you are
   })
 
   it('shows "email already used" next to the email field', async () => {
     api.addAccount('ann@example.com', 'correct horse 9')
     visit('/signup')
-    await userEvent.type(await screen.findByLabelText('Your name'), 'Ann')
+    await userEvent.type(await screen.findByLabelText('Your Name'), 'Ann')
     await userEvent.type(screen.getByLabelText('Email'), 'ann@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'a long passphrase')
-    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
     expect(await screen.findByText(/already exists/)).toBeTruthy()
     expect(screen.getByLabelText('Email').getAttribute('aria-describedby')).toBeTruthy()
   })
@@ -207,11 +207,11 @@ describe('sign in and sign up forms', () => {
     visit('/login')
     await userEvent.type(await screen.findByLabelText('Email'), 'ann@example.com')
     await userEvent.type(screen.getByLabelText('Password'), 'correct horse 9')
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
-    const busy = await screen.findByRole('button', { name: /Signing in/ })
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }))
+    const busy = await screen.findByRole('button', { name: /Signing In/ })
     expect((busy as HTMLButtonElement).disabled).toBe(true)
     release()
-    expect(await screen.findByRole('heading', { name: 'My drills' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'My Drills' })).toBeTruthy()
   })
 
   it('the password can be revealed and hidden', async () => {
@@ -223,7 +223,7 @@ describe('sign in and sign up forms', () => {
   })
 })
 
-describe('My drills — create, read, update, delete with optimistic UI', () => {
+describe('My Drills — create, read, update, delete with optimistic UI', () => {
   beforeEach(() => api.signIn())
 
   it('lists drills, and shows a skeleton while loading', async () => {
@@ -238,29 +238,29 @@ describe('My drills — create, read, update, delete with optimistic UI', () => 
   it('create: the card appears instantly, then becomes real', async () => {
     api.delay = 150
     visit('/drills')
-    expect(await screen.findByText('No drills yet.')).toBeTruthy()
-    await userEvent.type(screen.getByLabelText('Drill name'), 'Saturday drill')
-    await userEvent.click(screen.getByRole('button', { name: /New drill/ }))
+    expect(await screen.findByText('No Drills Yet.')).toBeTruthy()
+    await userEvent.type(screen.getByLabelText('Drill Name'), 'Saturday drill')
+    await userEvent.click(screen.getByRole('button', { name: /New Drill/ }))
     const pending = await screen.findByText('Saturday drill')                              // before the server has answered
     expect(pending.closest('li')?.getAttribute('aria-busy')).toBe('true')
     expect(screen.getByText('Creating…')).toBeTruthy()
     await waitFor(() => expect(screen.getByRole('link', { name: /^Open$/ }).getAttribute('href')).toBe('/drills/1'))
-    expect((screen.getByLabelText('Drill name') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Drill Name') as HTMLInputElement).value).toBe('')
   })
 
   it('create: validation shows inline, and a server refusal rolls the card back and keeps what you typed', async () => {
     visit('/drills')
-    await screen.findByText('No drills yet.')
-    await userEvent.click(screen.getByRole('button', { name: /New drill/ }))
+    await screen.findByText('No Drills Yet.')
+    await userEvent.click(screen.getByRole('button', { name: /New Drill/ }))
     expect(screen.getByText('Give the drill a name.')).toBeTruthy()
     expect(api.calls.filter((c) => c.method === 'POST' && c.path === '/api/drills')).toHaveLength(0)
 
     api.failNext['POST /api/drills'] = new Response(JSON.stringify({ error: 'You can keep up to 10 drills. Delete one to make room.', code: 'conflict', request_id: 'r' }), { status: 409 })
-    await userEvent.type(screen.getByLabelText('Drill name'), 'Too many')
-    await userEvent.click(screen.getByRole('button', { name: /New drill/ }))
+    await userEvent.type(screen.getByLabelText('Drill Name'), 'Too many')
+    await userEvent.click(screen.getByRole('button', { name: /New Drill/ }))
     expect(await screen.findByText(/up to 10 drills/)).toBeTruthy()                         // friendly message
     expect(screen.queryByRole('link', { name: /^Open$/ })).toBeNull()                         // optimistic card removed
-    expect((screen.getByLabelText('Drill name') as HTMLInputElement).value).toBe('Too many')
+    expect((screen.getByLabelText('Drill Name') as HTMLInputElement).value).toBe('Too many')
   })
 
   it('update: renaming shows at once and is saved', async () => {
@@ -295,7 +295,7 @@ describe('My drills — create, read, update, delete with optimistic UI', () => 
     await userEvent.click(await screen.findByRole('button', { name: /Delete Doomed/ }))
     expect(window.confirm).not.toHaveBeenCalled()                                          // an accessible dialog, not a popup
     const dialog = screen.getByRole('dialog', { name: /Delete “Doomed”\?/ })
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete drill' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete Drill' }))
     await waitFor(() => expect(screen.queryByText('Doomed')).toBeNull())
     expect(screen.getByText('Survivor')).toBeTruthy()
     expect(api.drills.map((d) => d.name)).toEqual(['Survivor'])
@@ -310,7 +310,7 @@ describe('My drills — create, read, update, delete with optimistic UI', () => 
 
     api.failNext['DELETE /api/drills/:id'] = new Response(JSON.stringify({ error: 'The server is busy.', code: 'degraded', request_id: 'r' }), { status: 503 })
     await userEvent.click(screen.getByRole('button', { name: /Delete Stays/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete drill' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Drill' }))
     expect(await screen.findByText(/The server is busy\. “Stays” was put back\./)).toBeTruthy()
     expect(screen.getByText('Stays')).toBeTruthy()
   })
@@ -318,12 +318,12 @@ describe('My drills — create, read, update, delete with optimistic UI', () => 
   it('signing out clears the session and protects the page again', async () => {
     visit('/drills')
     await userEvent.click(await screen.findByRole('button', { name: /Ann/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /Sign out/ }))
-    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeTruthy()
+    await userEvent.click(screen.getByRole('menuitem', { name: /Sign Out/ }))
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
     expect(api.signedIn).toBeNull()
     window.history.pushState({}, '', '/drills')
     document.body.innerHTML = ''
     render(<App />)
-    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Sign In' })).toBeTruthy()
   })
 })

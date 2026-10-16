@@ -9,9 +9,9 @@ import { SourceBadge, TIER_BG, TIER_BORDER, TierPill, micro } from './ui'
 
 const FACTORS: Array<[keyof RiskBreakdown, string]> = [
   ['severity', 'Severity'],
-  ['population', 'Population at risk'],
-  ['spread', 'Spread potential'],
-  ['time_criticality', 'Time criticality'],
+  ['population', 'Population at Risk'],
+  ['spread', 'Spread Potential'],
+  ['time_criticality', 'Time Criticality'],
 ]
 
 /** The title is the report's first ~70 chars; show only what the title doesn't already say. */
@@ -126,7 +126,7 @@ export default function IncidentCard({
 
         {selected && actions && (
           <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2" role="group" aria-label="Net control actions">
-            <span className={micro}>Net control</span>
+            <span className={micro}>Net Control</span>
             <button type="button" className={actionBtn} disabled={disabled} onClick={() => actions.onResolve(incident.id, 'contained')}>
               <ShieldCheck size={15} aria-hidden /> Mark contained
             </button>
@@ -142,7 +142,7 @@ export default function IncidentCard({
                   onChange={(e) => setPick(e.target.value)}
                   className="h-8 max-w-[11rem] rounded-md border border-line bg-bg px-2 text-sm text-ink max-lg:h-11"
                 >
-                  <option value="">Send a unit…</option>
+                  <option value="">Send a Unit…</option>
                   {capable.map((r) => (
                     <option key={r.id} value={r.id}>{r.name} · ETA {etaClock(etaMinutes(r, incident))}</option>
                   ))}

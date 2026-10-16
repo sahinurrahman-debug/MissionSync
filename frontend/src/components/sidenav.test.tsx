@@ -104,7 +104,7 @@ describe('Board navigation (desktop layout)', () => {
     board(source)
     expect(await screen.findByText(/dispatches are waiting for you/)).toBeTruthy()
     await userEvent.click(await screen.findByRole('button', { name: /^Orders/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /Approve all/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Approve All/ }))
     expect(source.calls).toContain('approve:all')
     expect(await screen.findByText(/responding/)).toBeTruthy()
     await userEvent.keyboard('4')
@@ -118,10 +118,10 @@ describe('Board navigation (desktop layout)', () => {
     board(source)
     const before = source.getSnapshot().proposals.length
     await userEvent.click(await screen.findByRole('button', { name: /^Orders/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /Approve all/ }))
-    expect(await screen.findByText(/did not work|Try again/)).toBeTruthy()           // a friendly message, not the raw error
+    await userEvent.click(await screen.findByRole('button', { name: /Approve All/ }))
+    expect(await screen.findByText(/did not work|Try Again/)).toBeTruthy()           // a friendly message, not the raw error
     expect(screen.queryByText(/boom/)).toBeNull()
-    expect(await screen.findByRole('button', { name: new RegExp(`Approve all \\(${before}\\)`) })).toBeTruthy()   // the proposals came back
+    expect(await screen.findByRole('button', { name: new RegExp(`Approve All \\(${before}\\)`) })).toBeTruthy()   // the proposals came back
   })
 
 
@@ -142,7 +142,7 @@ describe('Board navigation (desktop layout)', () => {
     expect(screen.getAllByRole('button', { name: /Bea/ })).toHaveLength(1)             // not duplicated in the header
     await userEvent.click(account)
     expect(screen.getByRole('menu', { name: 'Account menu' })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: /Sign out/ })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: /Sign Out/ })).toBeTruthy()
     expect(screen.getByText('bea@example.com')).toBeTruthy()
   })
 
@@ -165,9 +165,9 @@ describe('Board navigation (desktop layout)', () => {
     const source = new FakeSource()
     board(source)
     await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /End the drill/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /End the Drill/ }))
     expect(source.calls).not.toContain('end')                                         // nothing happens until confirmed
-    await userEvent.click(screen.getByRole('button', { name: 'End drill' }))
+    await userEvent.click(screen.getByRole('button', { name: 'End Drill' }))
     expect(await screen.findByText(/The drill has ended/)).toBeTruthy()
     expect(source.calls).toContain('end')
   })

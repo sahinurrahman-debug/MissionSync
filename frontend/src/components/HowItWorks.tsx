@@ -30,7 +30,7 @@ export function markGuideSeen(): void {
 export default function HowItWorks({ onClose }: { onClose: () => void }) {
   const close = () => { markGuideSeen(); onClose() }
   return (
-    <Modal title="How MissionSync works" describedBy="guide-intro" onClose={close} wide initialFocus="[data-start]">
+    <Modal title="How MissionSync Works" describedBy="guide-intro" onClose={close} wide initialFocus="[data-start]">
       <p id="guide-intro" className="mt-1 text-base text-ink-2">
         A practice board for emergency-response drills. You run the radio; MissionSync keeps the picture and suggests the next move.
       </p>
@@ -48,7 +48,7 @@ export default function HowItWorks({ onClose }: { onClose: () => void }) {
         ))}
       </ol>
       <button type="button" data-start onClick={close} className="mt-4 h-11 w-full rounded-md bg-accent text-base font-bold text-bg hover:brightness-110">
-        Got it — start
+        Got It — Start
       </button>
     </Modal>
   )

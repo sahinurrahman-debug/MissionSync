@@ -1,5 +1,5 @@
 /** Designed empty state: a quiet radar with a sweeping arm. */
-export default function EmptyRadar({ title = 'Airwaves quiet.', hint }: { title?: string; hint?: string }) {
+export default function EmptyRadar({ title = 'Airwaves Quiet.', hint }: { title?: string; hint?: string }) {
   return (
     <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 p-6 text-center" role="status">
       <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden className="text-accent">

@@ -83,7 +83,7 @@ export default function ReportIntake({
               onClick={() => { setReport(onSample()); setError(null) }}
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-hi px-2.5 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent max-lg:h-11"
             >
-              <Sparkles size={14} aria-hidden /> Inject sample
+              <Sparkles size={14} aria-hidden /> Inject Sample
             </button>
             <span className={`ml-auto font-mono text-xs tnum ${near ? 'text-warn' : 'text-ink-2'}`} aria-live="polite">{report.length}/{MAX_CHARS}</span>
             <button

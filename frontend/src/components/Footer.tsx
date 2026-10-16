@@ -15,12 +15,12 @@ export default function Footer({ variant = 'page' }: { variant?: 'page' | 'compa
     return (
       <footer className="hidden shrink-0 items-center gap-x-5 border-t border-line bg-panel px-4 text-base text-ink-2 lg:flex">
         <span className="font-semibold text-ink">Mission<span className="text-accent">Sync</span></span>
-        <span>© {year} · MIT licence</span>
+        <span>© {year} · MIT Licence</span>
         <nav aria-label="Footer" className="ml-auto flex items-center gap-x-3">
-          <A href={LINKS.apiDocs}>API docs</A>
-          <A href={LINKS.howItWorks}>How it works</A>
+          <A href={LINKS.apiDocs}>API Docs</A>
+          <A href={LINKS.howItWorks}>How It Works</A>
           <A href={LINKS.source}>Source on GitHub</A>
-          <A href={LINKS.notice}>Data credits</A>
+          <A href={LINKS.notice}>Data Credits</A>
         </nav>
       </footer>
     )
@@ -35,19 +35,19 @@ export default function Footer({ variant = 'page' }: { variant?: 'page' | 'compa
         <nav aria-label="Project">
           <h2 className="text-sm font-semibold uppercase tracking-micro text-ink-2">Project</h2>
           <ul className="mt-1 flex flex-col">
-            <li><A href={LINKS.howItWorks}>How it works</A></li>
+            <li><A href={LINKS.howItWorks}>How It Works</A></li>
             <li><A href={LINKS.architecture}>Architecture</A></li>
-            <li><A href={LINKS.apiDocs}>API documentation</A></li>
-            <li><A href={LINKS.source}>Source code on GitHub</A></li>
+            <li><A href={LINKS.apiDocs}>API Documentation</A></li>
+            <li><A href={LINKS.source}>Source Code on GitHub</A></li>
           </ul>
         </nav>
         <nav aria-label="Credits">
           <h2 className="text-sm font-semibold uppercase tracking-micro text-ink-2">Data &amp; credits</h2>
           <ul className="mt-1 flex flex-col">
-            <li><A href={LINKS.xbd}>xBD damage data (CC BY-NC-SA 4.0)</A></li>
+            <li><A href={LINKS.xbd}>xBD Damage Data (CC BY-NC-SA 4.0)</A></li>
             <li><A href={LINKS.osm}>© OpenStreetMap contributors</A></li>
-            <li><A href={LINKS.groq}>AI agents on Groq</A></li>
-            <li><A href={LINKS.license}>MIT licence</A></li>
+            <li><A href={LINKS.groq}>AI Agents on Groq</A></li>
+            <li><A href={LINKS.license}>MIT Licence</A></li>
           </ul>
         </nav>
       </div>

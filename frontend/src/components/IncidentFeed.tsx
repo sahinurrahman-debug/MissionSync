@@ -41,7 +41,7 @@ export default function IncidentFeed({
         {loading ? (
           <IncidentFeedSkeleton />
         ) : incidents.length === 0 ? (
-          <EmptyRadar title="Airwaves quiet." hint="Inject a field report to start the drill, or restart it from the toolbar." />
+          <EmptyRadar title="Airwaves Quiet." hint="Inject a field report to start the drill, or restart it from the toolbar." />
         ) : (
           <ul className="space-y-2 p-2">
             <AnimatePresence initial={false}>

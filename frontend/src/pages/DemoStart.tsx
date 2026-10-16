@@ -34,17 +34,17 @@ export default function DemoStart() {
       <main id="main" className="m-4 w-full max-w-md rounded-lg border border-line bg-panel p-6 text-center shadow-panel">
         {error ? (
           <>
-            <h1 className="text-xl font-bold">The demo could not start</h1>
+            <h1 className="text-xl font-bold">The Demo Could Not Start</h1>
             <p role="alert" className="mt-2 text-base text-ink-2">{error}</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <button type="button" onClick={() => { setError(''); setAttempt((n) => n + 1) }} className="h-12 rounded-md bg-accent px-5 text-base font-bold text-bg hover:brightness-110">Try again</button>
-              <Link to="/signup" className="inline-flex h-12 items-center justify-center rounded-md border border-line bg-hi px-5 text-base font-semibold hover:border-accent">Create an account</Link>
+              <button type="button" onClick={() => { setError(''); setAttempt((n) => n + 1) }} className="h-12 rounded-md bg-accent px-5 text-base font-bold text-bg hover:brightness-110">Try Again</button>
+              <Link to="/signup" className="inline-flex h-12 items-center justify-center rounded-md border border-line bg-hi px-5 text-base font-semibold hover:border-accent">Create an Account</Link>
             </div>
           </>
         ) : (
           <div role="status">
             <Loader2 size={28} className="mx-auto animate-spin text-accent" aria-hidden />
-            <h1 className="mt-3 text-xl font-bold">Setting up your demo drill…</h1>
+            <h1 className="mt-3 text-xl font-bold">Setting Up Your Demo Drill…</h1>
             <p className="mt-1 text-base text-ink-2">A private practice drill with real damage data and the AI agents. It takes a few seconds.</p>
           </div>
         )}

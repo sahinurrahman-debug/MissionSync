@@ -176,17 +176,17 @@ export default function MapPanel({
 
       {/* Floating controls */}
       <div className="absolute right-2 top-2 z-[1000] flex flex-col gap-1.5">
-        <button type="button" className={ctl} onClick={() => setRecenter((n) => n + 1)} aria-label="Re-center map" title="Re-center map">
+        <button type="button" className={ctl} onClick={() => setRecenter((n) => n + 1)} aria-label="Re-Center Map" title="Re-Center Map">
           <LocateFixed size={18} aria-hidden />
         </button>
-        <button type="button" className={ctl} onClick={() => setRoutes((v) => !v)} aria-pressed={routes} aria-label="Toggle unit routes" title="Toggle unit routes">
+        <button type="button" className={ctl} onClick={() => setRoutes((v) => !v)} aria-pressed={routes} aria-label="Toggle Unit Routes" title="Toggle Unit Routes">
           <Route size={18} aria-hidden />
         </button>
-        <button type="button" className={ctl} onClick={() => setSectors((v) => !v)} aria-pressed={sectors} aria-label="Toggle sector boundaries" title="Toggle sector boundaries">
+        <button type="button" className={ctl} onClick={() => setSectors((v) => !v)} aria-pressed={sectors} aria-label="Toggle Sector Boundaries" title="Toggle Sector Boundaries">
           <Hexagon size={18} aria-hidden />
         </button>
         {selectedId && (
-          <button type="button" className={ctl} onClick={() => onSelect(null)} aria-label="Clear selection" title="Clear selection">
+          <button type="button" className={ctl} onClick={() => onSelect(null)} aria-label="Clear Selection" title="Clear Selection">
             <span aria-hidden className="text-base leading-none">✕</span>
           </button>
         )}

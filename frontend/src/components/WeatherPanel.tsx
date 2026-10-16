@@ -2,7 +2,7 @@ import { CloudRain, Thermometer, Wind } from 'lucide-react'
 import type { Snapshot, WeatherCell } from '../types'
 import { Panel, PanelHeader } from './ui'
 
-const words = (s: string) => s.replace(/_/g, ' ')
+const words = (s: string) => s.replace(/_/g, ' ').replace(/\b[a-z]/g, (c) => c.toUpperCase())
 
 function ZoneCard({ w }: { w: WeatherCell }) {
   return (

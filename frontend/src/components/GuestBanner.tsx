@@ -31,11 +31,11 @@ export default function GuestBanner() {
     <div role="note" className="flex shrink-0 items-center gap-3 border-b border-line bg-hi px-3 py-1.5 text-base text-ink lg:px-4">
       <Clock size={18} className="shrink-0 text-ink-2" aria-hidden />
       <span className="min-w-0 flex-1 leading-snug">
-        <b>Temporary demo account.</b>
+        <b>Temporary Demo Account.</b>
         <span className="max-sm:sr-only"> It and its drills are deleted after 24 hours.</span>
       </span>
-      <Link to="/signup" className="inline-flex h-11 shrink-0 items-center rounded-md border border-accent/60 px-3 text-base font-bold text-accent hover:bg-accent/10 sm:h-9">Create an account</Link>
-      <button type="button" onClick={close} aria-label="Hide this notice" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-2 hover:text-ink sm:h-9 sm:w-9">
+      <Link to="/signup" className="inline-flex h-11 shrink-0 items-center rounded-md border border-accent/60 px-3 text-base font-bold text-accent hover:bg-accent/10 sm:h-9">Create an Account</Link>
+      <button type="button" onClick={close} aria-label="Hide This Notice" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-2 hover:text-ink sm:h-9 sm:w-9">
         <X size={18} aria-hidden />
       </button>
     </div>

@@ -69,7 +69,7 @@ describe('axe-core: no detectable a11y violations', () => {
   })
 
   it('dialogs and the next-step bar', async () => {
-    const { baseElement, unmount } = render(<ConfirmDialog title="End this drill?" body="It freezes." confirmLabel="End drill" onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    const { baseElement, unmount } = render(<ConfirmDialog title="End This Drill?" body="It freezes." confirmLabel="End drill" onConfirm={vi.fn()} onCancel={vi.fn()} />)
     expect(await violations(baseElement)).toEqual([])
     unmount()
     const guide = render(<HowItWorks onClose={vi.fn()} />)

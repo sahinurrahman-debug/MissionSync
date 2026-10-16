@@ -31,20 +31,20 @@ export function nextStepOf(snap: Snapshot): Step {
     return {
       id: 'report', icon: <Radio size={18} />,
       lead: 'No incidents yet.', rest: 'Type what a field team reports to start the drill.',
-      action: { label: 'Add report', target: 'report' },
+      action: { label: 'Add Report', target: 'report' },
     }
   }
   if (busy > 0) {
     return {
       id: 'watch', icon: <Truck size={18} />,
       lead: `${busy} ${busy === 1 ? 'unit is' : 'units are'} responding.`, rest: 'Add another report, or close incidents as they are contained.',
-      action: { label: 'Add report', target: 'report' },
+      action: { label: 'Add Report', target: 'report' },
     }
   }
   return {
     id: 'idle', icon: <FileText size={18} />,
     lead: 'All units are free.', rest: 'Add a field report to keep the drill moving.',
-    action: { label: 'Add report', target: 'report' },
+    action: { label: 'Add Report', target: 'report' },
   }
 }
 

@@ -40,7 +40,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           onClick={() => (app ? window.location.reload() : this.setState({ failed: false }))}
           className="mt-1 h-11 rounded-md border border-line bg-hi px-4 text-sm font-semibold text-ink hover:border-accent"
         >
-          {app ? 'Reload the page' : 'Retry'}
+          {app ? 'Reload the Page' : 'Retry'}
         </button>
       </div>
     )

@@ -84,7 +84,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             ))}
           </ul>
           <p className="mt-6 text-base text-ink-2">
-            Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
+            Just looking? <Link to="/demo" className="font-semibold text-accent underline underline-offset-4">Try the Demo</Link> — one click gives you a temporary private drill with real data and the AI agents. No form to fill in.
           </p>
         </section>
 
@@ -99,15 +99,15 @@ export default function AuthPage({ mode }: { mode: Mode }) {
                 aria-selected={mode === m}
                 className={`flex h-11 items-center justify-center rounded text-base font-semibold ${mode === m ? 'bg-accent text-bg' : 'text-ink-2 hover:text-ink'}`}
               >
-                {m === 'signin' ? 'Sign in' : 'Create account'}
+                {m === 'signin' ? 'Sign In' : 'Create Account'}
               </Link>
             ))}
           </div>
-          <h2 id="auth-title" className="sr-only">{signup ? 'Create your account' : 'Sign in to your account'}</h2>
+          <h2 id="auth-title" className="sr-only">{signup ? 'Create Your Account' : 'Sign In to Your Account'}</h2>
 
           <form onSubmit={submit} noValidate className="space-y-3.5">
             {signup && (
-              <FormField label="Your name" value={name} onChange={(e) => setName(e.target.value)} error={errors.display_name} autoComplete="name" maxLength={80} />
+              <FormField label="Your Name" value={name} onChange={(e) => setName(e.target.value)} error={errors.display_name} autoComplete="name" maxLength={80} />
             )}
             <FormField label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} autoComplete="email" autoCapitalize="none" />
             <FormField
@@ -127,7 +127,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             {formError && <p role="alert" className="rounded-md border border-p1/50 bg-p1/10 px-3 py-2 text-base text-ink">{formError}</p>}
             <button type="submit" disabled={busy} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-accent text-base font-bold text-bg transition hover:brightness-110 disabled:opacity-60">
               {busy && <Loader2 size={18} className="animate-spin" aria-hidden />}
-              {busy ? (signup ? 'Creating your account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
+              {busy ? (signup ? 'Creating Your Account…' : 'Signing In…') : signup ? 'Create Account' : 'Sign In'}
             </button>
           </form>
         </section>

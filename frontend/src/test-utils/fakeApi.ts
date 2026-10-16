@@ -69,7 +69,7 @@ export class FakeApi {
     }
     if (key === 'POST /api/auth/demo') {
       if (this.demoFails) return fail(503, 'degraded', 'The demo is busy right now. Please try again in a few minutes, or create a free account.')
-      const d = this.make('My first drill', 'Real xBD damage scenarios with the AI agents. This temporary account is deleted after 24 hours.')
+      const d = this.make('Demo Drill', 'Real xBD damage scenarios with the AI agents. This temporary account is deleted after 24 hours.')
       this.drills.push(d)
       this.signedIn = { id: 99, email: 'guest-ab12cd@guest.missionsync.invalid', display_name: 'Demo guest', created_at: new Date().toISOString(), is_guest: true }
       return json({ user: this.signedIn, drill: d, expires_in_hours: 24 }, 201)
@@ -97,14 +97,14 @@ export class FakeApi {
     const m = /^\/api\/drills\/(\d+)$/.exec(url)
     if (m) {
       const d = this.drills.find((x) => x.id === Number(m[1]))
-      if (!d) return fail(404, 'not_found', 'That drill does not exist.')
+      if (!d) return fail(404, 'not_found', 'That Drill Does Not Exist.')
       if (method === 'GET') return json({ drill: d })
       if (method === 'PATCH') { Object.assign(d, body); return json({ drill: d }) }
       if (method === 'DELETE') { this.drills = this.drills.filter((x) => x !== d); return json(null, 204) }
     }
     const snap = /^\/api\/drills\/(\d+)\/snapshot$/.exec(url)
     if (snap) {
-      if (!this.drills.some((x) => x.id === Number(snap[1]))) return fail(404, 'not_found', 'That drill does not exist.')
+      if (!this.drills.some((x) => x.id === Number(snap[1]))) return fail(404, 'not_found', 'That Drill Does Not Exist.')
       return new Promise<Response>(() => undefined)               // a real server would answer; these tests only need the page to open
     }
     return fail(404, 'not_found', 'No such endpoint.')
